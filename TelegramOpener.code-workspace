@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "TelegramOpener"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.ino": "cpp",
+			"ctime": "cpp"
+		}
+	}
+}
