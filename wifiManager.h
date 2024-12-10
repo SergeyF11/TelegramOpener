@@ -12,7 +12,7 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #endif
-#include "String2int64.h"
+//#include "String2int64.h"
 #include "newFsSettings.h"
 //#include "quotesReplace.h"
 #include "simpleButton.h"
@@ -53,11 +53,12 @@ public:
     Int64Parameter() : WiFiManagerParameter("") {};
     Int64Parameter(const char *id, const char *placeholder, int64_t value, const uint8_t length = 21, const char *label= "")
         : WiFiManagerParameter("") {
-        init(id, placeholder, int64ToString(value).c_str(), length, label, WFM_LABEL_BEFORE);
+        init(id, placeholder, su::Value(value).c_str(), length, label, WFM_LABEL_BEFORE);
     };
 
     int64_t getValue() {
-        return string2int64(WiFiManagerParameter::getValue());
+        //return string2int64(WiFiManagerParameter::getValue());
+        return su::Text( WiFiManagerParameter::getValue()).toInt64();
     };
 };
 
