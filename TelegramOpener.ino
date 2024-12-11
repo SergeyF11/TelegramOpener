@@ -76,11 +76,8 @@ void setup(){
 
 
 // setup some parameters
-  //new (&custom_html ) WiFiManagerParameter ("<p>Bot settings</p>"); // only custom html
   new (&custom_tgToken ) WiFiManagerParameter ("token", "bot token", settingsNew.getToken(), 50,"placeholder=\"your BOT token from @BotFather\"");
-  //new (&custom_tgTokenb ) WiFiManagerParameter ("invalid token", "invalid token", "", 0); // id is invalid, cannot contain spaces
-  
-  new (&custom_botAdmin ) Int64Parameter ("adminId", "admin id", settingsNew.getAdminId(), 21,"placeholder=\"bot administrator id\"");
+   new (&custom_botAdmin ) Int64Parameter ("adminId", "admin id", settingsNew.getAdminId(), 21,"placeholder=\"bot administrator id\"");
   new (&custom_controlChatId ) Int64Parameter ("chatId", "control chat id", settingsNew.getChatId(true), 21,"placeholder=\"control chat id\"");
   new (&custom_timeZone) WiFiManagerParameter ("tz", "time zone", settingsNew.getTz(), 10, "placeholder=\"time zone (example:'MSK-3') or shift in hours (-3)\"");
 
@@ -88,20 +85,10 @@ void setup(){
   new (&button_name) WiFiManagerParameter ("button_name","Button name", settingsNew.getButtonName(), 50, "placeholder=\"Button name\"");
   new (&button_report) WiFiManagerParameter ("button_report","Open report", settingsNew.getButtonReport(), 100, "placeholder=\"Open report message\"");
 
-  // WiFiManagerParameter button_header;
-  // WiFiManagerParameter button_name;
-  // WiFiManagerParameter button_report;
-
-  //WiFiManagerParameter custom_timeZone("tz", "time zone", "MSK-3", 10);
-  //WiFiManagerParameter custom_ipaddress("input_ip", "input IP", "", 15,"pattern='\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}'"); // custom input attrs (ip mask)
-
-  // const char _customHtml_checkbox[] = "type=\"checkbox\""; 
-  // WiFiManagerParameter custom_checkbox("checkbox", "my checkbox", "T", 2, _customHtml_checkbox, WFM_LABEL_AFTER);
-
+ 
   // add all your parameters here
   wm.addParameter(&custom_html);
   wm.addParameter(&custom_tgToken);
-  //wm.addParameter(&custom_tgTokenb);
   wm.addParameter(&custom_botAdmin);
   wm.addParameter(&custom_controlChatId);
   wm.addParameter(&custom_timeZone);
@@ -120,11 +107,9 @@ wm.addParameter(&button_report);
   
   // invert theme, dark
   wm.setDarkMode(true);
-  //std::vector<const char *> menu = {"wifi","wifinoscan","info","param","close","sep","erase","update","restart","exit"};
-  std::vector<const char *> menu = {"wifi","info","sep","param","sep","update","restart","exit"};
+   std::vector<const char *> menu = {"wifi","info","sep","param","sep","update","restart","exit"};
   wm.setMenu(menu); // custom menu, pass vector
-  //wm.setCountry("US"); 
-
+ 
   // set Hostname
   wm.setHostname(F("TelegramOpener"));
   //useful to make it all retry or go to sleep in seconds
@@ -158,10 +143,10 @@ wm.addParameter(&button_report);
 
   //check token
   while( ! bot.tickManual() ) {
-    debugPrintln("Wrong token");
+    debugPrintf("Wrong token %s\n", settingsNew.getToken());
     
     wm.startConfigPortal(getNameByChipId().c_str(), PortalWiFiPassword );
-    //bot.setToken( settingsNew.getToken() ); 
+  
   }
   // else {
   debugPrintln("Updates received. Token ok.");

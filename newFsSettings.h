@@ -208,6 +208,7 @@ namespace BotSettings{
     const char * fileName;
 //    const fs * myFS;
     BotSettings::SettingsT sets;
+
     void _copy(const BotSettings::SettingsT& srcSet){
       this->sets.adminId = srcSet.adminId;
       this->sets.chatId = srcSet.chatId;
@@ -243,21 +244,6 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
       this->fsInit();
       //if ( this->fileName != nullptr ){  
       this->load();
-      
-      //   if(  LittleFS.exists(this->fileName) ){
-      //     this->load();
-          
-      //   } else {
-      //     this->load("defaults");
-      //   }
-        
-      // } else {
-      //   this->load("defaults");
-      // }
-      // this->fsInit();
-      // if ( LittleFS.exists(this->fileName)){
-      //   this->load();
-      // }
       this->configTz();
     };
 
@@ -273,14 +259,17 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
   bool loadJson(String& _json){
       //String _json;
       File f = LittleFS.open(this->fileName, "r");
-      if(  f ) {
+      bool res = (bool)f;
+      if( f ) {
         _json = f.readString();
+        debugPrintf("loadJson readed: %s\n", _json.c_str());
         f.close();
-      }
-      return f;
+      }      
+      return res;
     };
 
     bool defaults(){
+      debugPretty;
       this->set()->ButtonHeader(HEADER_STRING);
       this->set()->ButtonName(BUTTON_NAME);
       this->set()->ButtonReport(OPEN_REPORT);
@@ -290,14 +279,16 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
 
     bool load(const char * fileName=nullptr ){
       bool res=false;
-      if (fileName != nullptr ) this->fileName = fileName;
+      if ( fileName != nullptr ) this->fileName = fileName;
       if ( this->fileName == nullptr ) this->fileName = Settings::defaultName;
       String _json;
-      if (this->loadJson(_json)) return defaults();
+      if ( ! this->loadJson(_json) ) return defaults();
  
+      debugPrintf("Parsing json: %s\n", _json.c_str());
       gson::Parser p;
       if ( ! p.parse(_json)) return defaults();
-      
+      debugPrintln("Json parsed. Get values.");
+
       this->sets.adminId = p["admin"];
       this->sets.chatId = p["chatId"];
       //this->sets.tz = p["timeZone"];

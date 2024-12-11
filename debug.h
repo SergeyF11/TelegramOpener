@@ -3,6 +3,17 @@
 #pragma once
 #include <Arduino.h>
 
+class DebugInit {
+  public:
+  DebugInit(HardwareSerial& port=Serial, long baud=115200){
+    port.begin(baud);
+    while ( ! port ){
+      delay(10);
+    }
+    delay(1000);
+  }
+};
+
 class RunTimeMs : public Printable {
   public:
   RunTimeMs(){
@@ -49,6 +60,7 @@ class PrintMemory : public Printable {
   } printMemory;
 
 #if defined debug_print
+   DebugInit debugInit(Serial, 115200);
    #define debugBegin(x)        if(! Serial) Serial.begin(x)
    #define debugPrint(x)              Serial.print(x)
    #define debugPrintln(x)            Serial.println(x)

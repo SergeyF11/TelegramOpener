@@ -80,13 +80,13 @@ namespace channelName {
   };
 
   const char* get(){
-    debugPretty; debugPrintln( channelNameP);
+//    debugPretty; debugPrintln( channelNameP);
     return channelNameP;
   };
 
   //String 
   const char *load(const long long id){
-    debugPretty;
+//    debugPretty;
 //  String name((char *)(NULL));
 //  if ( channelName.isEmpty() ) 
     if ( LittleFS.exists(fileName(id).c_str())) {
@@ -99,7 +99,7 @@ namespace channelName {
         }
         f.close();
     }    
-    debugPrintln( channelNameP);  
+//    debugPrintln( channelNameP);  
     return channelNameP;
   };
 
