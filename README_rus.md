@@ -1,5 +1,5 @@
 # TelegramOpener
-TelegramOpener для платы реле HW-622 на базе esp8266 
+[TelegramOpener для платы реле HW-622 на базе esp8266](https://github.com/SergeyF11/TelegramOpener)
 
 #### Beta version. Release will be soon!!
 
