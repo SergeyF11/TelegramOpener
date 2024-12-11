@@ -17,6 +17,38 @@ namespace su {
   static const long long Admin = 301774537;
 };
 
+    const char * _shieldingCpy(char * dest, const char * src){
+      int i=0, j=0;
+      while(src[i] != '\0'){
+
+        // смотрим только экранировку '"'
+        if ( src[i] != '\\' ) dest[j++] = src[i];
+        else {
+          //Serial.println("'\\' detected");
+          switch( src[i+1] ){
+          case '"': 
+            dest[j++] = src[++i];
+            break;
+          case 'n':
+            dest[j++] = '\n';
+            i++;
+            break;
+          case 'r':
+            dest[j++] = '\r';
+            i++;
+            break;
+          } 
+        }
+        //  if (src[i+1] =='"' ) dest[j++] = src[++i];
+        //  else 
+        // else dest[j++] = src[i];
+        i++;
+      }
+      dest[j]= '\0';
+//      Serial.println(dest);
+      return dest;
+    };
+
 bool is_digits(const char *str)
 {
   static const char digits[] PROGMEM = "+-0123456789";
@@ -83,27 +115,33 @@ namespace BotSettings{
       return true;
     };
     bool ButtonHeader(const char * bs=nullptr){ 
-      if ( strcmp(button.header,bs) == 0 ) return false;
+      char buf[150];
+      _shieldingCpy(buf, bs);
+      if ( strcmp(button.header,buf) == 0 ) return false;
       // else
-      strcpy(this->button.header,bs);
+      strcpy(this->button.header,buf);
       return true;
      };
 
     bool ButtonName(const char * bs=nullptr){
-      if ( strcmp(this->button.name,bs) == 0 ) return false;
+       char buf[150];
+      _shieldingCpy(buf, bs);
+      if ( strcmp(this->button.name,buf) == 0 ) return false;
       // else
-      strcpy(this->button.name,bs);
+      strcpy(this->button.name,buf);
       return true;
     };
     bool ButtonReport(const char * bs=nullptr){
-      if ( strcmp(this->button.report,bs) == 0 ) return false;
+       char buf[150];
+      _shieldingCpy(buf, bs);
+      if ( strcmp(this->button.report,buf) == 0 ) return false;
       // else
-      strcpy(this->button.report,bs);
+      strcpy(this->button.report,buf);
       return true;
     };
     bool Button(const char * header, const char * name, const char * report) {
       bool res = ButtonHeader(header);
-      res += ButtonName(name);
+      res += ButtonName(name);      
       res += ButtonReport(report);
       return res;
     }
@@ -167,38 +205,6 @@ namespace BotSettings{
 
     static constexpr char defaultName[] PROGMEM = "/settings.json";
     
-    const char * _shieldingCpy(char * dest, const char * src){
-      int i=0, j=0;
-      while(src[i] != '\0'){
-
-        // смотрим только экранировку '"'
-        if ( src[i] != '\\' ) dest[j++] = src[i];
-        else {
-          Serial.println("'\\' detected");
-          switch( src[i+1] ){
-          case '"': 
-            dest[j++] = src[++i];
-            break;
-          case 'n':
-            dest[j++] = '\n';
-            i++;
-            break;
-          case 'r':
-            dest[j++] = '\r';
-            i++;
-            break;
-          } 
-        }
-        //  if (src[i+1] =='"' ) dest[j++] = src[++i];
-        //  else 
-        // else dest[j++] = src[i];
-        i++;
-      }
-      dest[j]= '\0';
-//      Serial.println(dest);
-      return dest;
-    };
-
     const char * fileName;
 //    const fs * myFS;
     BotSettings::SettingsT sets;
@@ -232,45 +238,65 @@ void configTz() const {
         configTime( this->getTz(), NTP_SERVERS);
     };
 
-    Settings(const char * file = nullptr ){ //Settings::defaultName ){
+Settings(const char * file = nullptr ){ //Settings::defaultName ){
       this->fileName = file;
-      if ( this->fileName != nullptr ){
-        this->fsInit();
-        if(  LittleFS.exists(this->fileName) ){
-          this->load();
-          this->configTz();
-        } 
-      }
+      this->fsInit();
+      //if ( this->fileName != nullptr ){  
+      this->load();
+      
+      //   if(  LittleFS.exists(this->fileName) ){
+      //     this->load();
+          
+      //   } else {
+      //     this->load("defaults");
+      //   }
+        
+      // } else {
+      //   this->load("defaults");
+      // }
       // this->fsInit();
       // if ( LittleFS.exists(this->fileName)){
       //   this->load();
       // }
+      this->configTz();
     };
-    Settings(const BotSettings::Settings& src){
+
+  Settings(const BotSettings::Settings& src){
       this->_copy(src.sets);
+      this->configTz();
     };
-    Settings(const BotSettings::SettingsT& srcSet){
+  Settings(const BotSettings::SettingsT& srcSet){
       this->_copy(srcSet);
+      this->configTz();
     };
     
-    String loadJson(){
-      String _json;
+  bool loadJson(String& _json){
+      //String _json;
       File f = LittleFS.open(this->fileName, "r");
-      if(  f ) _json = f.readString();
-      f.close();
-      return _json;
+      if(  f ) {
+        _json = f.readString();
+        f.close();
+      }
+      return f;
     };
+
+    bool defaults(){
+      this->set()->ButtonHeader(HEADER_STRING);
+      this->set()->ButtonName(BUTTON_NAME);
+      this->set()->ButtonReport(OPEN_REPORT);
+      this->set()->Tz(DEFAULT_TZ);
+      return true;
+    }
 
     bool load(const char * fileName=nullptr ){
       bool res=false;
       if (fileName != nullptr ) this->fileName = fileName;
       if ( this->fileName == nullptr ) this->fileName = Settings::defaultName;
-      //const char * _fileName = ( fileName != nullptr ) ? fileName : this->fileName;
-      
-      String _json( this->loadJson());
+      String _json;
+      if (this->loadJson(_json)) return defaults();
  
       gson::Parser p;
-      if ( ! p.parse(_json)) return res;
+      if ( ! p.parse(_json)) return defaults();
       
       this->sets.adminId = p["admin"];
       this->sets.chatId = p["chatId"];
@@ -281,23 +307,17 @@ void configTz() const {
       char buf[150]={0};
       p["button"]["header"].toStr(buf);
       if ( buf[0] != '\0' )
-        _shieldingCpy(this->sets.button.header, buf);
-      else 
-        _shieldingCpy(this->sets.button.header, (HEADER_STRING));
-
+        this->set()->ButtonHeader(buf);
+      
       buf[0] = '\0';
       p["button"]["name"].toStr(buf);
       if ( buf[0] != '\0' )
-        _shieldingCpy(this->sets.button.name, buf);
-      else 
-        _shieldingCpy(this->sets.button.name, (BUTTON_NAME));
-      
+        this->set()->ButtonName( buf);
+            
       buf[0] = '\0';
       p["button"]["report"].toStr(buf);
       if ( buf[0] != '\0' )
-        _shieldingCpy(this->sets.button.report, buf);
-      else 
-        _shieldingCpy(this->sets.button.report, (OPEN_REPORT));
+        this->set()->ButtonReport( buf);
 
       return true;
     };
@@ -365,31 +385,7 @@ void configTz() const {
       return &(this->sets);
     };
 
-/*
-    struct GetT {  
-    const long long adminId() const { return _this->sets.adminId; };
-    const long long chatId() const { return _this->sets.chatId; };
-    const int tz() const { return _this->sets.tz; };
-    const char * token() const { return _this->sets.token; };
-    const char * buttonHeader() const { return _this->sets.button.header; };
-    const char * buttonName() const { return _this->sets.button.name; };
-    const char * buttonReport() const { return _this->sets.button.report; };
-    GetT( BotSettings::Settings* t){
-          this->_this = t;
-       };
-    private:
-    const BotSettings::Settings* _this;   
-    } get;
-    struct SetT {
-    void adminId( BotSettings::Settings* _this, long long id) {  _this->sets.adminId = id; };
-    void chatId( BotSettings::Settings* _this, long long id) { _this->sets.chatId = id; };
-    void tz( BotSettings::Settings* _this, int tz) { _this->sets.tz = tz; };
-    void token( BotSettings::Settings* _this, const char* token ) { strcpy(_this->sets.token, token); };
-    void buttonHeader( BotSettings::Settings* _this, const char* header)  { strcpy(_this->sets.button.header, header); };
-    void buttonName( BotSettings::Settings* _this, const char* name)  { strcpy( _this->sets.button.name, name); };
-    void buttonReport( BotSettings::Settings* _this, const char* report)  { strcpy( _this->sets.button.report, report); };
-    } set;
-*/
+
     size_t printTo(Print& p) const {
         size_t size=0;
         size += p.print(F("Settings '"));

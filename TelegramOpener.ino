@@ -1,4 +1,4 @@
-//#define debug_print 1
+#define debug_print 1
 //#define SYNC_TIME
 
 #define HW_622
