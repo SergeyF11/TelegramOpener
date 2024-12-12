@@ -85,16 +85,29 @@ const ReturnCode cleaner( const long long chat, const bool waitBotResponse=false
   return ReturnCode::wrongResponse;
 };
 
+  String dynamicCmd(const char * _cmd){
+    String cmd;
+    cmd += _cmd;
+    cmd += millis();
+    return cmd;
+  };
+  bool isExpired(unsigned long bTime, long delta=0 ){
+    debugPrintf("isExpired()\n%lu\t%lu\n", millis() - bTime, this->_expiredPeriod );
+    return ( millis() - bTime > this->_expiredPeriod + delta );
+  };
+
 //CREATOR
 const ReturnCode creater( const long long chat, const BotSettings::ButtonT& button ){ 
  debugPretty;
     if ( chat == 0ll ) return ReturnCode::noChat;
   //  if ( this->needUpdate() ) return ReturnCode::notNeeded;
   //String header(button.header);
-  String cmd;
-  cmd += ButtonInlimeMenu::bCmds;
-  cmd += time(nullptr);
-  fb::InlineMenu menu( (const char *)button.name, cmd.c_str() ); 
+  // String cmd;
+  // cmd += ButtonInlimeMenu::bCmds;
+  // cmd += millis();
+  //cmd += time(nullptr);
+
+  fb::InlineMenu menu( (const char *)button.name, dynamicCmd(ButtonInlimeMenu::bCmds).c_str() ); 
 
   fb::Message message;
   message.chatID = chat;
@@ -120,10 +133,7 @@ const ReturnCode creater( const long long chat, const BotSettings::ButtonT& butt
   return ReturnCode::ok;
   };
 
-  bool isExpired(unsigned long bTime, long delta=0 ){
-    debugPrintf("isExpired()\n%lu\t%lu\n", millis() - bTime, this->_expiredPeriod );
-    return ( millis() - bTime > this->_expiredPeriod + delta );
-  };
+
   const ReturnCode updater( const long long chat, const BotSettings::ButtonT& button, const bool waitBotResponse=false){
     //if ( ! this->needUpdate() ) return ReturnCode::notNeeded;
 
@@ -139,11 +149,11 @@ const ReturnCode creater( const long long chat, const BotSettings::ButtonT& butt
 
     debugPrintf( "Chat id: %lld \tMsg id:%d\n", chat, msgId);
     
-    String myMenuCmd;
-    myMenuCmd += ButtonInlimeMenu::bCmds;
-    myMenuCmd += millis(); // time(nullptr); // добавляем время, чтобы отредактировать
+    String myMenuCmd = dynamicCmd(ButtonInlimeMenu::bCmds );
+    // myMenuCmd += ButtonInlimeMenu::bCmds;
+    // myMenuCmd += millis(); // time(nullptr); // добавляем время, чтобы отредактировать
 
-    fb::InlineMenu menu( (const char *)button.name, myMenuCmd.c_str());  
+    fb::InlineMenu menu( (const char *)button.name, myMenuCmd.c_str() );  
     debugPrint("Menu="); debugPrint( button.name ); debugPrint("|");debugPrintln(myMenuCmd.c_str());
        
       debugPrintf("Edit menu msg ID=%d\n", msgId );

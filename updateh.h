@@ -21,6 +21,7 @@ extern SimpleButton myButton;
 
 #include "commandStart.h"
 #include "chatMember.h"
+#include "channelName.h"
 
 namespace TG_ATTR {
   static const char code[] PROGMEM = "`";
@@ -320,6 +321,20 @@ void updateh(fb::Update& u) {
   //  wrongCount.reset();
     debugPretty;
     handleChatMember(u);
+   }
+   else if ( u.isPost() ) {
+      debugPrintln("Channel post");
+      if ( u.message().has( SH("new_chat_title") )){
+        debugPrintln("\n\nBingo\n\n");
+        String newChatTitle = u.message().chat().title();
+        long long chatId = u.message().chat().id();
+        channelName::save( chatId, newChatTitle);
+
+      } else {
+        debugPrintln( u.message().text());
+
+      }
+
    }
   else if (u.isQuery()) {
   //  wrongCount.reset();

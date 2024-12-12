@@ -1,4 +1,5 @@
 #define debug_print 1
+#define WIFI_POWER 0
 //#define SYNC_TIME
 
 #define HW_622
@@ -56,15 +57,17 @@ void setup(){
     pinMode(RX_PIN,INPUT);
     WiFi.mode(WIFI_STA);
     if (WiFi.getPersistent() == true) WiFi.persistent(false); 
-    WiFi.setOutputPower( 0 );
+#if defined WIFI_POWER
+    WiFi.setOutputPower( WIFI_POWER );
+#endif
 
     Serial.begin(115200);
     while ( ! Serial ){
       delay(10);
     }
-    delay(1000);
+    //delay(1000);
     Serial.println();
-    debugBegin(115200);
+    //debugBegin(115200);
 //=========================================
     // SETTINGS::fsInit();
 
@@ -143,8 +146,7 @@ wm.addParameter(&button_report);
 
   //check token
   while( ! bot.tickManual() ) {
-    debugPrintf("Wrong token %s\n", settingsNew.getToken());
-    
+    debugPrintf("Wrong token %s\n", settingsNew.getToken());    
     wm.startConfigPortal(getNameByChipId().c_str(), PortalWiFiPassword );
   
   }
@@ -156,13 +158,18 @@ wm.addParameter(&button_report);
 
   // если есть админ, поприветствуем его и обновим клавиатуру или создадим новую
   if ( settingsNew.getAdminId() != 0 ){
+    myButton.needUpdate( SimpleButton::NeedUpdate::setTrue );
+
     fb::Message message;
     message.chatID = settingsNew.getAdminId();
     message.setModeMD();
 
     message.text = F(SAY_HI_MD);
+    // String channel = channelName::addChannelName( settingsNew.getChatId(true) );
+    // message.text += channel;
 
     channelName::load(settingsNew.getChatId(true));
+
     if ( settingsNew.getChatId(true) ) {
       //message.text += F("\nМой канал управления *");
       message.text += '\n';
@@ -186,31 +193,42 @@ wm.addParameter(&button_report);
     debugPrintln( res.getRaw() );
     channelName::freeMemory();
 
+//  если есть админ, то нужно обновлять кнопку у админа или в чате
+//   if( settingsNew.getChatId() != 0ll )
+//     myButton.needUpdate( SimpleButton::NeedUpdate::setTrue );
+
+//   debugPrintMemory;
+ }
     while( ! goToLoop ){
   // check errors noChat, noMesgId, wrongResponse
-      switch(myButton.updater( settingsNew.getChatId(), settingsNew.getButton(), true ) ){
+
+      switch( myButton.updater( settingsNew.getChatId(), settingsNew.getButton(), true ) ){
         // сюда мы не должны попасть никогда
         case SimpleButton::ReturnCode::noChat: 
           debugPrintln("No update needed without admin and chat id");
           goToLoop = true;
           break;
-        // у чата нет последнего сохраненного сообщения
+        // или у чата нет последнего сохраненного сообщения
         case SimpleButton::ReturnCode::noMesgId:
-          debugPrintf("No last message saved for chat '%lld\nTry to create new one\n", settingsNew.getChatId());
-          // пробуем создать новою клавиатуру
-          if ( myButton.creater( settingsNew.getChatId(), settingsNew.getButton() ) ) 
-            goToLoop = true;
-          else {
-            debugPrint("Wrong chat id ");
-          }
+          debugPrintf("No last message saved for chat '%lld\n", settingsNew.getChatId());
+        // нет корректного ответа 
+        case SimpleButton::ReturnCode::wrongResponse:
+          debugPrintln("Try to create new keyboard");
+            // пробуем создать новою клавиатуру
+            {
+            auto res = myButton.creater( settingsNew.getChatId(), settingsNew.getButton() );
+            debugPrintf("Result: %s\n", myButton.codeToString(res).c_str());
+            if ( res != SimpleButton::ReturnCode::wrongResponse ) goToLoop = true;
+            }
+          //goToLoop = true;  
           break;
 
         // не получили корректного ответа
-        case SimpleButton::ReturnCode::wrongResponse:
-          debugPrintf("Wrong response for chat '%lld' msg=%ld\n", 
-            settingsNew.getChatId(), 
-            LastMsg(settingsNew.getChatId() ).get());
-          break;
+        // case SimpleButton::ReturnCode::wrongResponse:
+        //   debugPrintf("Wrong response for chat '%lld' msg=%ld\n", 
+        //     settingsNew.getChatId(), 
+        //     LastMsg(settingsNew.getChatId() ).get());
+        //   break;
         
         // в остальных случаях погнали дальше
         default:
@@ -223,7 +241,7 @@ wm.addParameter(&button_report);
         
       } 
     }
-  }
+  
 
     //digitalWrite(BUILTIN_LED, HIGH);
   builtInLed.off();
@@ -248,16 +266,12 @@ wm.addParameter(&button_report);
     Serial.println(F("Done"));
 #endif
 
-//  если есть админ, то нужно обновлять кнопку у админа или в чате
-  if( settingsNew.getChatId() != 0ll )
-    myButton.needUpdate( SimpleButton::NeedUpdate::setTrue );
-
-  debugPrintMemory;
-}
 
 //bool needStartPortal = false;
 
 //bool needPrintMemory = false;
+} // end setup()
+
 
 void loop() {
   _loop();

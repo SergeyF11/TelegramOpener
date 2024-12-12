@@ -1,5 +1,6 @@
 #pragma once
 #include <LittleFS.h>
+#include <StringUtils.h>
 
 #include "debug.h"
 
@@ -7,7 +8,7 @@ namespace channelName {
 
   static char * channelNameP = nullptr;
   const char * creat(size_t);
-  void clean();
+  void freeMemory();
   String fileName(const long long);
   bool check(const long long);
   bool save(const long long );
@@ -19,8 +20,8 @@ namespace channelName {
   ///////////////////////////////////////////////////////////////////////
 
   const char * creat(size_t size){
-    if ( channelNameP == nullptr ) 
-        channelNameP = (char *)malloc(size);
+    freeMemory();
+    channelNameP = (char *)malloc(size);
     return channelNameP;
   };
   void freeMemory(){
@@ -41,11 +42,13 @@ namespace channelName {
     auto fn = fileName(id);
     if ( ! LittleFS.exists(fn.c_str())) return res;
     auto f = LittleFS.open( fn.c_str(), "r");
-    if ( f.size() != strlen(channelNameP) ) return res;
-    char * buf = (char *) malloc(f.size() );
-    f.readBytes(buf, f.size());
-    res = ( strncmp( buf, channelNameP, f.size()) == 0 ) ;
-    free(buf);
+    if ( ! f ) return res;
+    if ( f.size() != strlen(channelNameP) ){
+      char * buf = (char *) malloc(f.size() );
+      f.readBytes(buf, f.size());
+      res = ( strncmp( buf, channelNameP, f.size()) == 0 ) ;
+      free(buf); 
+    } 
     f.close();
     return res;
   };
@@ -61,7 +64,7 @@ namespace channelName {
     auto f = LittleFS.open( fileName(id).c_str(), "w");
     int writed=0;
     if ( f ) {
-      f.print(channelNameP);
+      writed=f.print(channelNameP);
       delay(1);
       f.close();
     }
@@ -80,30 +83,69 @@ namespace channelName {
   };
 
   const char* get(){
-//    debugPretty; debugPrintln( channelNameP);
     return channelNameP;
   };
 
   //String 
   const char *load(const long long id){
-//    debugPretty;
-//  String name((char *)(NULL));
-//  if ( channelName.isEmpty() ) 
-    if ( LittleFS.exists(fileName(id).c_str())) {
-        auto f = LittleFS.open( fileName(id).c_str(), "r");
+    freeMemory();
+    String fn = fileName(id);
+    if ( LittleFS.exists( fn.c_str() )) {
+        auto f = LittleFS.open( fn.c_str(), "r");
         if( creat(f.size()) != nullptr ){
-            // String s = f.readString();
-            // strcpy(channelName, s.c_str());
             f.readBytes(channelNameP, f.size());
             channelNameP[f.size()] = '\0';
         }
         f.close();
     }    
-//    debugPrintln( channelNameP);  
+
     return channelNameP;
   };
 
   bool isEmpty(){
-    return channelNameP == nullptr;
+    return channelNameP == nullptr || channelNameP[0] == '\0';
+  };
+  String addChannelName( String& text, long long chatId){
+    //String text;
+    load(chatId);
+    if ( chatId != 0ll ) {
+      //message.text += F("\nМой канал управления *");
+      text += '\n';
+      text += CHANNEL_FOR_CONTROL;
+      text += F("*");
+      if ( isEmpty() ){
+        text += "\\#\\"; 
+//                                                    1001715239030ll
+        text += 1000000000000ll + chatId;
+      } else { 
+        text += F("\\'");
+        text += get(); 
+        text += F("\\'");
+      }
+      text += F("*");
+    }
+    return text;
+  };
+
+  String addChannelName( long long chatId){
+    String text;
+    if ( chatId != 0ll ) {
+      load(chatId);
+      //message.text += F("\nМой канал управления *");
+      text += '\n';
+      text += CHANNEL_FOR_CONTROL;
+      text += F("*");
+      if ( isEmpty() ){
+        text += "\\#\\"; 
+//                                                    1001715239030ll
+        text += 1000000000000ll + chatId;
+      } else { 
+        text += F("\\'");
+        text += get(); 
+        text += F("\\'");
+      }
+      text += F("*");
+    }
+    return text;
   };
 }
