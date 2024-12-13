@@ -1,4 +1,4 @@
-#define debug_print 1
+//#define debug_print 1
 #define WIFI_POWER 5.0
 //#define SYNC_TIME
 
@@ -11,9 +11,13 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-
+#define VERSION 0,1,2
 #include "env.h"
-static Version::Version version{0,1,1,"betta"};
+#if defined debug_print
+  static Version::Version version{VERSION,"betta"};
+#else
+  static Version::Version version{VERSION};
+#endif
 
 #include <Arduino.h>
 #include "my_credential.h"
