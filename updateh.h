@@ -111,6 +111,7 @@ void handleDocument(fb::Update& u) {
 };
 
 static const char  portalStarted_MD[] PROGMEM = "_Config portal started\\.\\.\\._";
+static const char  rebootMsg_MD[] PROGMEM = "_Reboot\\.\\.\\._";
 void handleCommand(fb::Update& u){
     if(u.message().text().startsWith("/")){
       debugPrintln(u.message().from().username());
@@ -159,12 +160,14 @@ void handleCommand(fb::Update& u){
             if ( settingsNew.remove() ){
               debugPrintln("Settings file deleted.");
               settingsNew.load();
-              message.text += portalStarted_MD;
+              message.text += rebootMsg_MD;
+              bot.sendMessage( message );
+              message.text = "";
               //needStartPortal = true;
-              needStart = NeedStart::Portal;
+              //needStart = NeedStart::Portal;
               //delay(1000);
               //bot.skipUpdates();
-              //bot.reboot();
+              bot.reboot();
             } else {
               debugPrintln("Error file deleted.");
             }
@@ -180,7 +183,7 @@ void handleCommand(fb::Update& u){
         if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
           
           //message.chatID = settingsNew.getAdminId();
-          message.text = F("_Reboot\\.\\.\\._");
+          message.text = rebootMsg_MD;
           //message.setModeMD;
           bot.sendMessage(message, false);
           bot.setTyping( settingsNew.getAdminId(), false);
@@ -325,10 +328,17 @@ void updateh(fb::Update& u) {
    else if ( u.isPost() ) {
       debugPrintln("Channel post");
       if ( u.message().has( SH("new_chat_title") )){
-        debugPrintln("\n\nBingo\n\n");
-        String newChatTitle = u.message().chat().title();
+        //debugPrintln("\n\nBingo\n\n");
+        String newChatTitle = u.message().chat().title().decodeUnicode();
         long long chatId = u.message().chat().id();
-        channelName::save( chatId, newChatTitle);
+        if( channelName::save( chatId, newChatTitle) ){
+          fb::Message message;
+          message.text = channelName::addChannelName( chatId );
+          message.chatID = settingsNew.getAdminId();
+          message.setModeMD();
+          bot.sendMessage(message);
+          debugPrintln( message.text );
+         }
 
       } else {
         debugPrintln( u.message().text());
@@ -382,7 +392,7 @@ void updateh(fb::Update& u) {
             getNameFromRead(txt, u.message().from(), (char *)F(", ") ); 
           } else {  
             //debugPrintf("")
-            txt = F(TRY_LATTER);
+            txt = TRY_LATTER;
             myAlert = true;
           }
         }
@@ -397,15 +407,11 @@ void updateh(fb::Update& u) {
           txt += this_bot_link;
           
         } else {
-          
-          /*
-          settings.admin = u.message().from().id();
-          if ( SETTINGS::write(settings)) {
-            if ( ! settings.chat.id ) settings.chat.id = settings.admin; 
-            //getNameFromMessage(txt, u, (char *)F("Поздравляю! "), (char *)F(", теперь я твой раб.") );
-            getNameFromRead(txt, u.message().from(), (char *)F("Поздравляю! "), (char *)F(", теперь я твой раб.") );
-*/        settingsNew.set()->AdminId( u.message().from().id() );
+
+          settingsNew.set()->AdminId( u.message().from().id() );
           if ( settingsNew.save() ){
+            
+            myButton.creater( settingsNew.getAdminId(), settingsNew.getButton() );
             getNameFromRead(txt, u.message().from(), (char *)F("Поздравляю! "), (char *)F(", теперь я твой раб.") );
             //myButton.needUpdate();
             //
@@ -416,17 +422,7 @@ void updateh(fb::Update& u) {
         }
 
       }
-        //   break;
-        // case "~t~"_h:
-      // if( resp.hash() == SH("~t~")){
-      //   {
-      //     struct tm timeinfo;
-      //     localtime_r(&_now, &timeinfo);
-      //     txt += asctime(&timeinfo);
-      //     debugPrint(asctime(&timeinfo));
-      //   }
-      //  break;                
-      //} 
+
 
     bot.answerCallbackQuery(u.query().id(), txt.c_str(), myAlert, false );
     channelName::freeMemory();

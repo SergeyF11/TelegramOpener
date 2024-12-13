@@ -14,21 +14,6 @@ class DebugInit {
   }
 };
 
-class RunTimeMs : public Printable {
-  public:
-  RunTimeMs(){
-    this->start = millis();    
-  };
-  unsigned long time() const {
-    return millis()-this->start;
-  };
-  size_t printTo(Print& p) const {
-    return p.println(this->time());
-  };
-  private:
-  unsigned long start;
-};
-
 class PrintMemory : public Printable {
     private:
     bool _needPrint=false;
@@ -80,3 +65,20 @@ class PrintMemory : public Printable {
    #define printRunTime
    #define debugPrintMemory
 #endif
+
+
+class RunTimeMs : public Printable {
+  public:
+  RunTimeMs(){
+    this->start = millis();  
+    debugPretty;  
+  };
+  unsigned long time() const {
+    return millis()-this->start;
+  };
+  size_t printTo(Print& p) const {
+    return p.println(this->time());
+  };
+  private:
+  unsigned long start;
+};

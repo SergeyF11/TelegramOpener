@@ -29,8 +29,8 @@ class SimpleButton  {
     ok = 0, notNeeded, isPolling, noChat, noMesgId, wrongResponse
   };
   enum NeedUpdate {
-    setFalse = -1,
-    get = 0,
+    get = -1,
+    setFalse = 0,
     setTrue = 1
   };
   
@@ -111,8 +111,11 @@ const ReturnCode creater( const long long chat, const BotSettings::ButtonT& butt
 
   fb::Message message;
   message.chatID = chat;
+  message.protect = true;
   message.text = button.header;
   message.setInlineMenu(menu);
+  
+
   fb::Result res = botP->sendMessage(message, true);    
   
   if ( ! res.valid() ){ //checkOk(res, false /*true*/) ) {
@@ -162,6 +165,7 @@ const ReturnCode creater( const long long chat, const BotSettings::ButtonT& butt
       text.text = button.header;
       text.chatID = chat;
       text.messageID = msgId;
+
       text.setInlineMenu(menu);
 debugPrint("fb::text.text="); debugPrintln(text.text);
 debugPrint("fb::text.chatID="); debugPrintln(text.chatID);
@@ -195,21 +199,24 @@ debugPrint("fb::text.messageID="); debugPrintln(text.messageID);
   };
   //void needUpdate(bool nd=true) { this->_needUpdate=nd; };
 
-
   bool needUpdate(NeedUpdate set=NeedUpdate::get) const { 
     static bool _needUpdate = false;
-    switch (set)
-    {
-    case NeedUpdate::setTrue:
-      _needUpdate = true;
-      break;
-    case NeedUpdate::setFalse:
-      _needUpdate = false;
-      break;
-    }
-    
+    // switch (set)
+    // {
+    // case NeedUpdate::setTrue:
+    //   _needUpdate = true;
+    //   break;
+    // case NeedUpdate::setFalse:
+    //   _needUpdate = false;
+    //   break;
+    // }
+    if( set != NeedUpdate::get )
+      _needUpdate = (bool)set;
     return _needUpdate;
   };
+  bool needUpdate(bool set) const { return needUpdate( (NeedUpdate)set);  };
+
+
   void tick( BotSettings::Settings& sets ){
     //debugPretty;
     

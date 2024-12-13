@@ -354,7 +354,9 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
       return this->sets;
     };
     const long long getAdminId() const { return this->sets.adminId; };
+    bool hasAdmin() const { return this->sets.adminId != 0ll; };
     const long long getChatId(bool real = false) const { return ( real || this->sets.chatId != 0ll ) ? this->sets.chatId : this->sets.adminId; };
+    bool hasChatId(bool real=false) const { if ( !real ) { return this->hasAdmin(); } return this->sets.chatId != 0ll;  };
     const char * getTz() const { return this->sets.tz; };
     const int getTz_sec() const { 
       int tz_sec=-1; 

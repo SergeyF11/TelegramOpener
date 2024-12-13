@@ -1,18 +1,20 @@
 #define debug_print 1
-#define WIFI_POWER 0
+#define WIFI_POWER 5.0
 //#define SYNC_TIME
 
 #define HW_622
 //#define TEST_WEMOS
 
 #define SEC *1000
-#define POLLING_TIME 10 SEC
+#define POLLING_TIME 20 SEC
 //#define BUTTON_ENABLE_SEC 41
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
 
 #include "env.h"
+static Version::Version version{0,1,1,"betta"};
+
 #include <Arduino.h>
 #include "my_credential.h"
 #include "debug.h"
@@ -67,6 +69,7 @@ void setup(){
     }
     //delay(1000);
     Serial.println();
+    Serial.println(Version::appVersion(version));
     //debugBegin(115200);
 //=========================================
     // SETTINGS::fsInit();
@@ -126,13 +129,13 @@ wm.addParameter(&button_report);
 
   pinMode(RX_PIN, INPUT_PULLUP);
   builtInLed.on();
-  if(!wm.autoConnect(getNameByChipId().c_str(), PortalWiFiPassword )) {
+  if(!wm.autoConnect(getNameByChipId(Version::app).c_str(), PortalWiFiPassword )) {
     Serial.println(F("\nfailed to connect and hit timeout"));
   }
   else if( digitalRead(RX_PIN) == 0 ) {
   //   // start configportal always
      
-     wm.startConfigPortal(getNameByChipId().c_str(), PortalWiFiPassword );
+     wm.startConfigPortal(getNameByChipId(Version::app).c_str(), PortalWiFiPassword );
    }
   else {
     //if you get here you have connected to the WiFi
@@ -147,7 +150,7 @@ wm.addParameter(&button_report);
   //check token
   while( ! bot.tickManual() ) {
     debugPrintf("Wrong token %s\n", settingsNew.getToken());    
-    wm.startConfigPortal(getNameByChipId().c_str(), PortalWiFiPassword );
+    wm.startConfigPortal(getNameByChipId(Version::app).c_str(), PortalWiFiPassword );
   
   }
   // else {
@@ -157,47 +160,49 @@ wm.addParameter(&button_report);
   bool goToLoop = false;
 
   // если есть админ, поприветствуем его и обновим клавиатуру или создадим новую
-  if ( settingsNew.getAdminId() != 0 ){
-    myButton.needUpdate( SimpleButton::NeedUpdate::setTrue );
+  if ( settingsNew.hasAdmin() ){
+    myButton.needUpdate( true );
+
+    channelName::load(settingsNew.getChatId(true));
+    String channelName = channelName::addChannelName( settingsNew.getChatId(true), '\n' );
 
     fb::Message message;
     message.chatID = settingsNew.getAdminId();
-    message.setModeMD();
-
-    message.text = F(SAY_HI_MD);
-    // String channel = channelName::addChannelName( settingsNew.getChatId(true) );
-    // message.text += channel;
-
-    channelName::load(settingsNew.getChatId(true));
-
-    if ( settingsNew.getChatId(true) ) {
-      //message.text += F("\nМой канал управления *");
-      message.text += '\n';
-      message.text += CHANNEL_FOR_CONTROL;
-      message.text += F("*");
-      if ( channelName::isEmpty() ){
-        message.text += "\\#\\"; 
-//                                                    1001715239030ll
-        message.text += 1000000000000ll + settingsNew.getChatId(true);
-      } else { 
-        message.text += F("\\'");
-        message.text += channelName::get(); 
-        message.text += F("\\'");
-      }
-      message.text += F("*");
-    }
+    
+    message.text = SAY_HI_MD;
+    message.text += channelName;
 
     debugPrint("Say hi: ");
-    debugPrintln(message.text);
-    auto res = bot.sendMessage(message);
-    debugPrintln( res.getRaw() );
-    channelName::freeMemory();
+    debugPrintln( message.text );
+    message.setModeMD();
+    bot.sendMessage(message, false);
+
+    // auto res = bot.sendMessage(message);
+    // RunTimeMs startTicks;
+    // while ( ! bot.tickManual() ) delay(1000);
+    // debugPrintln( startTicks );
+    // if ( ! res.valid() ) {
+    //   debugPrintln("Can to say HI :((");
+    // //  debugPrintf("chat:%lld, mode:%d, text:'%s'\n", message.chatID, message.mode, message.text.c_str() );
+    // }
+    //debugPrintln( res.getRaw() );
+
 
 //  если есть админ, то нужно обновлять кнопку у админа или в чате
 //   if( settingsNew.getChatId() != 0ll )
 //     myButton.needUpdate( SimpleButton::NeedUpdate::setTrue );
 
 //   debugPrintMemory;
+
+
+    // if ( chatId != 0LL ) {
+       debugPrintf("message.text = \"%s\"\n", message.text.c_str());
+    //   //msg.text += channelName::addChannelName( chatId );
+    //   debugPrintf("msg.text = \"%s\"\n", msg.text.c_str());
+    //   delay (1000);
+    //   bot.sendMessage( msg );
+    // }
+        channelName::freeMemory();
  }
     while( ! goToLoop ){
   // check errors noChat, noMesgId, wrongResponse
@@ -237,7 +242,7 @@ wm.addParameter(&button_report);
 
       // при наличии проблемы вызываем портал для настройки
       if( ! goToLoop ) {          
-        wm.startConfigPortal(getNameByChipId().c_str(), PortalWiFiPassword );
+        wm.startConfigPortal(getNameByChipId(Version::app).c_str(), PortalWiFiPassword );
         
       } 
     }
@@ -292,15 +297,15 @@ void _loop(){
   }
 
 
-  if ( ! bot.isPolling() ) {
+  //if ( ! bot.isPolling() ) {
     
     // обновляем клаву без ожидания ответа
     //myButton.needUpdate(true);
-    myButton.tick( settingsNew );
+  myButton.tick( settingsNew );
     // myButton.updater(bot, 
     //   settingsNew.getChatId(),
     //   settingsNew.getButton() /*, false */);
-  }
+  //}
   
   switch ( needStart )
     {
@@ -314,7 +319,7 @@ void _loop(){
         //needStartPortal = ! needStartPortal;
         builtInLed.on();       
         wm.setConfigPortalTimeout(PORTAL_TIMEOUT);
-        wm.startConfigPortal(getNameByChipId().c_str(), PortalWiFiPassword );
+        wm.startConfigPortal(getNameByChipId(Version::app).c_str(), PortalWiFiPassword );
 
         // check telegram answer
         if( ! bot.tickManual() ) {

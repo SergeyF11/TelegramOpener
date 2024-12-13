@@ -97,89 +97,47 @@ void handleChatMember(fb::Update& u){
         break;
 
       case "administrator"_h :
-        debugPrintf("Set chat %lld as control channel. Update or make control keyboard\n", chatId);
+        debugPrintf("Set chat %lld as control channel. Make control keyboard\n", chatId);
         {
         if( settingsNew.set()->ChatId( chatId ) )
+          channelName::save(chatId, chatTitle );
+          String channelName =  channelName::addChannelName( chatId );
+          LastMsg buttonInChannel( chatId);
+          if( buttonInChannel.get() != 0 ){
+            bot.deleteMessage( chatId, buttonInChannel.get() );
+          }
           if ( settingsNew.save() ){ 
-
-            channelName::save(chatId, chatTitle );
-            channelName::freeMemory();
-            debugPrintf("New settings saved. Try create update keyboard in channel '%s'[%lld].\n", chatTitle.c_str(), chatId);
-            //myButton.updater( bot, chatId, settingsNew.getButton(), false );
-            myButton.needUpdate(SimpleButton::NeedUpdate::setTrue);
-            myButton.updater( chatId, settingsNew.getButton(), false); 
             
-            //auto res = myButton.updater( chatId, settingsNew.getButton(), true );
-            // debugPrintln( myButton.codeToString( res ));
+            auto res = myButton.creater( chatId, settingsNew.getButton() );
+            
+              // сообщение админу 
+              if ( settingsNew.hasAdmin() ){
+                
+                auto adminId = settingsNew.getAdminId();
+                LastMsg buttonMsg( adminId );
+                //uint msgId = lastMsg.get();
 
-            // if ( res != SimpleButton::ReturnCode::ok  ) {
-            //   res = myButton.creater(bot, chatId, settingsNew.getButton());  
-            //   debugPrintln( myButton.codeToString( res ));
-
-            //   if( res == SimpleButton::ReturnCode::ok ){
-            //     debugPrintln("New keybord created");
-            //   }  
-            //} 
-            //if ( res < SimpleButton::ReturnCode::wrongResponse ){
-
-              // удаляем кнопку если она есть у админа 
-              {
-                auto chat = settingsNew.getAdminId();
-                LastMsg lastMsg(chat );
-                uint msgId = lastMsg.get();
-                channelName::load(settingsNew.getChatId(true));
-                if ( msgId == 0) {
+                //channelName::load(settingsNew.getChatId(true));
+                if ( buttonMsg.get() == 0) {
                   // нет кнопки - создаем сообщение
-                  fb::Message message;
-                  message.chatID = chat;
-                  message.mode = fb::Message::Mode::MarkdownV2;;
- 
-                  //message.text += F("\nМой канал управления *");
-                  message.text = CHANNEL_FOR_CONTROL;
-                  message.text += F("*");
-                  if ( channelName::isEmpty() ){
-                    message.text += "\\#\\"; 
-            //                                                    1001715239030ll
-                    message.text += 1000000000000ll + settingsNew.getChatId(true);
-                  } else { 
-                    message.text += F("\\'");
-                    message.text += channelName::get(); 
-                    message.text += F("\\'");
-                  }
-                  message.text += F("*");
-                  bot.sendMessage(message);
+                  fb::Message newMsg;
+                  newMsg.chatID = adminId;
+                  newMsg.mode = fb::Message::Mode::MarkdownV2;
+                  newMsg.text += channelName;
+                  bot.sendMessage(newMsg);
                 } else {
-                  // есть кнопка в чате админа => редактируем
+                  // есть кнопка в чате админа => подменяем на инфо о канале
                   fb::TextEdit message;
-                  message.chatID = chat;
-                  message.messageID = msgId;
+                  message.chatID = adminId;
+                  message.messageID = buttonMsg.get();
                   message.mode = fb::Message::Mode::MarkdownV2;
-                  //message.setModeMD();
-                  message.text = CHANNEL_FOR_CONTROL;
-                  message.text += F("*");
-                  if ( channelName::isEmpty() ){
-                    message.text += "\\#\\"; 
-            //                                                    1001715239030ll
-                    message.text += 1000000000000ll + settingsNew.getChatId(true);
-                  } else { 
-                    message.text += F("\\'");
-                    message.text += channelName::get(); 
-                    message.text += F("\\'");
-                  }
-                  message.text += F("*");
+                  message.text += channelName;
                   bot.editText(message);
-
                 }
               }
-/*             auto res = myButton.cleaner( settingsNew.getAdminId(), true); 
 
-            debugPrintln( myButton.codeToString( res ));
-            if( res < SimpleButton::ReturnCode::wrongResponse )
-                debugPrintln("Admins channel keyboard deleted");
-            } */
-            //message.text = BotChatTempl::deleteRecomends_MD;
-            //debugPrintln( myButton.codeToString( res ) );
           }
+          channelName::freeMemory();
         }
         break;
       default:

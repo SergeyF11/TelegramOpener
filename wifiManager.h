@@ -98,10 +98,10 @@ void printParam( const WiFiManagerParameter& param)  {
   debugPrintln(param.getValue());
 }
 
-String getNameByChipId(const char* baseName="TelegramOpener_")  {
+String getNameByChipId(const char* baseName=nullptr)  {
   String name(baseName);
   char buf[10];
-  sprintf(buf, "%05x", ESP.getChipId());
+  sprintf(buf, "_%05x", ESP.getChipId());
   name += buf;
   return name;
 }

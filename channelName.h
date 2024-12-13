@@ -71,9 +71,12 @@ namespace channelName {
     return writed;
   };
   bool save(const long long id, const char *name){
-    if ( creat(strlen(name)) != nullptr )
-        strcpy(channelNameP, name);
-    return save(id);
+    freeMemory();
+    if ( creat(strlen(name)) != nullptr ){
+      strcpy(channelNameP, name);
+      return save(id);
+    }
+    return false;
   };
   //String 
   bool save(const long long id, String& name){
@@ -127,12 +130,14 @@ namespace channelName {
     return text;
   };
 
-  String addChannelName( long long chatId){
+  String addChannelName( long long chatId, char prefix = '\0'){
     String text;
     if ( chatId != 0ll ) {
-      load(chatId);
+      if ( isEmpty() ) load(chatId);
       //message.text += F("\nМой канал управления *");
-      text += '\n';
+      //text += '\n';
+      if( prefix != '\0' ) 
+        text += prefix;
       text += CHANNEL_FOR_CONTROL;
       text += F("*");
       if ( isEmpty() ){
