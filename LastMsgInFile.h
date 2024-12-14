@@ -6,8 +6,15 @@
 class LastMsg {
   public:
   LastMsg(){};
-  LastMsg(const long long chatId, const uint id=0){
+  LastMsg(const long long chatId, const uint id=0, const char* suffix=nullptr) /* : _suffix(suffix) */ {
+    debugPretty;
     this->init(chatId, id);
+    if ( suffix == nullptr) debugPrintln("nullptr");
+    else debugPrintln(suffix);
+    if( suffix != nullptr ){
+      _suffix = suffix;
+      debugPrintln(_suffix);
+    }
   };
   ~LastMsg(){};
   
@@ -43,8 +50,14 @@ class LastMsg {
   };
   private:
   String name(){
+    debugPretty;
     String fileName;
     fileName += this->chatId;
+    if ( this->_suffix != nullptr ){
+      fileName += this->_suffix;
+      debugPrint("add suffix "); debugPrintln( this->_suffix);
+    }
+    debugPrintln(fileName);
     return fileName;
   };
   uint32_t _get(){
@@ -61,5 +74,5 @@ class LastMsg {
 
   long long chatId;
   uint32_t id;
-  //constexpr char* suffix=""
+  const char* _suffix=nullptr;
 };

@@ -9,6 +9,7 @@
 #include "WString.h"
 #include <ESP8266WiFi.h> 
 #pragma once
+#include "github_upgrade.h"
 #include <FastBot2.h>
 #include "relay.h"
 //#include "fsSettings.h"
@@ -357,16 +358,6 @@ void updateh(fb::Update& u) {
       auto resp = u.query().data();
       debugPrint("Response '"); debugPrint(resp); debugPrintln("'");
       
-      // const String _base = resp.substring(0,QUERY_TIME_START); 
-      // su::Text base( _base);
-
-
-      
-      //if ( resp.startsWith(QUERY_START_OPEN)) {
-        // relay.open();
-        // txt = settingsNew.getButtonReport(); //settings.chat.button.report;  
-        // getNameFromRead(txt, u.message().from(), (char *)F(", ") );
-      
       if ( resp.startsWith(QUERY_START_OPEN)) {
         auto queryChatId = u.query().message().chat().id(); // entry;
 //        debugPretty; debugPrintln( queryChatId );
@@ -421,6 +412,10 @@ void updateh(fb::Update& u) {
           }
         }
 
+      } else if( resp.startsWith( "up" )) {
+        // do GitHub upgrade
+        GitHubUpgrade::needUpgrade = true;
+        
       }
 
 

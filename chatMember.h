@@ -54,7 +54,7 @@ void handleChatMember(fb::Update& u){
     auto entry = u.message().entry;
     //entry.stringify(Serial);
       String cmd;
-      fb::InlineMenu menu;
+      //fb::InlineMenu menu;
 
       auto status =entry[tg_apih::new_chat_member][tg_apih::status];
       //auto status = entry.get("new_chat_member").get("status"); // value();

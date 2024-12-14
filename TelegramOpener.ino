@@ -11,18 +11,18 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,2
+#define VERSION 0,2,0
 #include "env.h"
 #if defined debug_print
-  static Version::Version version{VERSION,"betta"};
+  static App::Version version{VERSION,"dbg"};
 #else
-  static Version::Version version{VERSION};
+  static App::Version version{VERSION};
 #endif
 
 #include <Arduino.h>
 #include "my_credential.h"
 #include "debug.h"
-
+#include "github_upgrade.h"
 #include <time.h>
 #include "relay.h"
 #include <FastBot2.h>
@@ -42,12 +42,6 @@ SimpleButton myButton(bot, POLLING_TIME );
 
 #include "wifiManager.h"
 
-//const char *TZstr = DEFAULT_TZ_STR;
-
-//String jsonSettings;
-//fb::Result res;
-//uint wrongCount =0;
-//SETTINGS::SettingsT settings;
 const char fileName[] PROGMEM = "/bot_opener.json";
 BotSettings::Settings settingsNew(fileName);
 
@@ -73,7 +67,7 @@ void setup(){
     }
     //delay(1000);
     Serial.println();
-    Serial.println(Version::appVersion(version));
+    Serial.println(App::appVersion(version));
     //debugBegin(115200);
 //=========================================
     // SETTINGS::fsInit();
@@ -133,13 +127,13 @@ wm.addParameter(&button_report);
 
   pinMode(RX_PIN, INPUT_PULLUP);
   builtInLed.on();
-  if(!wm.autoConnect(getNameByChipId(Version::app).c_str(), PortalWiFiPassword )) {
+  if(!wm.autoConnect(getNameByChipId(App::name).c_str(), PortalWiFiPassword )) {
     Serial.println(F("\nfailed to connect and hit timeout"));
   }
   else if( digitalRead(RX_PIN) == 0 ) {
   //   // start configportal always
      
-     wm.startConfigPortal(getNameByChipId(Version::app).c_str(), PortalWiFiPassword );
+     wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
    }
   else {
     //if you get here you have connected to the WiFi
@@ -154,7 +148,7 @@ wm.addParameter(&button_report);
   //check token
   while( ! bot.tickManual() ) {
     debugPrintf("Wrong token %s\n", settingsNew.getToken());    
-    wm.startConfigPortal(getNameByChipId(Version::app).c_str(), PortalWiFiPassword );
+    wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
   
   }
   // else {
@@ -181,32 +175,9 @@ wm.addParameter(&button_report);
     message.setModeMD();
     bot.sendMessage(message, false);
 
-    // auto res = bot.sendMessage(message);
-    // RunTimeMs startTicks;
-    // while ( ! bot.tickManual() ) delay(1000);
-    // debugPrintln( startTicks );
-    // if ( ! res.valid() ) {
-    //   debugPrintln("Can to say HI :((");
-    // //  debugPrintf("chat:%lld, mode:%d, text:'%s'\n", message.chatID, message.mode, message.text.c_str() );
-    // }
-    //debugPrintln( res.getRaw() );
+    debugPrintf("message.text = \"%s\"\n", message.text.c_str());
 
-
-//  если есть админ, то нужно обновлять кнопку у админа или в чате
-//   if( settingsNew.getChatId() != 0ll )
-//     myButton.needUpdate( SimpleButton::NeedUpdate::setTrue );
-
-//   debugPrintMemory;
-
-
-    // if ( chatId != 0LL ) {
-       debugPrintf("message.text = \"%s\"\n", message.text.c_str());
-    //   //msg.text += channelName::addChannelName( chatId );
-    //   debugPrintf("msg.text = \"%s\"\n", msg.text.c_str());
-    //   delay (1000);
-    //   bot.sendMessage( msg );
-    // }
-        channelName::freeMemory();
+    channelName::freeMemory();
  }
     while( ! goToLoop ){
   // check errors noChat, noMesgId, wrongResponse
@@ -246,7 +217,7 @@ wm.addParameter(&button_report);
 
       // при наличии проблемы вызываем портал для настройки
       if( ! goToLoop ) {          
-        wm.startConfigPortal(getNameByChipId(Version::app).c_str(), PortalWiFiPassword );
+        wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
         
       } 
     }
@@ -275,7 +246,7 @@ wm.addParameter(&button_report);
     Serial.println(F("Done"));
 #endif
 
-
+  GitHubUpgrade::setAt(-1);
 //bool needStartPortal = false;
 
 //bool needPrintMemory = false;
@@ -301,8 +272,72 @@ void _loop(){
   }
 
 
-  //if ( ! bot.isPolling() ) {
-    
+  if ( ! bot.isPolling() ) {
+    GitHubUpgrade::tick(bot, settingsNew );
+    // if ( GitHubUpgrade::check() &&  settingsNew.hasAdmin() ){
+    //   fb::InlineMenu menu("Upgrade", "up");
+    //   //bot.tickManual();
+    //   char buf[50] = {0};
+    //   sprintf(buf, "Новая версия `%s` доступна", GitHubUpgrade::tag().c_str() );
+    //   {
+    //   fb::Message msg(buf, settingsNew.getAdminId());
+    //   msg.setModeMD();
+    //   //String cmd(F("up"));
+    //   debugPrintln(msg.chatID);
+    //   debugPrintMemory;
+     
+    //   msg.setInlineMenu(menu);
+    //   debugPrintMemory;
+    //   auto res = bot.sendMessage( msg, true );
+    //   LastMsg upgradeButton(settingsNew.getAdminId(), bot.lastBotMessage(), GitHubUpgrade::tag().c_str());
+    //   upgradeButton.set();
+
+    //   // if ( !res.valid() ){
+    //   //   msg.removeMenu();
+    //   //   bot.sendMessage( msg, false);
+    //   // }
+    //   Serial.println( msg.text );
+    //   }
+    //   // bot.sendMessage(msg);
+    //   bot.tickManual();
+    //   //Serial.println( res.getRaw() );
+    // }
+
+    // if ( GitHubUpgrade::needUpgrade && GitHubUpgrade::has ) {
+      
+    //   if ( settingsNew.hasAdmin() ) {
+    //     fb::Message msg("Start upgrade...", settingsNew.getAdminId() );
+    //     bot.sendMessage( msg );
+    //     //bot.tickManual();
+        
+    //   }
+    //   GitHubUpgrade::needUpgrade = false;
+    //   String txt;
+    //   bool done = GitHubUpgrade::doIt();
+    //   if ( ! done ){
+    //     txt += GitHubUpgrade::Error(); 
+    //   } else {
+    //     LastMsg upgradeButton(settingsNew.getAdminId(), bot.lastBotMessage(), GitHubUpgrade::tag().c_str());
+    //     bot.deleteMessage( settingsNew.getAdminId(), upgradeButton.get(), false);
+    //     upgradeButton.clean();
+
+    //     txt += F("Upgrade done. Reboot...");
+    //     //bot.reboot();
+    //   }
+    //   debugPrintf("Txt=%s, to msgId=%lu\n", txt.c_str(), bot.lastBotMessage() );
+    //   if( bot.lastBotMessage() ){
+    //         fb::TextEdit editMsg(txt, bot.lastBotMessage(), settingsNew.getAdminId());
+    //         bot.editText(editMsg);
+    //         debugPrintf("Txt:%s, msgId=%lu, chatId=%lld\n", editMsg.text.c_str(), editMsg.messageID, editMsg.chatID.toInt64() );
+    //         bot.tickManual();
+    //       }  
+    //   if ( done ){
+    //     //delay(500);
+    //     bot.reboot();
+    //   }
+    // }
+  }  
+
     // обновляем клаву без ожидания ответа
     //myButton.needUpdate(true);
   myButton.tick( settingsNew );
@@ -323,7 +358,7 @@ void _loop(){
         //needStartPortal = ! needStartPortal;
         builtInLed.on();       
         wm.setConfigPortalTimeout(PORTAL_TIMEOUT);
-        wm.startConfigPortal(getNameByChipId(Version::app).c_str(), PortalWiFiPassword );
+        wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
 
         // check telegram answer
         if( ! bot.tickManual() ) {
@@ -369,35 +404,5 @@ void _loop(){
       }
       break;
     }
-    // if ( needStartPortal ){
-    //   bot.skipNextMessage(); 
-    //   if( bot.tickManual() ) debugPrintln(F("Manual update done"));
-    //   else debugPrintln(F("Error manual update"));
-      
-    //   Serial.println("\nPortal ENABLED");
-    //   //needStartPortal = ! needStartPortal;
-    //   builtInLed.on();       
-    //   wm.setConfigPortalTimeout(PORTAL_TIMEOUT);
-    //   wm.startConfigPortal(getNameByChipId().c_str(), PortalWiFiPassword );
-
-    //   // check telegram answer
-    //   if( ! bot.tickManual() ) {
-    //     debugPrintln("Wrong answer == wrong token. Reboot...");
-    //     ESP.restart();
-    //   }
-    //   //if( settings.chat.id == 0LL ) settings.chat.id = settings.admin;
-    //   builtInLed.toggle();
-    //   myButton.needUpdate( SimpleButton::NeedUpdate::setTrue );
-
-    //   fb::Message message;
-    //   message.chatID = settingsNew.getAdminId();
-    //   message.text = F("_portal closed_");
-    //   message.setModeMD();
-    //   bot.sendMessage(message, false);
-    // } 
-
-  // #if defined debug_print
-  //  else if ( needStartPortal ) { debugPrintln(F("Waiting polling release...")); }
-  // #endif
-  //}
+   
 }
