@@ -67,6 +67,7 @@ class LastMsg {
     if ( f ){
       String read = f.readString();
       id = read.toInt();
+      f.close();
     }
     //debugPrintln(id);
     return id;

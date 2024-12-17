@@ -6,7 +6,7 @@
 
 namespace channelName {
 
-  static char * channelNameP = nullptr;
+  char * channelNameP = nullptr;
   const char * creat(size_t);
   void freeMemory();
   String fileName(const long long);
@@ -80,7 +80,7 @@ namespace channelName {
   };
   //String 
   bool save(const long long id, String& name){
-  if ( creat(name.length()) != nullptr )
+  if ( creat(name.length()+1) != nullptr )
       strcpy(channelNameP, name.c_str());
   return save(id);
   };

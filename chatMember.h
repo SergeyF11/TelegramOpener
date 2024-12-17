@@ -77,6 +77,7 @@ void handleChatMember(fb::Update& u){
           debugPrintln("New settings saved. Try create new keyboard.");
 
           auto res = myButton.creater( settingsNew.getChatId(), settingsNew.getButton() );  
+
           if( res == SimpleButton::ReturnCode::ok ){
             debugPrintf("New keybord for %lld created\n", settingsNew.getChatId());
           } else {
@@ -98,18 +99,31 @@ void handleChatMember(fb::Update& u){
 
       case "administrator"_h :
         debugPrintf("Set chat %lld as control channel. Make control keyboard\n", chatId);
-        {
-        if( settingsNew.set()->ChatId( chatId ) )
-          channelName::save(chatId, chatTitle );
-          String channelName =  channelName::addChannelName( chatId );
-          LastMsg buttonInChannel( chatId);
-          if( buttonInChannel.get() != 0 ){
-            bot.deleteMessage( chatId, buttonInChannel.get() );
-          }
-          if ( settingsNew.save() ){ 
-            
-            auto res = myButton.creater( chatId, settingsNew.getButton() );
-            
+      if ( settingsNew.isAdmin(u.message().from().id() )) {
+        if( settingsNew.set()->ChatId( chatId ) &&
+          channelName::save(chatId, chatTitle )) {
+            String channelName =  channelName::addChannelName( chatId ); /// !== channelName::get()
+            LastMsg buttonInChannel( chatId );
+            auto prevChannelButton = buttonInChannel.get();
+            if( prevChannelButton != 0 ){
+              fb::Result res;
+              res = bot.deleteMessage( chatId, prevChannelButton );
+              if ( res.valid() ) {
+                debugPrintf("Button msgId=%lu in this channel %lld deleted\n", prevChannelButton, chatId );
+                delay(300);
+
+              }
+            }
+            if ( settingsNew.save() ){ 
+              
+              auto res = myButton.creater( chatId, settingsNew.getButton() );
+              unsigned long lastSendMs = millis();
+
+              if ( res == SimpleButton::ReturnCode::ok ) {
+                debugPrintln("New button created in channel");
+                
+              }
+
               // сообщение админу 
               if ( settingsNew.hasAdmin() ){
                 
@@ -118,12 +132,16 @@ void handleChatMember(fb::Update& u){
                 //uint msgId = lastMsg.get();
 
                 //channelName::load(settingsNew.getChatId(true));
+                if ( lastSendMs ) 
+                  while( millis()-lastSendMs < 300){
+                    delay(1);
+                    }
                 if ( buttonMsg.get() == 0) {
                   // нет кнопки - создаем сообщение
                   fb::Message newMsg;
                   newMsg.chatID = adminId;
                   newMsg.mode = fb::Message::Mode::MarkdownV2;
-                  newMsg.text += channelName;
+                  newMsg.text += channelName; //::get();
                   bot.sendMessage(newMsg);
                 } else {
                   // есть кнопка в чате админа => подменяем на инфо о канале
@@ -131,11 +149,11 @@ void handleChatMember(fb::Update& u){
                   message.chatID = adminId;
                   message.messageID = buttonMsg.get();
                   message.mode = fb::Message::Mode::MarkdownV2;
-                  message.text += channelName;
+                  message.text += channelName; //::get();
                   bot.editText(message);
                 }
               }
-
+            }
           }
           channelName::freeMemory();
         }

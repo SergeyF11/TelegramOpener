@@ -85,11 +85,12 @@ const ReturnCode cleaner( const long long chat, const bool waitBotResponse=false
   return ReturnCode::wrongResponse;
 };
 
-  String dynamicCmd(const char * _cmd){
-    String cmd;
-    cmd += _cmd;
-    cmd += millis();
-    return cmd;
+  inline   String dynamicCmd(const char * _cmd){
+    //return String(_cmd ) + millis();
+     String cmd;
+     cmd += _cmd;
+     cmd += millis();
+     return cmd;
   };
   bool isExpired(unsigned long bTime, long delta=0 ){
     debugPrintf("isExpired()\n%lu\t%lu\n", millis() - bTime, this->_expiredPeriod );
@@ -110,22 +111,29 @@ const ReturnCode creater( const long long chat, const BotSettings::ButtonT& butt
   fb::InlineMenu menu( (const char *)button.name, dynamicCmd(ButtonInlimeMenu::bCmds).c_str() ); 
 
   fb::Message message;
+  
   message.chatID = chat;
   message.protect = true;
   message.text = button.header;
   message.setInlineMenu(menu);
   
 
-  fb::Result res = botP->sendMessage(message, true);    
-  
+  fb::Result res = botP->sendMessage(message, true);     
+  auto lastSend = millis();
   if ( ! res.valid() ){ //checkOk(res, false /*true*/) ) {
-  
+    debugPrintln("Not valid response. Try in 0.5 sec");
+    while( millis() - lastSend  <500 ){
+      delay(1);
+    }
+    res = botP->sendMessage(message, true);
+  }
+  if ( ! res.valid()) {
     debugPrint("Not valid response: ");
     #ifdef debug_print
       res.getRaw().printTo(Serial);
     #endif
     debugPrintf("Chat:'%lld'\nHeader:'%s'\nText:'%s', cmd:'%s'\n",
-      chat, message.text, menu.text.c_str(), menu.data.c_str() );
+      chat, button.header , menu.text.c_str(), menu.data.c_str() );
     return ReturnCode::wrongResponse;
   }
   

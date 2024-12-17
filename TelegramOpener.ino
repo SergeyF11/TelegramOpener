@@ -1,6 +1,7 @@
-//#define debug_print 1
+#define debug_print 1
 #define WIFI_POWER 5.0
-//#define SYNC_TIME
+#define SECURED_CLIENT
+#define SYNC_TIME
 
 #define HW_622
 //#define TEST_WEMOS
@@ -48,9 +49,10 @@ BotSettings::Settings settingsNew(fileName);
 LastMsg lastMsg;
 //void * buttonUpdater;
 void rawResponse(su::Text resp){
-  debugPretty;   debugPrintln(resp.c_str());
+  debugPretty;   // debugPrintln(resp.c_str());
   if (resp.valid()) wrongCount.reset(); 
-  else wrongCount++;
+  else 
+    wrongCount++;
 };
 
 void setup(){
@@ -245,8 +247,12 @@ wm.addParameter(&button_report);
     }
     Serial.println(F("Done"));
 #endif
+#if defined debug_print
+  GitHubUpgrade::setAt(-1, -1, -1 );
+#else
+  GitHubUpgrade::setAt(6, 4, 0 );
+#endif
 
-  GitHubUpgrade::setAt(-1);
 //bool needStartPortal = false;
 
 //bool needPrintMemory = false;
@@ -273,69 +279,7 @@ void _loop(){
 
 
   if ( ! bot.isPolling() ) {
-    GitHubUpgrade::tick(bot, settingsNew );
-    // if ( GitHubUpgrade::check() &&  settingsNew.hasAdmin() ){
-    //   fb::InlineMenu menu("Upgrade", "up");
-    //   //bot.tickManual();
-    //   char buf[50] = {0};
-    //   sprintf(buf, "Новая версия `%s` доступна", GitHubUpgrade::tag().c_str() );
-    //   {
-    //   fb::Message msg(buf, settingsNew.getAdminId());
-    //   msg.setModeMD();
-    //   //String cmd(F("up"));
-    //   debugPrintln(msg.chatID);
-    //   debugPrintMemory;
-     
-    //   msg.setInlineMenu(menu);
-    //   debugPrintMemory;
-    //   auto res = bot.sendMessage( msg, true );
-    //   LastMsg upgradeButton(settingsNew.getAdminId(), bot.lastBotMessage(), GitHubUpgrade::tag().c_str());
-    //   upgradeButton.set();
-
-    //   // if ( !res.valid() ){
-    //   //   msg.removeMenu();
-    //   //   bot.sendMessage( msg, false);
-    //   // }
-    //   Serial.println( msg.text );
-    //   }
-    //   // bot.sendMessage(msg);
-    //   bot.tickManual();
-    //   //Serial.println( res.getRaw() );
-    // }
-
-    // if ( GitHubUpgrade::needUpgrade && GitHubUpgrade::has ) {
-      
-    //   if ( settingsNew.hasAdmin() ) {
-    //     fb::Message msg("Start upgrade...", settingsNew.getAdminId() );
-    //     bot.sendMessage( msg );
-    //     //bot.tickManual();
-        
-    //   }
-    //   GitHubUpgrade::needUpgrade = false;
-    //   String txt;
-    //   bool done = GitHubUpgrade::doIt();
-    //   if ( ! done ){
-    //     txt += GitHubUpgrade::Error(); 
-    //   } else {
-    //     LastMsg upgradeButton(settingsNew.getAdminId(), bot.lastBotMessage(), GitHubUpgrade::tag().c_str());
-    //     bot.deleteMessage( settingsNew.getAdminId(), upgradeButton.get(), false);
-    //     upgradeButton.clean();
-
-    //     txt += F("Upgrade done. Reboot...");
-    //     //bot.reboot();
-    //   }
-    //   debugPrintf("Txt=%s, to msgId=%lu\n", txt.c_str(), bot.lastBotMessage() );
-    //   if( bot.lastBotMessage() ){
-    //         fb::TextEdit editMsg(txt, bot.lastBotMessage(), settingsNew.getAdminId());
-    //         bot.editText(editMsg);
-    //         debugPrintf("Txt:%s, msgId=%lu, chatId=%lld\n", editMsg.text.c_str(), editMsg.messageID, editMsg.chatID.toInt64() );
-    //         bot.tickManual();
-    //       }  
-    //   if ( done ){
-    //     //delay(500);
-    //     bot.reboot();
-    //   }
-    // }
+    GitHubUpgrade::tick( );
   }  
 
     // обновляем клаву без ожидания ответа

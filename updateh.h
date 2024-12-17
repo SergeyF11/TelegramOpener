@@ -129,6 +129,18 @@ void handleCommand(fb::Update& u){
           handleStart(u, message);
           
           break;
+        case "/version"_h:
+          if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
+            message.text = F("Version: `");
+            message.text += App::appVersion(version); //version.toString();
+            message.text += ' ';
+            message.text += __DATE__;
+            message.text += ' ';
+            message.text += __TIME__;
+            message.text += '`';
+            debugPrintln(message.text);
+          }
+          break;
         case "/memory"_h:
           if ( settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             //debugPrintf("Max free block =%d\n", ESP.getMaxFreeBlockSize());

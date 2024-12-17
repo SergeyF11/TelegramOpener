@@ -361,9 +361,9 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
     const int getTz_sec() const { 
       int tz_sec=-1; 
       if ( is_digits( this->sets.tz ) ) {
-        debugPrintln("Tz has digits only");
+        //debugPrintln("Tz has digits only");
         tz_sec=atoi(this->sets.tz)*3600;
-      } else debugPrintln("Tz has text");
+      } //else debugPrintln("Tz has text");
       return tz_sec;
       };
     const char * getToken() const { return this->sets.token; };
