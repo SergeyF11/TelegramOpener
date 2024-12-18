@@ -2,7 +2,7 @@
 #include <ESP_OTA_GitHub.h>
 #include "env.h"
 #include <time.h>
-#include <FastBot2.h>
+#include <FastBot2s.h>
 #include "newFsSettings.h"
 #include "LastMsgInFile.h" 
 #include "env.h"

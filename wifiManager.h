@@ -4,7 +4,7 @@
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <time.h>
 #include <stdio.h>
-#include <FastBot2.h>
+#include <FastBot2s.h>
 
 #define USEOTA
 // enable OTA

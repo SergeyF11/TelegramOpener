@@ -1,4 +1,3 @@
-#line 1 "/home/sergey/Arduino/TelegramOpener/env.h"
 #pragma once
 #include "debug.h"
 
@@ -11,12 +10,50 @@
 #define DEFAULT_TZ_MSK  "MSK-3"
 
 #define _SAY_HI_MD_  "_Привет\\. Я снова тут\\.\\.\\._"
+static const char * SAY_HI_MD PROGMEM = _SAY_HI_MD_;
+
+
+#define _SAY_HI_  "Привет. Я снова тут..."
 #define NTP_SERVERS "ntp1.stratum2.ru" , "ru.pool.ntp.org", "pool.ntp.org"
 #define _TRY_LATTER_ "Что-то пошло не так. Попробуйте ещё раз."
 #define _CHANNEL_FOR_CONTROL_ "Мой канал управления "
 static const char * CHANNEL_FOR_CONTROL PROGMEM = _CHANNEL_FOR_CONTROL_;
-static const char * SAY_HI_MD PROGMEM = _SAY_HI_MD_;
+static const char * SAY_HI PROGMEM = _SAY_HI_;
 static const char * TRY_LATTER PROGMEM = _TRY_LATTER_;
+
+#include "TelegramMD.h"
+// namespace MARKDOWN_TG{
+//     static const char chars[] PROGMEM = "_*[]()~`>#+-=|{}.!";
+//     String escape(const char * txt){
+//         debugPretty;
+//         String dest;
+//         dest.reserve( 2*strlen( txt));
+//         int j=0;
+//         //char srs = txt[j];
+//         while ( txt[j] != '\0'){
+//             debugPrint( txt[j] );
+//             bool escaped = false;
+//             int i=0;
+//             //char c = chars[i];
+//             while ( chars[i] != '\0' ){
+//                 if ( txt[j] == chars[i] ) {
+//                     escaped = true;
+//                     break;
+//                 }
+//                 i++;
+//             }
+//             if ( escaped ) {
+//                 dest += '\\';
+//             }
+//             dest += txt[j];
+//             debugPrint("=>");
+//             debugPrintln( dest );
+//             j++;
+//         }
+//         return dest;
+//     };
+// }
+
 namespace Author {
     static const char * firstName PROGMEM = "Sergey";
     static const char * secondName PROGMEM = "Fedotov";
@@ -27,7 +64,14 @@ namespace Author {
         name += secondName;
         return name;
     };
-    
+    String getCopyright(){
+        static const char * _copyright PROGMEM = "Copyright (C) ";
+        String c = ( _copyright);
+        c += getName();
+        c += F(" aka ");
+        c += gitHubAka;
+        return c;
+    }
 };
 namespace App {
     static const char * name PROGMEM = "TelegramOpener";
@@ -152,10 +196,16 @@ namespace App {
     String getApp(){
         return String(name);
     };
-    String appVersion(Version& version){
+    String appVersion(Version& version, const char * data = nullptr, const char * time = nullptr ){
         String s = getApp();
         s += F(" v");
         s += version.toString(); //getString(version);
+        for( auto next : {data,time} ){
+            if ( next != nullptr){
+                s += ' ';
+                s += next;
+            }
+        }
         return s;
     }
 }

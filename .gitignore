@@ -1,0 +1,9 @@
+old/*
+.old/*
+build/*
+NewFsSettings/*
+*~
+.vscode/*
+
+my_credential.h
+

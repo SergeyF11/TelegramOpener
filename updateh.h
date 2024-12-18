@@ -10,7 +10,7 @@
 #include <ESP8266WiFi.h> 
 #pragma once
 #include "github_upgrade.h"
-#include <FastBot2.h>
+#include <FastBot2s.h>
 #include "relay.h"
 //#include "fsSettings.h"
 #include "newFsSettings.h"
@@ -111,8 +111,14 @@ void handleDocument(fb::Update& u) {
     }
 };
 
-static const char  portalStarted_MD[] PROGMEM = "_Config portal started\\.\\.\\._";
-static const char  rebootMsg_MD[] PROGMEM = "_Reboot\\.\\.\\._";
+// static const char  portalStarted_MD[] PROGMEM = "_Config portal started\\.\\.\\._";
+// static const char  rebootMsg_MD[] PROGMEM = "_Reboot\\.\\.\\._";
+
+static const char  portalStarted[] PROGMEM = "Config portal started...";
+static const char  rebootMsg[] PROGMEM = "Reboot...";
+
+
+
 void handleCommand(fb::Update& u){
     if(u.message().text().startsWith("/")){
       debugPrintln(u.message().from().username());
@@ -130,40 +136,41 @@ void handleCommand(fb::Update& u){
           
           break;
         case "/version"_h:
-          if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
-            message.text = F("Version: `");
-            message.text += App::appVersion(version); //version.toString();
-            message.text += ' ';
-            message.text += __DATE__;
-            message.text += ' ';
-            message.text += __TIME__;
-            message.text += '`';
+          /* if ( settingsNew.isAdmin( u.message().from().id() ) ) */{ 
+            message.text = F("Version: ");
+            message.text += TelegramMD::asCode( 
+                App::appVersion(version, __DATE__,__TIME__)); 
+            message.text += '\n';
+            message.text += TelegramMD::asItallic( Author::getCopyright() );
             debugPrintln(message.text);
           }
           break;
         case "/memory"_h:
-          if ( settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
-            //debugPrintf("Max free block =%d\n", ESP.getMaxFreeBlockSize());
-            //debugPrintf("Free heap=%d\n", ESP.getFreeHeap());
+          if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
             message.mode = fb::Message::Mode::Text;
             message.text = F("Free heap=");
             message.text += ESP.getFreeHeap();
             message.text += F("\nMax free block=");
             message.text += ESP.getMaxFreeBlockSize();
             printMemory.needPrint();
-            //message.chatID = u.message().from().id();
-            //debugPrintln(message.text);
           }
           break;
+        case "/hi"_h:{
+            message.text = TelegramMD::asItallic( SAY_HI );
+          }
+          break; 
         case "/ls"_h:
           if ( settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             runStart;
             bot.setTyping(settingsNew.getAdminId(), false);
             //debugPrintln(SETTINGS::listDirToString("/"));
             //message.text;
+            /*
             message.text = '`'; //TG_ATTR::code;
             message.text += BotSettings::listDirToString("/");
             message.text += '`'; //TG_ATTR::code;
+            */
+            message.text += TelegramMD::asCode( BotSettings::listDirToString("/"));
             // message.chatID = u.message().from().id();
             printRunTime;
           }
@@ -173,7 +180,7 @@ void handleCommand(fb::Update& u){
             if ( settingsNew.remove() ){
               debugPrintln("Settings file deleted.");
               settingsNew.load();
-              message.text += rebootMsg_MD;
+              message.text += TelegramMD::asItallic( rebootMsg );
               bot.sendMessage( message );
               message.text = "";
               //needStartPortal = true;
@@ -196,7 +203,7 @@ void handleCommand(fb::Update& u){
         if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
           
           //message.chatID = settingsNew.getAdminId();
-          message.text = rebootMsg_MD;
+          message.text = TelegramMD::asItallic( rebootMsg); //rebootMsg_MD;
           //message.setModeMD;
           bot.sendMessage(message, false);
           bot.setTyping( settingsNew.getAdminId(), false);
@@ -229,16 +236,16 @@ void handleCommand(fb::Update& u){
           auto arg = u.message().text().getSub(1, " ");
           bot.setTyping(settingsNew.getAdminId(), false);
             if( ! LittleFS.exists(arg.c_str()) ){
-              message.text += F("File `");
-              message.text += arg.c_str();
-              message.text += F("` not exist");
+              message.text += F("File ");
+              message.text += TelegramMD::asCode( arg ); //.c_str();
+              message.text += F(" not exist");
               break;
             }
             auto f = LittleFS.open(arg.c_str(), "r");
             if ( ! f ) {
-              message.text += F("Error open file `");
-              message.text += arg.c_str();
-              message.text += F("`");
+              message.text += F("Error open file "); //`");
+              message.text += TelegramMD::asCode( arg ); //.c_str();
+              //message.text += '`';
               break; 
             } 
             String s = f.readString();
@@ -251,17 +258,19 @@ void handleCommand(fb::Update& u){
             s.replace('\\','/');
             //debugPrintln(SETTINGS::listDirToString("/"));
             //message.text;
-            message.text += '`'; //TG_ATTR::code;
-            message.text += s.c_str();
-            message.text += '`'; //TG_ATTR::code;
+
+            message.text += TelegramMD::asCode( s );
+            // message.text += '`'; //TG_ATTR::code;
+            // message.text += s.c_str();
+            // message.text += '`'; //TG_ATTR::code;
           }
           break;
         case "/startPortal"_h:
           if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             //needStartPortal = true;
             needStart = NeedStart::Portal;
-            
-            message.text += portalStarted_MD;
+            message.text += TelegramMD::asItallic( portalStarted );
+            //message.text += portalStarted_MD;
             // bot.sendMessage(message, true);
             // message.text = "";
           }
@@ -270,9 +279,15 @@ void handleCommand(fb::Update& u){
           if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             if ( needStart == NeedStart::None ){
               needStart = NeedStart::Web;
-              message.text += F("_Settings [web portal](http://"); // started on _");
-              message.text += WiFi.localIP().toString();
-              message.text += F(") started \\.\\.\\._");
+                String txt = F("Settings [web portal](http://"); 
+                txt += WiFi.localIP().toString();
+                txt += F(") started...");
+              message.text += TelegramMD::asItallic( txt );
+
+              // message.text += F("_Settings [web portal](http://"); // started on _");
+              // message.text += WiFi.localIP().toString();
+              // message.text += F(") started \\.\\.\\._");
+
               if ( bot.sendMessage(message) ){
                 webPortalMsgId = bot.lastBotMessage();
                 message.text = "";
@@ -284,18 +299,18 @@ void handleCommand(fb::Update& u){
           if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             if ( needStart == NeedStart::WebRunning ){
               needStart = NeedStart::None;
-              
+              String closed = TelegramMD::asItallic("portal closed");
               if ( webPortalMsgId ){
                 fb::TextEdit editMsg;
                 editMsg.chatID = settingsNew.getAdminId();
-                editMsg.text = F("_portal closed_");
+                editMsg.text = closed; //F("_portal closed_");
                 editMsg.mode = fb::Message::Mode::MarkdownV2;
                 editMsg.messageID = webPortalMsgId;
                 bot.editText(editMsg, false );
                 webPortalMsgId = 0;
                 //message.text = "";
               } else {
-                message.text +=  F("_portal closed_");
+                message.text += closed;
               }
             }
           }

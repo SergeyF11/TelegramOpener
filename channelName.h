@@ -1,6 +1,7 @@
 #pragma once
 #include <LittleFS.h>
 #include <StringUtils.h>
+#include "TelegramMD.h"
 
 #include "debug.h"
 
@@ -131,25 +132,30 @@ namespace channelName {
   };
 
   String addChannelName( long long chatId, char prefix = '\0'){
-    String text;
+    String text( prefix );
     if ( chatId != 0ll ) {
       if ( isEmpty() ) load(chatId);
       //message.text += F("\nМой канал управления *");
       //text += '\n';
-      if( prefix != '\0' ) 
-        text += prefix;
+      // if( prefix != '\0' ) 
+      //   text += prefix;
       text += CHANNEL_FOR_CONTROL;
-      text += F("*");
       if ( isEmpty() ){
-        text += "\\#\\"; 
-//                                                    1001715239030ll
-        text += 1000000000000ll + chatId;
-      } else { 
-        text += F("\\'");
-        text += get(); 
-        text += F("\\'");
+        text += TelegramMD::asBold( String('#') + (1000000000000ll + chatId) );
+      } else {
+        text += TelegramMD::asBold( TelegramMD::textIn( get(), '\'' ));
       }
-      text += F("*");
+//       text += F("*");
+//       if ( isEmpty() ){
+//         text += "\\#\\"; 
+// //                                                    1001715239030ll
+//         text += 1000000000000ll + chatId;
+//       } else { 
+//         text += F("\\'");
+//         text += get(); 
+//         text += F("\\'");
+//      }
+//      text += F("*");
     }
     return text;
   };

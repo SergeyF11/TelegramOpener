@@ -3,7 +3,7 @@
 #include <cstdint>
 #pragma once
 
-#include <FastBot2.h>
+#include <FastBot2s.h>
 //#include "fsSettings.h"
 #include "newFsSettings.h"
 // #include "old/expireButton.h"

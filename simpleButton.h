@@ -1,7 +1,7 @@
 #include "debug.h"
 #pragma once
 
-#include <FastBot2.h>
+#include <FastBot2s.h>
 #include "env.h"
 #include "LastMsgInFile.h"
 #include "newFsSettings.h"

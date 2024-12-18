@@ -1,6 +1,7 @@
 #define debug_print 1
 #define WIFI_POWER 5.0
-#define SECURED_CLIENT
+#define FASTBOT_SECURED_CLIENT
+#define MFLN_SIZE 1024
 #define SYNC_TIME
 
 #define HW_622
@@ -26,7 +27,7 @@
 #include "github_upgrade.h"
 #include <time.h>
 #include "relay.h"
-#include <FastBot2.h>
+#include <FastBot2s.h>
 #include "channelName.h"
 #include "newFsSettings.h" 
 FastBot2 bot;
@@ -165,16 +166,19 @@ wm.addParameter(&button_report);
 
     channelName::load(settingsNew.getChatId(true));
     String channelName = channelName::addChannelName( settingsNew.getChatId(true), '\n' );
-
-    fb::Message message;
-    message.chatID = settingsNew.getAdminId();
+    String hi = TelegramMD::asItallic( SAY_HI );
     
-    message.text = SAY_HI_MD;
+    fb::Message message;
+    message.setModeMD();
+    
+    message.chatID = settingsNew.getAdminId();
+    message.text = hi;
+    //message.text += TelegramMD::asItallic( SAY_HI ); //*/ SAY_HI_MD;
     message.text += channelName;
 
     debugPrint("Say hi: ");
     debugPrintln( message.text );
-    message.setModeMD();
+    
     bot.sendMessage(message, false);
 
     debugPrintf("message.text = \"%s\"\n", message.text.c_str());
