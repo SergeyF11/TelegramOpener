@@ -4,12 +4,12 @@
 #include <time.h>
 #include <FastBot2s.h>
 #include "newFsSettings.h"
-#include "LastMsgInFile.h" 
-#include "env.h"
+#include "myPairs.h"
 
 extern BotSettings::Settings settingsNew;
 extern FastBot2 bot;
 extern App::Version version;
+extern MenuIds menuIds;
 
 static String gitVersion = version.toString();
 static String gitBinFile = App::getBinFile();
@@ -27,6 +27,7 @@ namespace GitHubUpgrade {
         int min=0;
     };
     static At at; 
+    static const int AnyTime = -1;
     // static String downloadUrl;
     // static String error;
     ESPOTAGitHub GitHubUpgrade( 
@@ -34,7 +35,7 @@ namespace GitHubUpgrade {
                 App::name, gitVersion.c_str(), 
                 gitBinFile.c_str(), false);
                 
-    void setAt(const int weekDay=5, const int hour=4, const int min=0 ){
+    void checkAt(const int weekDay=5, const int hour=4, const int min=0 ){
         //at = At{weekDay, hour, min};
         at.weekDay = weekDay;
         at.hour = hour;
@@ -50,9 +51,9 @@ namespace GitHubUpgrade {
 
         auto nowTime = localtime(&now);
         if (  now < 6000ll || nowTime->tm_yday == checkedDay ) return false;
-        if ( ( at.weekDay == -1 ||  nowTime->tm_wday == at.weekDay ) &&
-            ( at.hour == -1 || nowTime->tm_hour == at.hour ) && 
-            ( at.min == -1 || nowTime->tm_min == at.min )) {
+        if ( ( at.weekDay == AnyTime ||  nowTime->tm_wday == at.weekDay ) &&
+            ( at.hour == AnyTime || nowTime->tm_hour == at.hour ) && 
+            ( at.min == AnyTime || nowTime->tm_min == at.min )) {
             
             if ( ! has ) 
                 has = GitHubUpgrade.checkUpgrade();
@@ -120,8 +121,10 @@ void tick(){
       debugPrintMemory;
       auto res = bot.sendMessage( msg, true );
       String tag = GitHubUpgrade::tag();
-      LastMsg upgradeButton(settingsNew.getAdminId(), bot.lastBotMessage(), tag.c_str());
-      upgradeButton.set();
+      //LastMsg upgradeButton(settingsNew.getAdminId(), bot.lastBotMessage(), tag.c_str());
+      // upgradeButton.set();
+      menuIds.set( 'u', settingsNew.getAdminId(), bot.lastBotMessage());
+
 
       // if ( !res.valid() ){
       //   msg.removeMenu();
@@ -136,7 +139,9 @@ void tick(){
 
     if ( GitHubUpgrade::needUpgrade && GitHubUpgrade::has ) {
       String tag = GitHubUpgrade::tag();
-      LastMsg upgradeButton(settingsNew.getAdminId(),0, tag.c_str());
+      //LastMsg upgradeButton(settingsNew.getAdminId(),0, tag.c_str());
+      //menuIds.( String("up")+ settingsNew.getAdminId() );  
+
       String txt(F("Start upgrade..."));
       if ( settingsNew.hasAdmin() ) {
         fb::Message msg("Start upgrade...", settingsNew.getAdminId() );
@@ -152,29 +157,31 @@ void tick(){
         txt = GitHubUpgrade::Error(); 
       } else {
         String tag = GitHubUpgrade::tag();
-        
-        debugPrintf("Delete msg=%lu in chat=%llu\n", upgradeButton.get(), settingsNew.getAdminId());
-        
-        //fb::Result delete(){ return bot.deleteMessage( settingsNew.getAdminId(), upgradeButton.get(), true); };
-        fb::Result res;
-        while ( ! res.valid() ){
-            res = bot.deleteMessage( settingsNew.getAdminId(), upgradeButton.get(), true);
-            if ( res.valid() ) {
-                upgradeButton.clean();
-                debugPrintln();
-                break;
-            } else {
-                debugPrint(".");
-                delay(300);
+        unsigned long upgradeButtonId = menuIds.get( 'u', settingsNew.getAdminId() ); 
+        if ( upgradeButtonId != 0 ){
+            debugPrintf("Delete msg=%lu in chat=%llu\n", upgradeButtonId/* upgradeButton.get() */, settingsNew.getAdminId());
+            
+            //fb::Result delete(){ return bot.deleteMessage( settingsNew.getAdminId(), upgradeButton.get(), true); };
+            fb::Result res;
+            while ( ! res.valid() ){
+                res = bot.deleteMessage( settingsNew.getAdminId(), upgradeButtonId /*upgradeButton.get()*/, true);
+                if ( res.valid() ) {
+                    //upgradeButton.clean();
+                     menuIds.remove( 'u', settingsNew.getAdminId() );
+                    debugPrintln();
+                    break;
+                } else {
+                    debugPrint(".");
+                    delay(300);
+                }
             }
         }
-
         txt = F("Upgrade done. Reboot...");
         //bot.reboot();
       }
       debugPrintf("Txt=%s, to msgId=%lu\n", txt.c_str(), bot.lastBotMessage() );
       if( bot.lastBotMessage() ){
-            fb::TextEdit editMsg(txt, upgradeButton.get(), settingsNew.getAdminId());
+            fb::TextEdit editMsg(txt, menuIds.get( 'u', settingsNew.getAdminId()), settingsNew.getAdminId());
             bot.editText(editMsg);
             debugPrintf("Txt:%s, msgId=%lu, chatId=%lld\n", editMsg.text.c_str(), editMsg.messageID, editMsg.chatID.toInt64() );
             bot.tickManual();

@@ -17,12 +17,19 @@ struct TakeAdminT {
 } takeAdmin;
 */
 static constexpr char this_bot_link[] PROGMEM = THIS_BOT_LINK; //"t.me/rtu5024_bot";
-static constexpr char noAdmin_MD[] PROGMEM = "*У меня пока нет хозяина\\. Хочешь им стать\\?*";
-static constexpr char takeAdminStr[] PROGMEM = "Стать администратором";
-static constexpr char haveAdmin_MD[] PROGMEM = "*У меня уже есть хозяин\\!*\n_Но ты всегда можешь завести [своего бота](" THIS_BOT_LINK ")_";
-static constexpr char haveAdmin_Alert[] PROGMEM = "У меня уже есть хозяин!\nНо ты всегда можешь завести своего бота ";
-static constexpr char youAdminAlready_MD[] PROGMEM = "*Вы уже являетесь администратором\\.*\n_Для помощи отправь_ `/help`";
+// static constexpr char noAdmin_MD[] PROGMEM = "*У меня пока нет хозяина\\. Хочешь им стать\\?*";
+// //static constexpr char takeAdminStr[] PROGMEM = "Стать администратором";
+// static constexpr char haveAdmin_MD[] PROGMEM = "*У меня уже есть хозяин\\!*\n_Но ты всегда можешь завести [своего бота](" THIS_BOT_LINK ")_";
+// static constexpr char haveAdmin_Alert[] PROGMEM = "У меня уже есть хозяин!\nНо ты всегда можешь завести своего бота ";
+// static constexpr char youAdminAlready_MD[] PROGMEM = "*Вы уже являетесь администратором\\.*\n_Для помощи отправь_ `/help`";
 
+static constexpr char noAdmin[] PROGMEM = "У меня пока нет хозяина. Хочешь им стать?";
+static constexpr char takeAdminStr[] PROGMEM = "Стать администратором";
+static constexpr char haveAdmin[] PROGMEM = "У меня уже есть хозяин!\n";
+static constexpr char youCanTake[] PROGMEM = "Но ты всегда можешь завести ";
+static constexpr char youBot[] PROGMEM = "своего бота";
+static constexpr char youAdminAlready[] PROGMEM = "Вы уже являетесь администратором.";
+static constexpr char forHelp[] PROGMEM = "\nДля помощи отправь "; //`/help`";
 //extern SETTINGS::SettingsT settings;
 extern BotSettings::Settings settingsNew;
 
@@ -42,7 +49,10 @@ void handleStart(fb::Update& u, fb::Message& message) {
       else wrongCount++;
       // res.getRaw().printTo(Serial);
     }
-    message.text = youAdminAlready_MD; // F("*Вы уже являетесь администратором\\.*\n_Для помощи отправь_ `/help`");
+    message.text = TelegramMD::asBold( youAdminAlready); //_MD; // F("*Вы уже являетесь администратором\\.*\n_Для помощи отправь_ `/help`");
+    String help( TelegramMD::asItallic( forHelp ));
+    help += TelegramMD::asCode( "/help" );
+    message.text += help;
     
     // auto res = bot.sendMessage(message);
     // res.getRaw().printTo(Serial);
@@ -56,7 +66,11 @@ void handleStart(fb::Update& u, fb::Message& message) {
       debugPrintf("Unknown user '%s'[#%s] start command\n",
                     user,
                     (String)(u.message().from().id()));
-      message.text = haveAdmin_MD; //F("*У меня уже есть хозяин\\!*\n_Но ты всегда можешь завести [своего бота](" THIS_BOT_LINK ")_");
+      message.text = TelegramMD::asBold( haveAdmin); //haveAdmin_MD; //F("*У меня уже есть хозяин\\!*\n_Но ты всегда можешь завести [своего бота](" THIS_BOT_LINK ")_");
+      String S(youCanTake );
+      S += TelegramMD::textIn( youBot, '[', ']');
+      S += TelegramMD::textIn(  this_bot_link, '(',')' );
+      message.text += TelegramMD::asItallic( S );
 
     } else {
       String user(u.message().from().username());
@@ -68,7 +82,7 @@ void handleStart(fb::Update& u, fb::Message& message) {
       //cmd += bot.lastBotMessage()+1;
       
       fb::InlineMenu menu(takeAdminStr, cmd.c_str());
-      message.text = noAdmin_MD; //F("*У меня пока нет хозяина\\. Хочешь им стать\\?*");
+      message.text = TelegramMD::asBold( noAdmin); //noAdmin_MD; //F("*У меня пока нет хозяина\\. Хочешь им стать\\?*");
       message.setInlineMenu(menu);
       bot.sendMessage(message);
 

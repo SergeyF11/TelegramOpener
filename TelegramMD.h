@@ -36,21 +36,24 @@ namespace TelegramMD {
     //     return out;
     //     return textIn(txt.c_str(), Q);
     // };
-    String textIn(const char * txt, const char Q ){
+    String textIn(const char * txt, const char Q, const char Q2='\0' ){
         size_t txtLen = strlen(txt);
         char * out = (char*)malloc(3+ txtLen);
         out[0] = Q;
-        out[1+txtLen] = Q;
+        out[1+txtLen] = Q2 ? Q2 : Q;
         strncpy(out+1, txt, txtLen);
         out[2+txtLen] = '\0';
         String s(out);
         free(out);
         return s;
     };    
-    String textIn(const String& txt, const char Q ){ 
-        return textIn(txt.c_str(), Q);
+    String textIn(const String& txt, const char Q, const char Q2='\0' ){ 
+        return textIn(txt.c_str(), Q, Q2);
     };
     String asCode(const String& txt){
+        return textIn(txt, '`'); 
+    };
+    String asCode(const char* txt){
         return textIn(txt, '`'); 
     };
     String asItallic(const String& txt){

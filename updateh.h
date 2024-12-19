@@ -22,7 +22,7 @@ extern SimpleButton myButton;
 
 #include "commandStart.h"
 #include "chatMember.h"
-#include "channelName.h"
+//#include "channelName.h"
 
 namespace TG_ATTR {
   static const char code[] PROGMEM = "`";
@@ -214,17 +214,18 @@ void handleCommand(fb::Update& u){
           break;
         case "/clear_lastmsg"_h:
           if (settingsNew.isAdmin( u.message().from().id() ) ){ 
-            LastMsg l(u.message().from().id());
-            l.clean();
+            // LastMsg l(u.message().from().id());
+            // l.clean();
+            menuIds.remove(u.message().from().id());
           }
           break;
         case "/settings"_h:
           if ( settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             
             debugPrintln( settingsNew ); //.toString());
-            debugPrintf("Last message for %lld is %lu\n", settingsNew.getAdminId(), LastMsg(settingsNew.getAdminId()).get() );
+            debugPrintf("Last message for %lld is %lu\n", settingsNew.getAdminId(), menuIds.get(settingsNew.getAdminId()));  //LastMsg(settingsNew.getAdminId()).get() );
             if( settingsNew.getChatId(true) != 0 )
-              debugPrintf("Last message for %lld is %lu\n", settingsNew.getChatId(), LastMsg(settingsNew.getChatId()).get() );
+              debugPrintf("Last message for %lld is %lu\n", settingsNew.getChatId(),  menuIds.get(settingsNew.getChatId())); //LastMsg(settingsNew.getChatId()).get() );
             // LastMsg lm(u.message().chat().id());
             // debugPrint("LastMsg:"); debugPrintln(lm.get());
           }
@@ -359,9 +360,14 @@ void updateh(fb::Update& u) {
         //debugPrintln("\n\nBingo\n\n");
         String newChatTitle = u.message().chat().title().decodeUnicode();
         long long chatId = u.message().chat().id();
-        if( channelName::save( chatId, newChatTitle) ){
+        //menuIds.set( String('n') + settingsNew.getChatId(true), newChatTitle);
+        menuIds.set( 'n', settingsNew.getChatId(true), newChatTitle);
+        String myChannel;
+        myChannel += CHANNEL_FOR_CONTROL;
+        myChannel += TelegramMD::asBold( TelegramMD::textIn( newChatTitle, '\'' ));  
+        {
           fb::Message message;
-          message.text = channelName::addChannelName( chatId );
+          message.text = myChannel;
           message.chatID = settingsNew.getAdminId();
           message.setModeMD();
           bot.sendMessage(message);
@@ -391,10 +397,11 @@ void updateh(fb::Update& u) {
         if( settingsNew.getChatId(true) != 0ll && 
             queryChatId != settingsNew.getChatId(true) ){
           txt += CHANNEL_FOR_CONTROL;
-          txt += F("'");
-          channelName::load(settingsNew.getChatId(true));
-          txt += channelName::get();
-          txt += F("'");
+          txt += TelegramMD::textIn( menuIds.get('n', settingsNew.getChatId(true) ), '\'' );
+          // txt += F("'");
+          // channelName::load(settingsNew.getChatId(true));
+          // txt += channelName::get();
+          // txt += F("'");
           myAlert = true;
         } else {
           // проверяем время на кнопке
@@ -421,7 +428,8 @@ void updateh(fb::Update& u) {
         myAlert=true;  
         if( settingsNew.getAdminId() ){
           
-          txt += haveAdmin_Alert; // F("У меня уже есть хозяин!");
+          txt += haveAdmin; //_Alert; // F("У меня уже есть хозяин!");
+          txt += youCanTake; 
           txt += this_bot_link;
           
         } else {
@@ -447,7 +455,7 @@ void updateh(fb::Update& u) {
 
 
     bot.answerCallbackQuery(u.query().id(), txt.c_str(), myAlert, false );
-    channelName::freeMemory();
+    //channelName::freeMemory();
 
     if( takeAdminMsgId ){ //} && u.message().from().id() == takeAdmin.userId ){
      /* fb::Result res = */ bot.deleteMessage(u.message().from().id(), takeAdminMsgId, false); //takeAdmin.userId, takeAdmin.msgId);

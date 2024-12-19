@@ -28,11 +28,12 @@
 #include <time.h>
 #include "relay.h"
 #include <FastBot2s.h>
-#include "channelName.h"
+//#include "channelName.h"
 #include "newFsSettings.h" 
+#include "myPairs.h"
+
 FastBot2 bot;
 Relay relay(RELAY_PORT, RELAY_INIT_STATUS, 3);
-
 
 #include "updateh.h"
 
@@ -47,9 +48,13 @@ SimpleButton myButton(bot, POLLING_TIME );
 const char fileName[] PROGMEM = "/bot_opener.json";
 BotSettings::Settings settingsNew(fileName);
 
-LastMsg lastMsg;
+//LastMsg lastMsg;
+
+
+
 //void * buttonUpdater;
 void rawResponse(su::Text resp){
+  debugPrint(__TIME__);
   debugPretty;   // debugPrintln(resp.c_str());
   if (resp.valid()) wrongCount.reset(); 
   else 
@@ -57,6 +62,7 @@ void rawResponse(su::Text resp){
 };
 
 void setup(){
+  menuIds.begin();
     pinMode(RX_PIN,INPUT);
     WiFi.mode(WIFI_STA);
     if (WiFi.getPersistent() == true) WiFi.persistent(false); 
@@ -71,6 +77,8 @@ void setup(){
     //delay(1000);
     Serial.println();
     Serial.println(App::appVersion(version));
+    
+    
     //debugBegin(115200);
 //=========================================
     // SETTINGS::fsInit();
@@ -159,22 +167,36 @@ wm.addParameter(&button_report);
   //}
 
   bool goToLoop = false;
+  
 
   // если есть админ, поприветствуем его и обновим клавиатуру или создадим новую
   if ( settingsNew.hasAdmin() ){
     myButton.needUpdate( true );
 
-    channelName::load(settingsNew.getChatId(true));
-    String channelName = channelName::addChannelName( settingsNew.getChatId(true), '\n' );
+    // channelName::load(settingsNew.getChatId(true));
+    //String myChnlName = channelName::addChannelName( settingsNew.getChatId(true), '\n' );
+    String myChannel;
+
+    if ( settingsNew.getChatId(true) != 0 ) {
+      myChannel += '\n';
+      myChannel +=  CHANNEL_FOR_CONTROL;
+
+      String myChnlName = menuIds.get( 'n', settingsNew.getChatId(true));
+      if( ! myChnlName.isEmpty() ) {
+        myChannel += TelegramMD::asBold( TelegramMD::textIn( myChnlName, '\'' ));  
+      } else {
+        myChannel += TelegramMD::asBold( String('#') + (1000000000000ll + settingsNew.getChatId(true)) );
+      }
+    }
     String hi = TelegramMD::asItallic( SAY_HI );
     
     fb::Message message;
     message.setModeMD();
-    
+
     message.chatID = settingsNew.getAdminId();
     message.text = hi;
     //message.text += TelegramMD::asItallic( SAY_HI ); //*/ SAY_HI_MD;
-    message.text += channelName;
+    message.text += myChannel;
 
     debugPrint("Say hi: ");
     debugPrintln( message.text );
@@ -183,7 +205,7 @@ wm.addParameter(&button_report);
 
     debugPrintf("message.text = \"%s\"\n", message.text.c_str());
 
-    channelName::freeMemory();
+    //channelName::freeMemory();
  }
     while( ! goToLoop ){
   // check errors noChat, noMesgId, wrongResponse
@@ -252,9 +274,9 @@ wm.addParameter(&button_report);
     Serial.println(F("Done"));
 #endif
 #if defined debug_print
-  GitHubUpgrade::setAt(-1, -1, -1 );
+  GitHubUpgrade::checkAt( GitHubUpgrade::AnyTime, GitHubUpgrade::AnyTime, GitHubUpgrade::AnyTime );
 #else
-  GitHubUpgrade::setAt(6, 4, 0 );
+  GitHubUpgrade::checkAt( );
 #endif
 
 //bool needStartPortal = false;
@@ -276,6 +298,7 @@ void _loop(){
 
   relay.tick();
   bot.tick();
+  menuIds.tick();
 
   if ( bot.canReboot() ) {
     ESP.restart(); 

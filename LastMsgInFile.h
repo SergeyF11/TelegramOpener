@@ -5,15 +5,21 @@
 
 class LastMsg {
   public:
-  LastMsg(){};
+  LastMsg(){
+    if(_suffix != nullptr){
+      free(_suffix);
+    }
+  };
   LastMsg(const long long chatId, const uint id=0, const char* suffix=nullptr) /* : _suffix(suffix) */ {
     debugPretty;
     this->init(chatId, id);
-    if ( suffix == nullptr) debugPrintln("nullptr");
-    else debugPrintln(suffix);
+    // if ( suffix == nullptr) debugPrintln("nullptr");
+    // else debugPrintln(suffix);
     if( suffix != nullptr ){
-      _suffix = suffix;
-      debugPrintln(_suffix);
+      //_suffix = suffix;
+      _suffix = (char *)malloc( strlen(suffix));
+      strcpy( _suffix, suffix);
+      debugPrintln(_suffix );
     }
   };
   ~LastMsg(){};
@@ -53,10 +59,11 @@ class LastMsg {
     debugPretty;
     String fileName;
     fileName += this->chatId;
-    if ( this->_suffix != nullptr ){
-      fileName += this->_suffix;
-      debugPrint("add suffix "); debugPrintln( this->_suffix);
-    }
+    fileName += _suffix;
+    // if ( this->_suffix != nullptr ){
+    //   fileName += this->_suffix;
+    //   debugPrint("add suffix "); debugPrintln( this->_suffix);
+    // }
     debugPrintln(fileName);
     return fileName;
   };
@@ -75,5 +82,5 @@ class LastMsg {
 
   long long chatId;
   uint32_t id;
-  const char* _suffix=nullptr;
+  char* _suffix=nullptr;
 };

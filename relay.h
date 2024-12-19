@@ -116,7 +116,8 @@ struct WrongCount {
     else 
       if ( ! this->isAccident() ) this->func(200); 
       else { 
-        debugPretty; this->accidentFunc(); //ESP.restart();
+        debugPretty; 
+        this->accidentFunc(); //ESP.restart();
       }
   };
 
