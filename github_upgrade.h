@@ -119,11 +119,12 @@ void tick(){
      
       msg.setInlineMenu(menu);
       debugPrintMemory;
+       String tag = GitHubUpgrade::tag();
+      
       auto res = bot.sendMessage( msg, true );
-      String tag = GitHubUpgrade::tag();
       //LastMsg upgradeButton(settingsNew.getAdminId(), bot.lastBotMessage(), tag.c_str());
       // upgradeButton.set();
-      menuIds.set( 'u', settingsNew.getAdminId(), bot.lastBotMessage());
+      menuIds.setUpgradeId( settingsNew.getAdminId(), bot.lastBotMessage());
 
 
       // if ( !res.valid() ){
@@ -157,7 +158,7 @@ void tick(){
         txt = GitHubUpgrade::Error(); 
       } else {
         String tag = GitHubUpgrade::tag();
-        unsigned long upgradeButtonId = menuIds.get( 'u', settingsNew.getAdminId() ); 
+        unsigned long upgradeButtonId = menuIds.getUpgradeId( settingsNew.getAdminId() ); 
         if ( upgradeButtonId != 0 ){
             debugPrintf("Delete msg=%lu in chat=%llu\n", upgradeButtonId/* upgradeButton.get() */, settingsNew.getAdminId());
             
@@ -167,7 +168,7 @@ void tick(){
                 res = bot.deleteMessage( settingsNew.getAdminId(), upgradeButtonId /*upgradeButton.get()*/, true);
                 if ( res.valid() ) {
                     //upgradeButton.clean();
-                     menuIds.remove( 'u', settingsNew.getAdminId() );
+                     menuIds.removeUpgradeId( settingsNew.getAdminId() );
                     debugPrintln();
                     break;
                 } else {
@@ -181,7 +182,7 @@ void tick(){
       }
       debugPrintf("Txt=%s, to msgId=%lu\n", txt.c_str(), bot.lastBotMessage() );
       if( bot.lastBotMessage() ){
-            fb::TextEdit editMsg(txt, menuIds.get( 'u', settingsNew.getAdminId()), settingsNew.getAdminId());
+            fb::TextEdit editMsg(txt, menuIds.getUpgradeId( settingsNew.getAdminId()), settingsNew.getAdminId());
             bot.editText(editMsg);
             debugPrintf("Txt:%s, msgId=%lu, chatId=%lld\n", editMsg.text.c_str(), editMsg.messageID, editMsg.chatID.toInt64() );
             bot.tickManual();

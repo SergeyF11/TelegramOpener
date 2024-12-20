@@ -85,13 +85,13 @@ const ReturnCode cleaner( const long long chat, const bool waitBotResponse=false
   fb::Result res;
   //LastMsg keybId( chat );
   //if( keybId.get() == 0 ) return ReturnCode::noMesgId;
-  unsigned long keybId = menuIds.get( chat );
+  unsigned long keybId = menuIds.getMenuId( chat );
   if( keybId == 0 ) return ReturnCode::noMesgId;
   
   res = botP->deleteMessage( chat, keybId, waitBotResponse );  
   if ( ! waitBotResponse || res.valid() ) { 
     //keybId.clean();
-    menuIds.remove( chat);
+    menuIds.removeMenuId( chat);
     return ReturnCode::ok;
   }
   return ReturnCode::wrongResponse;
@@ -104,9 +104,14 @@ const ReturnCode cleaner( const long long chat, const bool waitBotResponse=false
      cmd += millis();
      return cmd;
   };
-  bool isExpired(unsigned long bTime, long delta=0 ){
-    debugPrintf("isExpired()\n%lu\t%lu\n", millis() - bTime, this->_expiredPeriod );
-    return ( millis() - bTime > this->_expiredPeriod + delta );
+
+  void setExpiredDelta( const unsigned long delta){
+    _delta = delta;
+  };
+
+  bool isExpired(unsigned long bTime){
+    debugPrintf("isExpired()\n%lu > %lu\n", millis() - bTime, _expiredPeriod + _delta);
+    return ( millis() - bTime > _expiredPeriod + _delta );
   };
 
 //CREATOR
@@ -149,7 +154,7 @@ const ReturnCode creater( const long long chat, const BotSettings::ButtonT& butt
   
   // LastMsg lastMsg( chat );
   // lastMsg.set(botP->lastBotMessage());
-  menuIds.set(chat, botP->lastBotMessage());
+  menuIds.setMenuId(chat, botP->lastBotMessage());
 
   this->lastUpdate=millis();
   this->needUpdate(NeedUpdate::setFalse);
@@ -167,7 +172,7 @@ const ReturnCode creater( const long long chat, const BotSettings::ButtonT& butt
     // если нет сохраненного id сообщения с меню, 
     //LastMsg lastMsg(chat );
     //uint msgId = lastMsg.get();
-    uint msgId = menuIds.get( chat );
+    uint msgId = menuIds.getMenuId( chat );
     if ( msgId == 0) return ReturnCode::noMesgId; //lastMsg.set(bot.lastBotMessage());
 
     debugPrintf( "Chat id: %lld \tMsg id:%d\n", chat, msgId);
@@ -243,5 +248,6 @@ debugPrint("fb::text.messageID="); debugPrintln(text.messageID);
   FastBot2 * botP = nullptr;
   unsigned long lastUpdate;
   unsigned long _expiredPeriod;
+  unsigned long _delta = 0; 
 };
 

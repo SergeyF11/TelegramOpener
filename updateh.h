@@ -216,16 +216,16 @@ void handleCommand(fb::Update& u){
           if (settingsNew.isAdmin( u.message().from().id() ) ){ 
             // LastMsg l(u.message().from().id());
             // l.clean();
-            menuIds.remove(u.message().from().id());
+            menuIds.removeMenuId(u.message().from().id());
           }
           break;
         case "/settings"_h:
           if ( settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             
             debugPrintln( settingsNew ); //.toString());
-            debugPrintf("Last message for %lld is %lu\n", settingsNew.getAdminId(), menuIds.get(settingsNew.getAdminId()));  //LastMsg(settingsNew.getAdminId()).get() );
+            debugPrintf("Last message for %lld is %lu\n", settingsNew.getAdminId(), menuIds.getMenuId(settingsNew.getAdminId()));  //LastMsg(settingsNew.getAdminId()).get() );
             if( settingsNew.getChatId(true) != 0 )
-              debugPrintf("Last message for %lld is %lu\n", settingsNew.getChatId(),  menuIds.get(settingsNew.getChatId())); //LastMsg(settingsNew.getChatId()).get() );
+              debugPrintf("Last message for %lld is %lu\n", settingsNew.getChatId(),  menuIds.getMenuId(settingsNew.getChatId())); //LastMsg(settingsNew.getChatId()).get() );
             // LastMsg lm(u.message().chat().id());
             // debugPrint("LastMsg:"); debugPrintln(lm.get());
           }
@@ -361,7 +361,7 @@ void updateh(fb::Update& u) {
         String newChatTitle = u.message().chat().title().decodeUnicode();
         long long chatId = u.message().chat().id();
         //menuIds.set( String('n') + settingsNew.getChatId(true), newChatTitle);
-        menuIds.set( 'n', settingsNew.getChatId(true), newChatTitle);
+        menuIds.setChannelName( settingsNew.getChatId(true), newChatTitle);
         String myChannel;
         myChannel += CHANNEL_FOR_CONTROL;
         myChannel += TelegramMD::asBold( TelegramMD::textIn( newChatTitle, '\'' ));  
@@ -397,7 +397,7 @@ void updateh(fb::Update& u) {
         if( settingsNew.getChatId(true) != 0ll && 
             queryChatId != settingsNew.getChatId(true) ){
           txt += CHANNEL_FOR_CONTROL;
-          txt += TelegramMD::textIn( menuIds.get('n', settingsNew.getChatId(true) ), '\'' );
+          txt += TelegramMD::textIn( menuIds.getChannelName( settingsNew.getChatId(true) ), '\'' );
           // txt += F("'");
           // channelName::load(settingsNew.getChatId(true));
           // txt += channelName::get();
@@ -410,7 +410,7 @@ void updateh(fb::Update& u) {
           debugPrintf("Button exptime=%ld now=%ld", buttonTime + ( POLLING_TIME / ( 1 SEC ) ) + 1, _now);
           if ( _now - buttonTime <= ( POLLING_TIME / ( 1 SEC ) ) + 1 ){ */
           long buttonTime = resp.substring(QUERY_TIME_START).toInt32();
-          if ( ! myButton.isExpired( buttonTime, 3000 ) ){
+          if ( ! myButton.isExpired( buttonTime ) ){
             relay.open();
             txt = settingsNew.getButtonReport(); //settings.chat.button.report;  
             //getNameFromMessage(txt, u, (char *)F(", ") );

@@ -103,7 +103,8 @@ void handleChatMember(fb::Update& u){
         if( settingsNew.set()->ChatId( chatId ) ){ //&&
           //channelName::save(chatId, chatTitle )) {
           //menuIds.set( String('n') + chatId, chatTitle );
-          menuIds.set( 'n', chatId, chatTitle );
+          
+          menuIds.setChannelName( chatId, chatTitle );
           
             //String channelName =  channelName::addChannelName( chatId ); /// !== channelName::get()
             String channelName(CHANNEL_FOR_CONTROL);
@@ -111,7 +112,7 @@ void handleChatMember(fb::Update& u){
             
             //LastMsg buttonInChannel( chatId );
            
-            unsigned long prevChannelButton = menuIds.get( chatId ); //buttonInChannel.get();
+            unsigned long prevChannelButton = menuIds.getMenuId( chatId ); //buttonInChannel.get();
             if( prevChannelButton != 0 ){
               fb::Result res;
               res = bot.deleteMessage( chatId, prevChannelButton );
@@ -144,7 +145,7 @@ void handleChatMember(fb::Update& u){
                     delay(1);
                     }
                 //if ( buttonMsg.get() == 0) {
-                if ( menuIds.get( adminId ) == 0 ){
+                if ( menuIds.getMenuId( adminId ) == 0 ){
                   // нет кнопки - создаем сообщение
                   fb::Message newMsg;
                   newMsg.chatID = adminId;
@@ -155,7 +156,7 @@ void handleChatMember(fb::Update& u){
                   // есть кнопка в чате админа => подменяем на инфо о канале
                   fb::TextEdit message;
                   message.chatID = adminId;
-                  message.messageID = menuIds.get( adminId ); //buttonMsg.get();
+                  message.messageID = menuIds.getMenuId( adminId ); //buttonMsg.get();
                   message.mode = fb::Message::Mode::MarkdownV2;
                   message.text += channelName; //::get();
                   bot.editText(message);
