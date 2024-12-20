@@ -85,8 +85,10 @@ const ReturnCode cleaner( const long long chat, const bool waitBotResponse=false
   fb::Result res;
   //LastMsg keybId( chat );
   //if( keybId.get() == 0 ) return ReturnCode::noMesgId;
+  if ( ! menuIds.hasMenuId( chat ) ) return ReturnCode::noMesgId;
+
   unsigned long keybId = menuIds.getMenuId( chat );
-  if( keybId == 0 ) return ReturnCode::noMesgId;
+  //if( keybId == 0 ) return ReturnCode::noMesgId;
   
   res = botP->deleteMessage( chat, keybId, waitBotResponse );  
   if ( ! waitBotResponse || res.valid() ) { 
@@ -172,9 +174,10 @@ const ReturnCode creater( const long long chat, const BotSettings::ButtonT& butt
     // если нет сохраненного id сообщения с меню, 
     //LastMsg lastMsg(chat );
     //uint msgId = lastMsg.get();
-    uint msgId = menuIds.getMenuId( chat );
-    if ( msgId == 0) return ReturnCode::noMesgId; //lastMsg.set(bot.lastBotMessage());
 
+    if ( ! menuIds.hasMenuId( chat ) ) return ReturnCode::noMesgId; //lastMsg.set(bot.lastBotMessage());
+
+    uint msgId = menuIds.getMenuId( chat );
     debugPrintf( "Chat id: %lld \tMsg id:%d\n", chat, msgId);
     
     String myMenuCmd = dynamicCmd(ButtonInlimeMenu::bCmds );
@@ -231,8 +234,9 @@ debugPrint("fb::text.messageID="); debugPrintln(text.messageID);
       _needUpdate = (bool)set;
     return _needUpdate;
   };
-  bool needUpdate(bool set) const { return needUpdate( set ? NeedUpdate::setTrue : NeedUpdate::setFalse);  };
-
+  bool needUpdate(bool set) const { 
+    return needUpdate( set ? NeedUpdate::setTrue : NeedUpdate::setFalse);
+  };
 
   void tick( BotSettings::Settings& sets ){
     //debugPretty;

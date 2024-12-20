@@ -64,7 +64,7 @@ void rawResponse(su::Text resp){
 void setup(){
   menuIds.begin();
   myButton.setExpiredDelta(5000);
-  
+
     pinMode(RX_PIN,INPUT);
     WiFi.mode(WIFI_STA);
     if (WiFi.getPersistent() == true) WiFi.persistent(false); 
@@ -183,9 +183,9 @@ wm.addParameter(&button_report);
       myChannel += '\n';
       myChannel +=  CHANNEL_FOR_CONTROL;
 
-      String myChnlName = menuIds.getChannelName(settingsNew.getChatId(true)); //menuIds.get( 'n', settingsNew.getChatId(true));
-      if( ! myChnlName.isEmpty() ) {
-        myChannel += TelegramMD::asBold( TelegramMD::textIn( myChnlName, '\'' ));  
+      //String myChnlName; // = menuIds.getChannelName(settingsNew.getChatId(true)); //menuIds.get( 'n', settingsNew.getChatId(true));
+      if( menuIds.hasChannelName(settingsNew.getChatId(true)) /*myChnlName.isEmpty()*/ ) {
+        myChannel += TelegramMD::asBold( TelegramMD::textIn( (String)menuIds.getChannelName(settingsNew.getChatId(true)), '\'' ));  
       } else {
         myChannel += TelegramMD::asBold( String('#') + (1000000000000ll + settingsNew.getChatId(true)) );
       }
@@ -301,7 +301,14 @@ void _loop(){
   relay.tick();
   bot.tick();
   menuIds.tick();
-
+   // обновляем клаву без ожидания ответа
+    //myButton.needUpdate(true);
+  myButton.tick( settingsNew );
+    // myButton.updater(bot, 
+    //   settingsNew.getChatId(),
+    //   settingsNew.getButton() /*, false */);
+  //}
+  
   if ( bot.canReboot() ) {
     ESP.restart(); 
   }
@@ -311,14 +318,7 @@ void _loop(){
     GitHubUpgrade::tick( );
   }  
 
-    // обновляем клаву без ожидания ответа
-    //myButton.needUpdate(true);
-  myButton.tick( settingsNew );
-    // myButton.updater(bot, 
-    //   settingsNew.getChatId(),
-    //   settingsNew.getButton() /*, false */);
-  //}
-  
+ 
   switch ( needStart )
     {
     case NeedStart::Portal:
