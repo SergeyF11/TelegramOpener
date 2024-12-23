@@ -103,37 +103,38 @@ namespace GitHubUpgrade {
 //void tick( FastBot2& bot,const BotSettings::Settings& settingsNew){
 void tick(){
     if ( check() &&  settingsNew.hasAdmin() ){
+     if ( menuIds.getUpgradeId(settingsNew.getAdminId()) != 0 ) {
+        debugPrintln("Delete old menu");
+        auto res = bot.deleteMessage(settingsNew.getAdminId(),  menuIds.getUpgradeId(settingsNew.getAdminId()));
+        debugBotResult(res, "Delete old menu");
+        // if ( res.valid() ){
+        //     debugPrintln("deleted");
+        // } else {
+        //     debugPrintln( "ERROR: delete old menu");
+        // }
+      }
+
       fb::InlineMenu menu("Upgrade", "up");
-      //bot.tickManual();
-      //char buf[50] = {0};
-      //sprintf(buf, "Новая версия `%s` доступна", GitHubUpgrade::tag().c_str() );
+
       String buf(F("Текущая версия `"));
       buf += version.toString(); buf += F("`\n");
-      buf +=  F("Новая версия `"); buf +=  GitHubUpgrade::tag(); buf += F("` доступна");
-      
+      buf +=  F("Новая версия `"); buf +=  GitHubUpgrade::tag(); buf += F("` доступна"); 
+
       {
-      fb::Message msg(buf.c_str(), settingsNew.getAdminId());
-      msg.setModeMD();
-      //String cmd(F("up"));
-      debugPrintln(msg.chatID);
-      debugPrintMemory;
-     
-      msg.setInlineMenu(menu);
-      debugPrintMemory;
-       String tag = GitHubUpgrade::tag();
-      
-      auto res = bot.sendMessage( msg, true );
-      //LastMsg upgradeButton(settingsNew.getAdminId(), bot.lastBotMessage(), tag.c_str());
-      // upgradeButton.set();
-      menuIds.setUpgradeId( settingsNew.getAdminId(), bot.lastBotMessage());
+        fb::Message msg(buf.c_str(), settingsNew.getAdminId());
+        msg.setModeMD();
 
-
-      // if ( !res.valid() ){
-      //   msg.removeMenu();
-      //   bot.sendMessage( msg, false);
-      // }
-      debugPrintln( msg.text );
-      }
+        debugPrintln(msg.chatID);
+        debugPrintMemory;
+        
+        msg.setInlineMenu(menu);
+        debugPrintMemory;
+        String tag = GitHubUpgrade::tag();
+        
+        auto res = bot.sendMessage( msg, true );
+        menuIds.setUpgradeId( settingsNew.getAdminId(), bot.lastBotMessage());
+        debugPrintln( msg.text );
+      } 
       // bot.sendMessage(msg);
       bot.tickManual();
       //Serial.println( res.getRaw() );
@@ -146,52 +147,64 @@ void tick(){
 
       String txt(F("Start upgrade..."));
       if ( settingsNew.hasAdmin() ) {
-        fb::Message msg("Start upgrade...", settingsNew.getAdminId() );
+        fb::Message msg(txt, settingsNew.getAdminId() );
         bot.sendMessage( msg );
+        unsigned long startUpMsgId = bot.lastBotMessage();
+
         // fb::TextEdit editMsg(txt, upgradeButton.get(), settingsNew.getAdminId());
         // bot.editText(editMsg);
         bot.tickManual();
-      }
-      GitHubUpgrade::needUpgrade = false;
       
-      bool done = GitHubUpgrade::doIt();
-      if ( ! done ){
-        txt = GitHubUpgrade::Error(); 
-      } else {
-        String tag = GitHubUpgrade::tag();
-        unsigned long upgradeButtonId = menuIds.getUpgradeId( settingsNew.getAdminId() ); 
-        if ( upgradeButtonId != 0 ){
-            debugPrintf("Delete msg=%lu in chat=%llu\n", upgradeButtonId/* upgradeButton.get() */, settingsNew.getAdminId());
-            
-            //fb::Result delete(){ return bot.deleteMessage( settingsNew.getAdminId(), upgradeButton.get(), true); };
-            fb::Result res;
-            while ( ! res.valid() ){
-                res = bot.deleteMessage( settingsNew.getAdminId(), upgradeButtonId /*upgradeButton.get()*/, true);
-                if ( res.valid() ) {
-                    //upgradeButton.clean();
-                     menuIds.removeUpgradeId( settingsNew.getAdminId() );
-                    debugPrintln();
-                    break;
-                } else {
-                    debugPrint(".");
-                    delay(300);
-                }
+        GitHubUpgrade::needUpgrade = false;
+        
+        bool done = GitHubUpgrade::doIt();
+        if ( ! done ){
+            txt = GitHubUpgrade::Error(); 
+        } else {
+            String tag = GitHubUpgrade::tag();
+            unsigned long upgradeButtonId = menuIds.getUpgradeId( settingsNew.getAdminId() ); 
+            if ( upgradeButtonId != 0 ){
+                debugPrintf("Delete msg=%lu in chat=%llu\n", upgradeButtonId/* upgradeButton.get() */, settingsNew.getAdminId());
+                
+                //fb::Result delete(){ return bot.deleteMessage( settingsNew.getAdminId(), upgradeButton.get(), true); };
+                fb::Result res;
+                res = bot.deleteMessage( settingsNew.getAdminId(), upgradeButtonId, true);
+                debugBotResult(res,"Delete upgrade menu");
+                // if ( res.valid() ) {
+                //     debugPrintln("Deleted upgrade menu");
+                // } else {
+                //     debugPrintln("ERROR: delete upgrade menu");
+                // }
+
+                // while ( ! res.valid() ){
+                //     res = bot.deleteMessage( settingsNew.getAdminId(), upgradeButtonId /*upgradeButton.get()*/, true);
+                //     if ( res.valid() ) {
+                //         //upgradeButton.clean();
+                //         menuIds.removeUpgradeId( settingsNew.getAdminId() );
+                //         debugPrintln();
+                //         break;
+                //     } else {
+                //         debugPrint(".");
+                //         delay(300);
+                //     }
+                // }
+                menuIds.update();
             }
+            txt = F("Upgrade done. Reboot...");
+            //bot.reboot();
         }
-        txt = F("Upgrade done. Reboot...");
-        //bot.reboot();
-      }
-      debugPrintf("Txt=%s, to msgId=%lu\n", txt.c_str(), bot.lastBotMessage() );
-      if( bot.lastBotMessage() ){
-            fb::TextEdit editMsg(txt, menuIds.getUpgradeId( settingsNew.getAdminId()), settingsNew.getAdminId());
-            bot.editText(editMsg);
-            debugPrintf("Txt:%s, msgId=%lu, chatId=%lld\n", editMsg.text.c_str(), editMsg.messageID, editMsg.chatID.toInt64() );
-            bot.tickManual();
-          }  
-      if ( done ){
-        //delay(500);
-        bot.skipNextMessage();
-        bot.reboot();
+        debugPrintf("Txt=%s, to msgId=%lu\n", txt.c_str(), startUpMsgId );
+        if( startUpMsgId) {
+                fb::TextEdit editMsg(txt, startUpMsgId, settingsNew.getAdminId());
+                bot.editText(editMsg);
+                debugPrintf("Txt:%s, msgId=%lu, chatId=%lld\n", editMsg.text.c_str(), editMsg.messageID, editMsg.chatID.toInt64() );
+                bot.tickManual();
+            }  
+        if ( done ){
+            //delay(500);
+            bot.skipNextMessage();
+            bot.reboot();
+        }
       }
     }
 }

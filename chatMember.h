@@ -108,7 +108,7 @@ void handleChatMember(fb::Update& u){
           
             //String channelName =  channelName::addChannelName( chatId ); /// !== channelName::get()
             String channelName(CHANNEL_FOR_CONTROL);
-            channelName += TelegramMD::asBold( TelegramMD::textIn( chatTitle, '\'' ));
+            channelName += TelegramMD::asBold( TelegramMD::textIn( chatTitle, '\'' ),  MARKDOWN_TG::escape);
             
             //LastMsg buttonInChannel( chatId );
            

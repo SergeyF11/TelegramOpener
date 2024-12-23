@@ -54,6 +54,8 @@ class PrintMemory : public Printable {
    #define runStart                 Serial.println(F("Start loop ms"));RunTimeMs _finish; 
    #define printRunTime                  { auto stop=_finish.time(); Serial.print(F("Loop timeMs=")); Serial.println(stop); }
   #define debugPrintMemory Serial.println(printMemory)
+  #define debugBotResult(res,msg) { if( res.valid()) { debugPrint( msg); debugPrintln(" done"); } else { debugPrint("ERROR: "); debugPrintln( msg );} }
+  
 //   #define debugPrintMemory
 #else
    #define debugBegin(x)
@@ -64,6 +66,7 @@ class PrintMemory : public Printable {
    #define runStart
    #define printRunTime
    #define debugPrintMemory
+   #define debugBotResult(res,msg)
 #endif
 
 

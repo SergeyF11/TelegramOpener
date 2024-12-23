@@ -1,4 +1,6 @@
-//#define debug_print 1
+#define debug_print 1
+#define GitHubUpgrade_ANY_TIME
+
 #define WIFI_POWER 5.0
 #define FASTBOT_SECURED_CLIENT
 #define MFLN_SIZE 1024
@@ -13,7 +15,7 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,9
+#define VERSION 0,1,8
 #include "env.h"
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
@@ -187,12 +189,15 @@ wm.addParameter(&button_report);
 
       //String myChnlName; // = menuIds.getChannelName(settingsNew.getChatId(true)); //menuIds.get( 'n', settingsNew.getChatId(true));
       if( menuIds.hasChannelName(settingsNew.getChatId(true)) /*myChnlName.isEmpty()*/ ) {
-        myChannel += TelegramMD::asBold( TelegramMD::textIn( (String)menuIds.getChannelName(settingsNew.getChatId(true)), '\'' ));  
+        myChannel += TelegramMD::asBold( 
+          TelegramMD::textIn( 
+            (String)menuIds.getChannelName(settingsNew.getChatId(true)), '\'' ),
+          MARKDOWN_TG::escape);  
       } else {
-        myChannel += TelegramMD::asBold( String('#') + (1000000000000ll + settingsNew.getChatId(true)) );
+        myChannel += TelegramMD::asBold( String('#') + (1000000000000ll + settingsNew.getChatId(true)),   MARKDOWN_TG::escape);
       }
     }
-    String hi = TelegramMD::asItallic( SAY_HI );
+    String hi = TelegramMD::asItallic( SAY_HI, MARKDOWN_TG::escape);
     
     fb::Message message;
     message.setModeMD();
@@ -277,7 +282,7 @@ wm.addParameter(&button_report);
     }
     Serial.println(F("Done"));
 #endif
-#if defined debug_print
+#if defined debug_print or defined GitHubUpgrade_ANY_TIME
   GitHubUpgrade::checkAt( GitHubUpgrade::AnyTime, GitHubUpgrade::AnyTime, GitHubUpgrade::AnyTime );
 #else
   GitHubUpgrade::checkAt( );

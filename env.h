@@ -210,4 +210,20 @@ namespace App {
         }
         return s;
     }
+    String getHomePage(){
+        String out(F("https://github.com/"));
+        out += Author::gitHubAka;
+        out += '/';
+        out += App::name;
+        return out;
+    };
+    String getRawContent(const char * suffix){
+        String out( F("https://raw.githubusercontent.com/"));
+        out += Author::gitHubAka;
+        out += '/';
+        out += App::name;
+        out += suffix;
+        return out;
+        //SergeyF11/TelegramOpener/refs/heads/main/README_rus.pdf"))
+    }
 }

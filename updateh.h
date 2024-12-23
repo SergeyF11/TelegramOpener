@@ -131,8 +131,25 @@ void handleCommand(fb::Update& u){
       auto cmd = u.message().text().getSub(0, " ");
       switch(cmd.hash()){
         case "/start"_h:          
-          handleStart(u, message);
-          
+          handleStart(u, message);  
+          break;
+        
+        case "/help"_h: 
+          if( ! settingsNew.hasAdmin() || ( message.chatID == settingsNew.getAdminId() )) {
+            // String pdf = App::getHomePage();
+            // pdf += F("/blob/main/README_rus.pdf");
+            // fb::File help( "README_rus.pdf", fb::File::Type::document, 
+            //   pdf.c_str() ); 
+            String pdf = App::getRawContent("/refs/heads/main/README_rus.pdf");
+            debugPretty;
+            fb::File help( "README_rus.pdf", 
+              fb::File::Type::document, 
+              pdf.c_str());
+            
+            help.chatID = message.chatID;
+            bot.sendFile( help, false);
+
+          }
           break;
         case "/version"_h:
           /* if ( settingsNew.isAdmin( u.message().from().id() ) ) */{ 
@@ -140,7 +157,9 @@ void handleCommand(fb::Update& u){
             message.text += TelegramMD::asCode( 
                 App::appVersion(version, __DATE__,__TIME__)); 
             message.text += '\n';
-            message.text += TelegramMD::asItallic( Author::getCopyright() );
+            message.text += TelegramMD::asItallic( 
+                Author::getCopyright(),  
+                MARKDOWN_TG::escape );
             debugPrintln(message.text);
           }
           break;
@@ -155,7 +174,7 @@ void handleCommand(fb::Update& u){
           }
           break;
         case "/hi"_h:{
-            message.text = TelegramMD::asItallic( SAY_HI );
+            message.text = TelegramMD::asItallic( SAY_HI,  MARKDOWN_TG::escape );
           }
           break; 
         case "/ls"_h:
@@ -179,7 +198,7 @@ void handleCommand(fb::Update& u){
             if ( settingsNew.remove() ){
               debugPrintln("Settings file deleted.");
               settingsNew.load();
-              message.text += TelegramMD::asItallic( rebootMsg );
+              message.text += TelegramMD::asItallic( rebootMsg,  MARKDOWN_TG::escape );
               bot.sendMessage( message );
               message.text = "";
               //needStartPortal = true;
@@ -202,7 +221,7 @@ void handleCommand(fb::Update& u){
         if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
           
           //message.chatID = settingsNew.getAdminId();
-          message.text = TelegramMD::asItallic( rebootMsg); //rebootMsg_MD;
+          message.text = TelegramMD::asItallic( rebootMsg,  MARKDOWN_TG::escape ); //rebootMsg_MD;
           //message.setModeMD;
           bot.sendMessage(message, false);
           bot.setTyping( settingsNew.getAdminId(), false);
@@ -269,7 +288,7 @@ void handleCommand(fb::Update& u){
           if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             //needStartPortal = true;
             needStart = NeedStart::Portal;
-            message.text += TelegramMD::asItallic( portalStarted );
+            message.text += TelegramMD::asItallic( portalStarted, MARKDOWN_TG::escape);
             //message.text += portalStarted_MD;
             // bot.sendMessage(message, true);
             // message.text = "";
@@ -282,7 +301,7 @@ void handleCommand(fb::Update& u){
                 String txt = F("Settings [web portal](http://"); 
                 txt += WiFi.localIP().toString();
                 txt += F(") started...");
-              message.text += TelegramMD::asItallic( txt );
+              message.text += TelegramMD::asItallic( txt, MARKDOWN_TG::escape );
 
               // message.text += F("_Settings [web portal](http://"); // started on _");
               // message.text += WiFi.localIP().toString();
@@ -299,7 +318,7 @@ void handleCommand(fb::Update& u){
           if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             if ( needStart == NeedStart::WebRunning ){
               needStart = NeedStart::None;
-              String closed = TelegramMD::asItallic("portal closed");
+              String closed = TelegramMD::asItallic("portal closed", MARKDOWN_TG::escape);
               if ( webPortalMsgId ){
                 fb::TextEdit editMsg;
                 editMsg.chatID = settingsNew.getAdminId();
@@ -363,7 +382,7 @@ void updateh(fb::Update& u) {
         menuIds.setChannelName( settingsNew.getChatId(true), newChatTitle);
         String myChannel;
         myChannel += CHANNEL_FOR_CONTROL;
-        myChannel += TelegramMD::asBold( TelegramMD::textIn( newChatTitle, '\'' ));  
+        myChannel += TelegramMD::asBold( TelegramMD::textIn( newChatTitle, '\'' ),  MARKDOWN_TG::escape );  
         {
           fb::Message message;
           message.text = myChannel;
@@ -429,7 +448,7 @@ void updateh(fb::Update& u) {
           
           txt += haveAdmin; //_Alert; // F("У меня уже есть хозяин!");
           txt += youCanTake; 
-          txt += this_bot_link;
+          txt += App::getHomePage(); //this_bot_link;
           
         } else {
 
