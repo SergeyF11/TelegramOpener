@@ -117,16 +117,18 @@ namespace App {
         };
         
         bool operator>(const Version& a) const {
-            if ( high > a.high ) return true;
+            bool res = false;
+            if ( high > a.high ) res = !res; //return true;
             else if ( high == a.high ) {
-                    if( middle > a.middle ) return true;
+                    if( middle > a.middle ) res =!res; //return true;
                     else if ( middle == a.middle ){
-                        if( low > a.low ) return true;
-                        else if( (! isBetta() ) && a.isBetta() ) return true;
+                        if( low > a.low ) res =!res; //return true;
+                        else if( low == a.low ){
+                            if( (! isBetta() ) && a.isBetta() ) res =!res; //return true;
+                        }
                     }
             }
-                    //else if ( *this == a ) return false;
-            return false; 
+            return res; //false; 
         };
         bool operator<(const Version& a) const { return a>*this; };
 

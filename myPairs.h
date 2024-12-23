@@ -69,42 +69,7 @@ class MenuIds : public PairsFile {
         return out;
     };
     inline String strUpgrade(const long long key) const { return str( key, 'u'); }
-    //String strMenu(const long long key){ return str( key, 'm'); }
     inline String strChannelName(const long long key) const { return str( key, 'n'); }
-    
-    // bool set(const long long key, const pairs::Value& val){
-    //     Value _key(key);
-    //     //_key += key;
-    //     return PairsFile::set( _key.str() , val);
-    // };
-    // bool set(const char prefix,  const long long key, const pairs::Value& val){
-    //     String _key;
-    //     _key += prefix;
-    //     _key += Value(key).c_str();
-    //     return PairsFile::set( _key, val);
-    // };
-    // Pair get(const long long key ){
-    //     Value _key(key);
-    //     //_key += key;
-    //     return PairsFile::get( _key.str() );
-    // };
-    // Pair get(const char prefix,  const long long key){
-    //     String _key;
-    //     _key += prefix;
-    //     _key += Value(key).c_str();
-    //     return PairsFile::get( _key );
-    // };
-    // bool remove( const long long key ){
-    //     Value _key(key);
-    //     //_key += key;
-    //     return PairsFile::remove( _key.str() );
-    // };
-    // bool remove(const char prefix,  const long long key){
-    //     String _key;
-    //     _key += prefix;
-    //     _key += Value(key).c_str();
-    //     return PairsFile::remove( _key );
-    // };
 };
 
 MenuIds menuIds(&LittleFS, "/menu.dat", 3000);

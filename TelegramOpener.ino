@@ -1,4 +1,4 @@
-#define debug_print 1
+//#define debug_print 1
 #define WIFI_POWER 5.0
 #define FASTBOT_SECURED_CLIENT
 #define MFLN_SIZE 1024
@@ -13,7 +13,7 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,2,0
+#define VERSION 0,1,9
 #include "env.h"
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
@@ -31,6 +31,7 @@
 //#include "channelName.h"
 #include "newFsSettings.h" 
 #include "myPairs.h"
+//#include "myFileDb.h"
 
 FastBot2 bot;
 Relay relay(RELAY_PORT, RELAY_INIT_STATUS, 3);
@@ -62,6 +63,10 @@ void rawResponse(su::Text resp){
 };
 
 void setup(){
+  Serial.begin(115200);
+    while ( ! Serial ){
+      delay(1);
+    }
   menuIds.begin();
   myButton.setExpiredDelta(5000);
 
@@ -72,10 +77,7 @@ void setup(){
     WiFi.setOutputPower( WIFI_POWER );
 #endif
 
-    Serial.begin(115200);
-    while ( ! Serial ){
-      delay(10);
-    }
+
     //delay(1000);
     Serial.println();
     Serial.println(App::appVersion(version));
@@ -128,7 +130,7 @@ wm.addParameter(&button_report);
   wm.setMenu(menu); // custom menu, pass vector
  
   // set Hostname
-  wm.setHostname(F("TelegramOpener"));
+  wm.setHostname(App::name);
   //useful to make it all retry or go to sleep in seconds
   //wm.setConfigPortalTimeout(120);
 

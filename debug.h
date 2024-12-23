@@ -1,5 +1,5 @@
 #include <cstddef>
-#include "core_esp8266_features.h"
+//#include "core_esp8266_features.h"
 #pragma once
 #include <Arduino.h>
 

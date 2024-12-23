@@ -4,6 +4,7 @@
 #include <time.h>
 #include <FastBot2s.h>
 #include "newFsSettings.h"
+//#include "myFileDb.h"
 #include "myPairs.h"
 
 extern BotSettings::Settings settingsNew;
