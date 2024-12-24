@@ -275,7 +275,6 @@ wm.addParameter(&button_report);
 #ifdef SYNC_TIME 
     Serial.print(F("Sync time "));
     while( time(nullptr)< 3600 ){        
-      //digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
         builtInLed.flash(200,1);
         delay(10);
         Serial.print("+");
@@ -288,8 +287,7 @@ wm.addParameter(&button_report);
   GitHubUpgrade::checkAt( );
 #endif
 
-//bool needStartPortal = false;
-
+//bool needStartPortal = false
 //bool needPrintMemory = false;
 } // end setup()
 

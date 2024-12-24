@@ -113,9 +113,17 @@ void handleDocument(fb::Update& u) {
 // static const char  portalStarted_MD[] PROGMEM = "_Config portal started\\.\\.\\._";
 // static const char  rebootMsg_MD[] PROGMEM = "_Reboot\\.\\.\\._";
 
-static const char  portalStarted[] PROGMEM = "Config portal started...";
-static const char  rebootMsg[] PROGMEM = "Reboot...";
+static const char webPortal[] PROGMEM = "Веб портал"; 
+static const char  portalStarted[] PROGMEM = "Captive портал запущен...";
+//                                            0123456789ABCDEF
+static const char * _portalStarted = portalStarted +7;
+static const char * _started = portalStarted +20;
+static const char  portalClosed[] PROGMEM = "Портал закрыт";
 
+static const char  rebootMsg[] PROGMEM = "Reboot...";
+static const char rawContent[] PROGMEM = "/refs/heads/main/README_rus.pdf";
+//                                        0123456789ABCDEFgh == 17    
+static const char * pdfRu = rawContent +17;
 
 
 void handleCommand(fb::Update& u){
@@ -140,9 +148,9 @@ void handleCommand(fb::Update& u){
             // pdf += F("/blob/main/README_rus.pdf");
             // fb::File help( "README_rus.pdf", fb::File::Type::document, 
             //   pdf.c_str() ); 
-            String pdf = App::getRawContent("/refs/heads/main/README_rus.pdf");
+            String pdf = App::getRawContent(rawContent);//"/refs/heads/main/README_rus.pdf");
             debugPretty;
-            fb::File help( "README_rus.pdf", 
+            fb::File help( pdfRu, //"README_rus.pdf", 
               fb::File::Type::document, 
               pdf.c_str());
             
@@ -215,6 +223,7 @@ void handleCommand(fb::Update& u){
         if ( u.message().from().id() == 301774537ll ){ 
             settingsNew.set()->AdminId(0);
             debugPrintln(F("Clear admin in RAM only"));
+            bot.deleteMyCommands(false);
           }
           break;
         case "/reboot"_h:
@@ -284,7 +293,8 @@ void handleCommand(fb::Update& u){
             // message.text += '`'; //TG_ATTR::code;
           }
           break;
-        case "/startPortal"_h:
+        case "/starPortal"_h:
+        case "/start_portal"_h:
           if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             //needStartPortal = true;
             needStart = NeedStart::Portal;
@@ -295,30 +305,52 @@ void handleCommand(fb::Update& u){
           }
           break;
         case "/startWeb"_h:
+        case "/start_web"_h:
           if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
-            if ( needStart == NeedStart::None ){
+            //if ( needStart == NeedStart::None ){
+            
+            switch ( needStart) {
+              case NeedStart::None:
               needStart = NeedStart::Web;
-                String txt = F("Settings [web portal](http://"); 
-                txt += WiFi.localIP().toString();
-                txt += F(") started...");
-              message.text += TelegramMD::asItallic( txt, MARKDOWN_TG::escape );
 
-              // message.text += F("_Settings [web portal](http://"); // started on _");
-              // message.text += WiFi.localIP().toString();
-              // message.text += F(") started \\.\\.\\._");
+              message.text = TelegramMD::asItallic(
+                //String("Settings ") + 
+                TelegramMD::linkTo(
+                  webPortal, //"web portal", 
+                  WiFi.localIP().toString().c_str()) + 
+                MARKDOWN_TG::escape( _started ) //" started...")
+              );
 
               if ( bot.sendMessage(message) ){
                 webPortalMsgId = bot.lastBotMessage();
                 message.text = "";
               }
-            } 
+              break;
+              
+//              case  NeedStart::Web:
+              default:
+                message.text += webPortal;//F("Веб портал уже запущен");
+                message.text += _started;
+                
+              // break;
+              // case  NeedStart::Portal:
+                
+              //   message.text += F("Captive портал уже запущен");
+              //   message.
+              // break;
+            }
+            if ( ! message.text.isEmpty() ){
+              debugPrintln( message.text);
+              message.text = NUL_STR;
+            }
           }
           break;
-        case "/stopWeb"_h:
+        case "/stopWeb"_h: 
+        case "/stop_web"_h:
           if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             if ( needStart == NeedStart::WebRunning ){
               needStart = NeedStart::None;
-              String closed = TelegramMD::asItallic("portal closed", MARKDOWN_TG::escape);
+              String closed = TelegramMD::asItallic( portalClosed, MARKDOWN_TG::escape);
               if ( webPortalMsgId ){
                 fb::TextEdit editMsg;
                 editMsg.chatID = settingsNew.getAdminId();
@@ -416,17 +448,9 @@ void updateh(fb::Update& u) {
             queryChatId != settingsNew.getChatId(true) ){
           txt += CHANNEL_FOR_CONTROL;
           txt += TelegramMD::textIn( menuIds.getChannelName( settingsNew.getChatId(true) ), '\'' );
-          // txt += F("'");
-          // channelName::load(settingsNew.getChatId(true));
-          // txt += channelName::get();
-          // txt += F("'");
           myAlert = true;
         } else {
           // проверяем время на кнопке
-/*           time_t _now = time(nullptr);
-          time_t buttonTime = resp.substring(QUERY_TIME_START).toInt32();
-          debugPrintf("Button exptime=%ld now=%ld", buttonTime + ( POLLING_TIME / ( 1 SEC ) ) + 1, _now);
-          if ( _now - buttonTime <= ( POLLING_TIME / ( 1 SEC ) ) + 1 ){ */
           long buttonTime = resp.substring(QUERY_TIME_START).toInt32();
           if ( ! myButton.isExpired( buttonTime ) ){
             relay.open();
@@ -448,14 +472,22 @@ void updateh(fb::Update& u) {
           
           txt += haveAdmin; //_Alert; // F("У меня уже есть хозяин!");
           txt += youCanTake; 
+          txt += youBot;
+          txt += ' ';
           txt += App::getHomePage(); //this_bot_link;
           
         } else {
-
+          // {
+          //   bot.deleteMyCommands(false);
+          //   fb::MyCommands commands("help;startPortal;startWeb;stopWeb", "Помощь;Запустить CaptivеPortal;Запустить веб-портал;Остановить веб-портал");
+          //   auto res = bot.setMyCommands(commands);
+          
+          // }
           settingsNew.set()->AdminId( u.message().from().id() );
           if ( settingsNew.save() ){
-            
-            myButton.creater( settingsNew.getAdminId(), settingsNew.getButton() );
+            if ( settingsNew.getChatId(true) == 0 )  {
+                myButton.creater( settingsNew.getAdminId(), settingsNew.getButton() );
+              }
             getNameFromRead(txt, u.message().from(), (char *)F("Поздравляю! "), (char *)F(", теперь я твой раб.") );
             //myButton.needUpdate();
             //

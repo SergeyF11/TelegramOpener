@@ -103,9 +103,20 @@ namespace TelegramMD {
     //     return textIn(MARKDOWN_TG::escape(txt), '*'); 
     // };
 
+    static const char _http[] PROGMEM = "http://";
+
     String linkTo( const char * txt, const char * link, String (*encode)(const char *)=nullptr ){
         String out;
         out += textIn( ( encode == nullptr) ? txt : encode(txt), '[',']');
+        
+        String _link;
+        _link.reserve( 10 + strlen(link));
+        if ( strncmp(link, _http, 4) )
+            _link += link;
+        else {
+            _link += _http;
+            _link += link;
+        }
         out += textIn(link, '(',')');
         return out;
     }

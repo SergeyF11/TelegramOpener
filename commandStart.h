@@ -37,21 +37,19 @@ extern BotSettings::Settings settingsNew;
 void handleStart(fb::Update& u, fb::Message& message) {
   // будем беседовать с отправителем
   //message.chatID = u.message().from().id();
+  
+  fb::MyCommands commands("help;start_portal;start_web;stop_web", "Помощь;Запустить CaptivеPortal;Запустить вебпортал;Остановить вебпортал");
+  bot.setMyCommands(commands);
+  
 
-  if (u.message().from().id() == settingsNew.getAdminId() ){ //.admin) {
+  if ( u.message().from().id() == settingsNew.getAdminId() ){ //.admin) {
     String user(u.message().from().username());
     debugPrintf("Admin '%s'[#%s] start command\n", user,
                   (String)(u.message().from().id()));
-    {
-      fb::MyCommands commands("help;settings;startPortal", "Помощь;Настройки;Запустить CaptivеPortal");
-      auto res = bot.setMyCommands(commands);
-      // if( res.valid() ) wrongCount.reset();
-      // else wrongCount++;
-      // res.getRaw().printTo(Serial);
-    }
+ 
     message.text = TelegramMD::asBold( youAdminAlready, MARKDOWN_TG::escape); //_MD; // F("*Вы уже являетесь администратором\\.*\n_Для помощи отправь_ `/help`");
     String help( TelegramMD::asItallic( forHelp, MARKDOWN_TG::escape ));
-    help += TelegramMD::asCode( "/help" );
+    help += /* TelegramMD::asCode */ F( "/help" );
     message.text += help;
     
     // auto res = bot.sendMessage(message);
@@ -78,31 +76,24 @@ void handleStart(fb::Update& u, fb::Message& message) {
                     user,
                     (String)(u.message().from().id()));
       //debugPrintln("Registri new admin?");
+
       String cmd = "ta~";
       //cmd += bot.lastBotMessage()+1;
       
       fb::InlineMenu menu(takeAdminStr, cmd.c_str());
-      message.text = TelegramMD::asBold( noAdmin); //noAdmin_MD; //F("*У меня пока нет хозяина\\. Хочешь им стать\\?*");
+      message.text = TelegramMD::asBold( noAdmin, MARKDOWN_TG::escape ); //noAdmin_MD; //F("*У меня пока нет хозяина\\. Хочешь им стать\\?*");
       message.setInlineMenu(menu);
-      bot.sendMessage(message);
-
+      auto res = bot.sendMessage(message);
+      if ( res.valid() ){
       // и запоминаем id этого сообщения в самом сообщении для последующего удаления
-      cmd += bot.lastBotMessage();
-      menu = fb::InlineMenu(takeAdminStr, cmd.c_str());
-      fb::MenuEdit edMenu;
-      edMenu.messageID = bot.lastBotMessage();
-      edMenu.chatID = u.message().from().id();
-      edMenu.setInlineMenu( menu );
-      bot.editMenu(edMenu, false);
-/*
-      res = bot.editMenu(edMenu);
-      res.getRaw().printTo(Serial);
-      Serial.println();
-      Serial.println(bot.lastBotMessage());
-*/
-      // takeAdmin.msgId=bot.lastBotMessage();
-      // takeAdmin.userId=u.message().from().id();
-      // уже отослано. не надо посылать
+        cmd += bot.lastBotMessage();
+        menu = fb::InlineMenu(takeAdminStr, cmd.c_str());
+        fb::MenuEdit edMenu;
+        edMenu.messageID = bot.lastBotMessage();
+        edMenu.chatID = u.message().from().id();
+        edMenu.setInlineMenu( menu );
+        bot.editMenu(edMenu, false);
+      }
       message.text = ((char*)0);
     }
   }
