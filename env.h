@@ -148,8 +148,8 @@ namespace App {
         };
 
         void fromString(const String& s ) {
-            debugPretty;
-            debugPrintln(s);
+            // debugPretty;
+            // debugPrintln(s);
 
             char* buf = (char *)malloc(s.length()+1 );
             strcpy( buf, s.c_str());
@@ -226,4 +226,30 @@ namespace App {
         return out;
         //SergeyF11/TelegramOpener/refs/heads/main/README_rus.pdf"))
     }
+}
+namespace Time {
+    static char * buf = nullptr;
+    void _free(){
+            if ( buf != nullptr ) { 
+                free(buf);
+                buf = nullptr;
+            }
+        };
+    char * toStr() {
+        static constexpr char tmpl[] PROGMEM = "%4d-%02d-%02d %02d:%02d:%02d";
+        auto now = time(nullptr);
+        auto _tm = localtime( &now );
+        _free();
+        buf = (char *)malloc(20);
+        sprintf(buf, tmpl, 
+            _tm->tm_year+1900, _tm->tm_mon+1, _tm->tm_mday, 
+            _tm->tm_hour, _tm->tm_min, _tm->tm_sec );
+        return buf;
+    }
+    size_t printTo(Print& p){
+        auto size =  p.print(toStr());
+        _free();
+        return size;
+    };
+
 }

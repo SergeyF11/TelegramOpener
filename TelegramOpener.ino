@@ -163,13 +163,25 @@ wm.addParameter(&button_report);
   bot.attachRaw(rawResponse);
 
   //check token
-  while( ! bot.tickManual() ) {
+  // void wrongToken(){
+  //     debugPrintf("Wrong token %s\n", settingsNew.getToken());    
+  //     wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
+  // };
+  // wrongCount.accidentFunc( wrongToken );
+  
+  wrongCount.accidentFunc = [](void){
     debugPrintf("Wrong token %s\n", settingsNew.getToken());    
     wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
-  
+  };
+
+  while( ! bot.tickManual() ) {  
+    delay(1);
+    wrongCount.tick();
+    //wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
   }
   // else {
   debugPrintln("Updates received. Token ok.");
+  wrongCount.accidentFunc = ESP.restart;
   //}
 
   bool goToLoop = false;
@@ -270,8 +282,8 @@ wm.addParameter(&button_report);
     //bot.tickManual();
 
   bot.setPollMode(fb::Poll::Long, POLLING_TIME);
-    
-// Sync time 
+
+  // Sync time 
 #ifdef SYNC_TIME 
     Serial.print(F("Sync time "));
     while( time(nullptr)< 3600 ){        
@@ -279,10 +291,17 @@ wm.addParameter(&button_report);
         delay(10);
         Serial.print("+");
     }
-    Serial.println(F("Done"));
+    
+    Time::printTo(Serial);
+    debugPrintln(F(" Done"));
+    //debugPrintln( Time );
+    //Serial.print()
 #endif
+
+
 #if defined debug_print or defined GitHubUpgrade_ANY_TIME
   GitHubUpgrade::checkAt( GitHubUpgrade::AnyTime, GitHubUpgrade::AnyTime, GitHubUpgrade::AnyTime );
+  //debugPrintln("Check upgrade done");
 #else
   GitHubUpgrade::checkAt( );
 #endif
@@ -314,15 +333,15 @@ void _loop(){
     //   settingsNew.getButton() /*, false */);
   //}
   
-  if ( bot.canReboot() ) {
-    ESP.restart(); 
-  }
+
 
 
   if ( ! bot.isPolling() ) {
     GitHubUpgrade::tick( );
   }  
-
+  if ( bot.canReboot() ) {
+    ESP.restart(); 
+  }
  
   switch ( needStart )
     {

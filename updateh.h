@@ -141,7 +141,12 @@ void handleCommand(fb::Update& u){
         case "/start"_h:          
           handleStart(u, message);  
           break;
-        
+        case "/time"_h:
+          if( settingsNew.isAdmin(message.chatID)){
+            message.text = MARKDOWN_TG::escape( Time::toStr() );
+            Time::_free();
+          }
+          break;
         case "/help"_h: 
           if( ! settingsNew.hasAdmin() || ( message.chatID == settingsNew.getAdminId() )) {
             // String pdf = App::getHomePage();
@@ -317,13 +322,15 @@ void handleCommand(fb::Update& u){
                 //String("Settings ") + 
                 TelegramMD::linkTo(
                   webPortal, //"web portal", 
-                  WiFi.localIP().toString().c_str()) + 
+                  WiFi.localIP().toString().c_str(),
+                  MARKDOWN_TG::escape ) + 
                 MARKDOWN_TG::escape( _started ) //" started...")
               );
+              //debugPrintln( message.text);
 
               if ( bot.sendMessage(message) ){
                 webPortalMsgId = bot.lastBotMessage();
-                message.text = "";
+                //message.text = NUL_STR;
               }
               break;
               
