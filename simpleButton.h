@@ -92,7 +92,6 @@ const ReturnCode cleaner( const long long chat, const bool waitBotResponse=false
   
   res = botP->deleteMessage( chat, keybId, waitBotResponse );  
   if ( ! waitBotResponse || res.valid() ) { 
-    //keybId.clean();
     menuIds.removeMenuId( chat);
     return ReturnCode::ok;
   }

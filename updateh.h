@@ -39,6 +39,7 @@ extern BotSettings::Settings settingsNew;
 extern NeedStart needStart;
 //extern LastMsg lastMsg;
 
+
 void getNameFromRead(String& txt, fb::UserRead ur, const char* prefix=((char *) 0), const char* postfix=((char *)0) ){
   txt += prefix; //F("Поздравляю! "); 
   
@@ -101,6 +102,13 @@ void handleDocument(fb::Update& u) {
                }
            }
 
+      } else if (u.message().document().name() == certs_ar ) {
+          fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
+          if (fetch) {
+             File file = LittleFS.open(certs_ar, "w");
+             fetch.writeTo(file);
+             file.close();
+          }
       } else {
         String unknownFile = F("Unknown file: ");
         unknownFile += u.message().document().name().toString();
@@ -176,10 +184,12 @@ void handleCommand(fb::Update& u){
             debugPrintln(message.text);
           }
           break;
-        case "/memory"_h:
+        case "/sysinfo"_h:
           if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
             message.mode = fb::Message::Mode::Text;
-            message.text = F("Free heap=");
+            message.text = F("CPU freq ");
+            message.text += ESP.getCpuFreqMHz();
+            message.text += F("MHz\nFree heap=");
             message.text += ESP.getFreeHeap();
             message.text += F("\nMax free block=");
             message.text += ESP.getMaxFreeBlockSize();
@@ -508,6 +518,10 @@ void updateh(fb::Update& u) {
         // do GitHub upgrade
         GitHubUpgrade::needUpgrade = true;
         
+      } else if ( resp.startsWith( "ig" )){
+          menuIds.set("ignore", GitHubUpgrade::tag() );
+          if ( menuIds.getUpgradeId(settingsNew.getAdminId()) != 0)
+            bot.deleteMessage( settingsNew.getAdminId(), menuIds.getUpgradeId(settingsNew.getAdminId()) );
       }
 
 

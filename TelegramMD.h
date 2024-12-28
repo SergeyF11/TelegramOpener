@@ -41,22 +41,6 @@ namespace TelegramMD {
     };
 
 
-    // String textIn(const char * txt, const char Q, const char Q2='\0' ){
-    //     size_t txtLen = strlen(txt);
-    //     char * out = (char*)malloc(3+ txtLen);
-    //     out[0] = Q;
-    //     out[1+txtLen] = Q2 ? Q2 : Q;
-    //     strncpy(out+1, txt, txtLen);
-    //     out[2+txtLen] = '\0';
-    //     String s(out);
-    //     free(out);
-    //     return s;
-    // };    
-    // String textIn(const String& txt, const char Q, const char Q2='\0' ){ 
-    //     return textIn(txt.c_str(), Q, Q2);
-    // };
-
-
     String asCode(const String& txt){
         return textIn(txt, '`'); 
     };
@@ -73,13 +57,7 @@ namespace TelegramMD {
     String asItallic(const String& txt, String (*encode)(const char *)=nullptr ){
         return asItallic( txt.c_str(), encode);
     }
-    //     if ( encode == nullptr)
-    //         return textIn( txt.c_str(), '_'); 
-    //     return textIn( encode(txt.c_str()), '_'); 
-    // };
-    // String asItallic(const String& txt ){
-    //     return textIn( txt.c_str(), '_'); 
-    // };
+
     String asBold(const char* txt, String (*encode)(const char *)=nullptr ){
         return ( encode == nullptr) ? 
             textIn(txt, '*') : 
@@ -90,33 +68,10 @@ namespace TelegramMD {
     };
 
 
-    // String asItallicMD(const String& txt){
-    //     return textIn( MARKDOWN_TG::escape(txt.c_str()), '_'); 
-    // };
-    // String asItallicMD(const char* txt){
-    //     return textIn( MARKDOWN_TG::escape(txt), '_'); 
-    // };
-    // String asBoldMD(const String& txt){
-    //     return textIn(MARKDOWN_TG::escape(txt.c_str()), '*'); 
-    // };
-    // String asBoldMD(const char* txt){
-    //     return textIn(MARKDOWN_TG::escape(txt), '*'); 
-    // };
-
-    //static const char _http[] PROGMEM = "http://";
-
     String linkTo( const char * txt, const char * link, String (*encode)(const char *)=nullptr ){
         String out;
         out += textIn( ( encode == nullptr) ? txt : encode(txt), '[',']');        
-        // String _link;
-        // _link.reserve( 25 );
-        // if ( strncmp(link, _http, 4) )
-        //     _link += link;
-        // else {
-        //     _link += _http;
-        //     _link += link;
-        // }
-        // out += textIn(_link.c_str(), '(',')');
+
         out += textIn(link, '(',')');
         return out;
     }

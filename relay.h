@@ -98,7 +98,9 @@ struct WrongCount {
   uint get(){return this->count; };
   bool isWrong(){ return this->count != 0; };
   bool isAccident() { return this->count >= this->accident; };
-  void reset(){ debugPretty; 
+  void reset(){ 
+    debugPretty;
+    debugPrintln(__TIME__); 
     //this->nextMs+=this->periodMs; 
     this->count=0; };
   //void increase(){ this->count++; };

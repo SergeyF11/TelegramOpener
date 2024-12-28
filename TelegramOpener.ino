@@ -1,5 +1,6 @@
-#define debug_print 1
-#define GitHubUpgrade_ANY_TIME
+ #define debug_print 1
+ #define GitHubUpgrade_ANY_TIME
+// #define CLEANING
 
 #define WIFI_POWER 5.0
 #define FASTBOT_SECURED_CLIENT
@@ -15,7 +16,7 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,8
+#define VERSION 0,1,9
 #include "env.h"
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
@@ -57,7 +58,7 @@ BotSettings::Settings settingsNew(fileName);
 
 //void * buttonUpdater;
 void rawResponse(su::Text resp){
-  debugPrint(__TIME__);
+  //debugPrint(__TIME__ ); debugPrint(' ');
   debugPretty;   // debugPrintln(resp.c_str());
   if (resp.valid()) wrongCount.reset(); 
   else 
@@ -298,6 +299,7 @@ wm.addParameter(&button_report);
     //Serial.print()
 #endif
 
+//GitHubUpgrade::initOtaUpgrade(LittleFS);
 
 #if defined debug_print or defined GitHubUpgrade_ANY_TIME
   GitHubUpgrade::checkAt( GitHubUpgrade::AnyTime, GitHubUpgrade::AnyTime, GitHubUpgrade::AnyTime );
@@ -311,13 +313,7 @@ wm.addParameter(&button_report);
 } // end setup()
 
 
-void loop() {
-  _loop();
-}
-
-
-
-void _loop(){
+void loop(){
 
   printMemory.tick(Serial);
   wrongCount.tick();
@@ -325,23 +321,20 @@ void _loop(){
   relay.tick();
   bot.tick();
   menuIds.tick();
-   // обновляем клаву без ожидания ответа
-    //myButton.needUpdate(true);
-  myButton.tick( settingsNew );
-    // myButton.updater(bot, 
-    //   settingsNew.getChatId(),
-    //   settingsNew.getButton() /*, false */);
-  //}
-  
 
+  myButton.tick( settingsNew );
+
+  
+  if ( bot.canReboot() ) {
+    ESP.restart(); 
+  }
 
 
   if ( ! bot.isPolling() ) {
     GitHubUpgrade::tick( );
+    //GitHubUpgrade::OtaClean(true);
   }  
-  if ( bot.canReboot() ) {
-    ESP.restart(); 
-  }
+
  
   switch ( needStart )
     {

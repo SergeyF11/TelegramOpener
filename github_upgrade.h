@@ -1,4 +1,5 @@
 #pragma once
+
 #include <ESP_OTA_GitHub.h>
 #include "env.h"
 #include <time.h>
@@ -6,6 +7,8 @@
 #include "newFsSettings.h"
 //#include "myFileDb.h"
 #include "myPairs.h"
+#include <CertStoreBearSSL.h>
+
 
 extern BotSettings::Settings settingsNew;
 extern FastBot2 bot;
@@ -14,7 +17,7 @@ extern MenuIds menuIds;
 
 static String gitVersion = version.toString();
 static String gitBinFile = App::getBinFile();
-
+const static char certs_ar[] PROGMEM ="certs.ar";
 
 namespace GitHubUpgrade {
     
@@ -31,10 +34,74 @@ namespace GitHubUpgrade {
     static const int AnyTime = -1;
     // static String downloadUrl;
     // static String error;
-    ESPOTAGitHub GitHubUpgrade( 
-                Author::gitHubAka, 
-                App::name, gitVersion.c_str(), 
-                gitBinFile.c_str(), false);
+    ESPOTAGitHub *gitHubUpgrade;
+    BearSSL::X509List *trustedGitHubRoot; //(GITHUB_CERTIFICATE_ROOT);
+    BearSSL::CertStore *certStore;
+
+    enum SecureConnections {
+        insecureConnection = 0,
+        x509ListConnection,
+        certsStoreConnection, 
+    };
+
+    void OtaClean(bool all=false){
+        if ( certStore != nullptr ) delete(certStore);
+        if ( trustedGitHubRoot != nullptr ) delete(trustedGitHubRoot);
+        if ( all && gitHubUpgrade != nullptr ) delete(gitHubUpgrade) ;
+    };
+
+    SecureConnections initOtaUpgrade( FS& fs=LittleFS){
+        if ( certStore != nullptr ) return SecureConnections::certsStoreConnection;
+        else {
+            if ( fs.exists( certs_ar )){
+                certStore = new( BearSSL::CertStore );
+                int numCerts = certStore->initCertStore(fs, PSTR("/certs.idx"), certs_ar);
+                if ( numCerts != 0 ) {
+                    debugPrintf("Exported %d certificates from %s\n", numCerts, certs_ar);
+
+                    gitHubUpgrade = new ESPOTAGitHub(
+                        certStore,    
+                        Author::gitHubAka, 
+                        App::name, gitVersion.c_str(), 
+                        gitBinFile.c_str(), false );
+                    return SecureConnections::certsStoreConnection;       
+                } else {
+                    delete(certStore);
+                    certStore = nullptr;
+                }
+            }
+        } 
+        if ( trustedGitHubRoot != nullptr ) {
+            trustedGitHubRoot = new BearSSL::X509List;
+            bool res = false;
+            res = trustedGitHubRoot->append(GITHUB_CERTIFICATE_ROOT );
+            res = res && trustedGitHubRoot->append(GITHUB_CERTIFICATE_ROOT1 );
+            if ( res ){
+                gitHubUpgrade = new ESPOTAGitHub( 
+                    trustedGitHubRoot, 
+                    Author::gitHubAka, 
+                    App::name, gitVersion.c_str(), 
+                    gitBinFile.c_str(), false) ;
+                return SecureConnections::x509ListConnection;
+            } else {
+                delete( trustedGitHubRoot);
+                trustedGitHubRoot = nullptr;
+            }
+        }
+    
+        gitHubUpgrade = new  ESPOTAGitHub( 
+            Author::gitHubAka, 
+            App::name, gitVersion.c_str(), 
+            gitBinFile.c_str(), false );
+        return SecureConnections::insecureConnection;
+    };
+
+       
+    // ESPOTAGitHub gitHubUpgrade( 
+    //              &trustedGitHubRoot, 
+    //             Author::gitHubAka, 
+    //             App::name, gitVersion.c_str(), 
+    //             gitBinFile.c_str(), false);
                 
     void checkAt(const int weekDay=5, const int hour=4, const int min=0 ){
         //at = At{weekDay, hour, min};
@@ -43,6 +110,7 @@ namespace GitHubUpgrade {
         at.min = min;
     }            
     bool check(){
+        
         // ESPOTAGitHub GitHubUpgrade( 
         //     Author::gitHubAka, 
         //     App::name, gitVersion.c_str(), 
@@ -56,54 +124,82 @@ namespace GitHubUpgrade {
             ( at.hour == AnyTime || nowTime->tm_hour == at.hour ) && 
             ( at.min == AnyTime || nowTime->tm_min == at.min )) {
             
-            if ( ! has ) 
-                has = GitHubUpgrade.checkUpgrade();
+            if ( ! has ) {
+                initOtaUpgrade(LittleFS);
+                has = gitHubUpgrade->checkUpgrade();
+            }
             checkedDay = nowTime->tm_yday;
             //App::Version gitHubV;
             //gitHubV.fromString(GitHubUpgrade.getLatestTag() );
             
-            App::Version gitHubV(GitHubUpgrade.getLatestTag());
+            App::Version gitHubV(gitHubUpgrade->getLatestTag());
+            debugPrintf("GitHub newest version is %s\n", gitHubV.toString().c_str());
+
 
             if ( ! ( gitHubV > version ) ) {
                 has = false;
                 debugPrintf("Current version %s is higher that GitHub version %s\n", 
                     version.toString().c_str(), 
                     gitHubV.toString().c_str());
-            }    
+                    #if defined CLEANING
+                    bool clean = gitHubUpgrade.clean();
+                    debugPrintln( clean ? "Memory cleaned" : "Memory unclean");
+                    #endif
+            } else 
+                if ( menuIds.has("ignore") ){
+                    App::Version ignoreVersion(menuIds.get("ignore"));
+                    if ( ! ( ignoreVersion < gitHubV ) ){
+                        has = false;
+                        debugPrintf("Ignore version up to %s\n", 
+                        ignoreVersion.toString().c_str());    
+                        #if defined CLEANING
+                        bool clean = gitHubUpgrade.clean();
+                        debugPrintln( clean ? "Memory cleaned" : "Memory unclean");
+                        #endif
+                    }
+            }
+
             if ( has ) {
                 // latestTag = GitHubUpgrade.getLatestTag();
                 debugPretty; 
-                debugPrintln(GitHubUpgrade.getLatestTag() );
+                debugPrintln(gitHubUpgrade->getLatestTag() );
                 // downloadUrl =  GitHubUpgrade.getUpgradeURL();
                
             } else {    
                 // error = GitHubUpgrade.getLastError();
-                debugPrintln(GitHubUpgrade.getLastError());
+                debugPrintln(gitHubUpgrade->getLastError());
+                #if defined CLEANING
+                bool clean = gitHubUpgrade.clean();
+                debugPrintln( clean ? "Memory cleaned" : "Memory unclean");
+                #endif
             }
+
         }
+        OtaClean();
         return has;
     }
 
     String tag(){
-        if ( has ) return GitHubUpgrade.getLatestTag(); //latestTag;
+        if ( has ) return gitHubUpgrade->getLatestTag(); //latestTag;
         return NULL_STR;
     }
 
     bool doIt(){
         if ( has ){
-            return GitHubUpgrade.doUpgrade();
+            has = ! has;
+            return gitHubUpgrade->doUpgrade();
         }
-        return false;
+        return has;
     }
     String Error(){
-        return GitHubUpgrade.getLastError();
-        //return error;
+        return gitHubUpgrade->getLastError();
     }
 
 //void tick( FastBot2& bot,const BotSettings::Settings& settingsNew){
 void tick(){
     if ( check() &&  settingsNew.hasAdmin() ){
      if ( menuIds.getUpgradeId(settingsNew.getAdminId()) != 0 ) {
+
         debugPrintln("Delete old menu");
         auto res = bot.deleteMessage(settingsNew.getAdminId(),  menuIds.getUpgradeId(settingsNew.getAdminId()));
         debugBotResult(res, "Delete old menu");
@@ -113,8 +209,9 @@ void tick(){
         //     debugPrintln( "ERROR: delete old menu");
         // }
       }
-
-      fb::InlineMenu menu("Обновить", "up");
+        // String menu(F("up;ig~"));
+        // menu += GitHubUpgrade::tag();
+      fb::InlineMenu menu("Обновить;Пропустить", "up;ig");
 
       String buf(F("Текущая версия `"));
       buf += version.toString(); buf += F("`\n");
@@ -170,24 +267,7 @@ void tick(){
                 fb::Result res;
                 res = bot.deleteMessage( settingsNew.getAdminId(), upgradeButtonId, true);
                 debugBotResult(res,"Delete upgrade menu");
-                // if ( res.valid() ) {
-                //     debugPrintln("Deleted upgrade menu");
-                // } else {
-                //     debugPrintln("ERROR: delete upgrade menu");
-                // }
 
-                // while ( ! res.valid() ){
-                //     res = bot.deleteMessage( settingsNew.getAdminId(), upgradeButtonId /*upgradeButton.get()*/, true);
-                //     if ( res.valid() ) {
-                //         //upgradeButton.clean();
-                //         menuIds.removeUpgradeId( settingsNew.getAdminId() );
-                //         debugPrintln();
-                //         break;
-                //     } else {
-                //         debugPrint(".");
-                //         delay(300);
-                //     }
-                // }
                 menuIds.update();
             }
             txt = F("Upgrade done. Reboot...");
@@ -208,7 +288,10 @@ void tick(){
             Serial.print("Ask reboot...");
             Serial.flush();
             ESP.restart();
-        }
+        } 
+        #if defined CLEANING
+        gitHubUpgrade.clean(); 
+        #endif
       }
     }
 }
