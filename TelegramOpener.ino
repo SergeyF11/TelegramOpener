@@ -3,7 +3,7 @@
 // #define CLEANING
 
 #define WIFI_POWER 5.0
-#define FASTBOT_SECURED_CLIENT
+
 #define MFLN_SIZE 1024
 #define SYNC_TIME
 
@@ -30,13 +30,15 @@
 #include "github_upgrade.h"
 #include <time.h>
 #include "relay.h"
-#include <FastBot2s.h>
+#include "myFastBotClient.h"
+//#include <FastBot2Client.h>
+
 //#include "channelName.h"
 #include "newFsSettings.h" 
 #include "myPairs.h"
 //#include "myFileDb.h"
 
-FastBot2 bot;
+//FastBot2 bot;
 Relay relay(RELAY_PORT, RELAY_INIT_STATUS, 3);
 
 #include "updateh.h"
@@ -157,6 +159,29 @@ wm.addParameter(&button_report);
     //if you get here you have connected to the WiFi
      Serial.println("connected...yeey :)");
   }
+ // Sync time 
+  #ifdef SYNC_TIME 
+      Serial.print(F("Sync time "));
+      while( ! Time::isSynced() ){        
+          builtInLed.flash(200,1);
+          delay(10);
+          Serial.print("+");
+      }
+      
+      debugPrintln( Time::toStr() ); //Time::printTo(Serial);
+      debugPrintln(F(" Done"));
+      //debugPrintln( Time );
+      //Serial.print()
+  #endif
+  auto res = botCertsStore(client, LittleFS);
+  if ( res > 0 ) {
+    debugPrintf("Use certs store for %d records\n", res);
+  } else if ( res != 0 ) {
+    debugPrintln("Use Telegram fingerprint\n");
+  } else {
+    client.setInsecure();
+    debugPrintln("Use insecure Telegram commection\n");
+  }
 
   bot.attachUpdate(updateh);   // подключить обработчик обновлений
   bot.setToken( settingsNew.getToken() );   // установить токен
@@ -176,7 +201,7 @@ wm.addParameter(&button_report);
   };
 
   while( ! bot.tickManual() ) {  
-    delay(1);
+    delay(100);
     wrongCount.tick();
     //wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
   }
@@ -284,21 +309,7 @@ wm.addParameter(&button_report);
 
   bot.setPollMode(fb::Poll::Long, POLLING_TIME);
 
-  // Sync time 
-#ifdef SYNC_TIME 
-    Serial.print(F("Sync time "));
-    while( time(nullptr)< 3600 ){        
-        builtInLed.flash(200,1);
-        delay(10);
-        Serial.print("+");
-    }
-    
-    Time::printTo(Serial);
-    debugPrintln(F(" Done"));
-    //debugPrintln( Time );
-    //Serial.print()
-#endif
-
+ 
 //GitHubUpgrade::initOtaUpgrade(LittleFS);
 
 #if defined debug_print or defined GitHubUpgrade_ANY_TIME

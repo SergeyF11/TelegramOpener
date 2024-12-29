@@ -6,7 +6,7 @@
 #pragma once
 #define NUL_STR ((char*)0)
 
-#include <FastBot2s.h>
+#include "myFastBotClient.h"
 //#include "fsSettings.h"
 #include "newFsSettings.h"
 

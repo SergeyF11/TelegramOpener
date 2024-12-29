@@ -3,7 +3,7 @@
 #include <ESP_OTA_GitHub.h>
 #include "env.h"
 #include <time.h>
-#include <FastBot2s.h>
+#include "myFastBotClient.h"
 #include "newFsSettings.h"
 //#include "myFileDb.h"
 #include "myPairs.h"
@@ -11,13 +11,13 @@
 
 
 extern BotSettings::Settings settingsNew;
-extern FastBot2 bot;
+extern FastBot2Client bot;
 extern App::Version version;
 extern MenuIds menuIds;
 
 static String gitVersion = version.toString();
 static String gitBinFile = App::getBinFile();
-const static char certs_ar[] PROGMEM ="certs.ar";
+//const static char certs_ar[] PROGMEM ="certs.ar";
 
 namespace GitHubUpgrade {
     
@@ -45,19 +45,19 @@ namespace GitHubUpgrade {
     };
 
     void OtaClean(bool all=false){
-        if ( certStore != nullptr ) delete(certStore);
-        if ( trustedGitHubRoot != nullptr ) delete(trustedGitHubRoot);
-        if ( all && gitHubUpgrade != nullptr ) delete(gitHubUpgrade) ;
+        if ( certStore != nullptr ) { delete(certStore); certStore = nullptr; }
+        if ( trustedGitHubRoot != nullptr ) { delete(trustedGitHubRoot); trustedGitHubRoot = nullptr; }
+        if ( all && gitHubUpgrade != nullptr ) { delete(gitHubUpgrade) ; gitHubUpgrade = nullptr; }
     };
 
     SecureConnections initOtaUpgrade( FS& fs=LittleFS){
         if ( certStore != nullptr ) return SecureConnections::certsStoreConnection;
         else {
-            if ( fs.exists( certs_ar )){
+            if ( fs.exists( CertStoreFiles::fileData )){
                 certStore = new( BearSSL::CertStore );
-                int numCerts = certStore->initCertStore(fs, PSTR("/certs.idx"), certs_ar);
+                int numCerts = certStore->initCertStore(fs, CertStoreFiles::fileIdx, CertStoreFiles::fileData);
                 if ( numCerts != 0 ) {
-                    debugPrintf("Exported %d certificates from %s\n", numCerts, certs_ar);
+                    debugPrintf("Exported %d certificates from %s\n", numCerts, CertStoreFiles::fileData);
 
                     gitHubUpgrade = new ESPOTAGitHub(
                         certStore,    

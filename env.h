@@ -22,37 +22,7 @@ static const char * SAY_HI PROGMEM = _SAY_HI_;
 static const char * TRY_LATTER PROGMEM = _TRY_LATTER_;
 
 #include "TelegramMD.h"
-// namespace MARKDOWN_TG{
-//     static const char chars[] PROGMEM = "_*[]()~`>#+-=|{}.!";
-//     String escape(const char * txt){
-//         debugPretty;
-//         String dest;
-//         dest.reserve( 2*strlen( txt));
-//         int j=0;
-//         //char srs = txt[j];
-//         while ( txt[j] != '\0'){
-//             debugPrint( txt[j] );
-//             bool escaped = false;
-//             int i=0;
-//             //char c = chars[i];
-//             while ( chars[i] != '\0' ){
-//                 if ( txt[j] == chars[i] ) {
-//                     escaped = true;
-//                     break;
-//                 }
-//                 i++;
-//             }
-//             if ( escaped ) {
-//                 dest += '\\';
-//             }
-//             dest += txt[j];
-//             debugPrint("=>");
-//             debugPrintln( dest );
-//             j++;
-//         }
-//         return dest;
-//     };
-// }
+
 
 namespace Author {
     static const char * firstName PROGMEM = "Sergey";
@@ -228,6 +198,9 @@ namespace App {
     }
 }
 namespace Time {
+    bool isSynced(){
+        return time(nullptr) > 3600*2*6;
+    };
     static char * buf = nullptr;
     void _free(){
             if ( buf != nullptr ) { 

@@ -4,7 +4,7 @@
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <time.h>
 #include <stdio.h>
-#include <FastBot2s.h>
+#include "myFastBotClient.h"
 
 #define USEOTA
 // enable OTA
@@ -122,7 +122,7 @@ void configModeCallback (WiFiManager *myWiFiManager) {
 
 extern BotSettings::Settings settingsNew;
 extern SimpleButton myButton;
-extern FastBot2 bot;
+extern FastBot2Client bot;
 
 void saveParamCallback() {
   debugPretty;

@@ -4,6 +4,7 @@ build/*
 NewFsSettings/*
 *~
 .vscode/*
+*.crt
 
 my_credential.h
 

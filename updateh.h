@@ -9,7 +9,8 @@
 // #include <ESP8266WiFi.h> 
 #pragma once
 #include "github_upgrade.h"
-#include <FastBot2s.h>
+#include "myFastBotClient.h"
+
 #include "relay.h"
 //#include "fsSettings.h"
 #include "newFsSettings.h"
@@ -31,7 +32,7 @@ static long webPortalMsgId = 0;
 //extern TakeAdminT takeAdmin;
 
 //extern WiFiManager wm;
-extern FastBot2 bot;
+extern FastBot2Client bot;
 extern Relay relay;
 //extern SETTINGS::SettingsT settings;
 extern BotSettings::Settings settingsNew;
@@ -102,10 +103,10 @@ void handleDocument(fb::Update& u) {
                }
            }
 
-      } else if (u.message().document().name() == certs_ar ) {
+      } else if (u.message().document().name() == CertStoreFiles::fileData ) {
           fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
           if (fetch) {
-             File file = LittleFS.open(certs_ar, "w");
+             File file = LittleFS.open(CertStoreFiles::fileData, "w");
              fetch.writeTo(file);
              file.close();
           }
@@ -204,13 +205,6 @@ void handleCommand(fb::Update& u){
           if ( settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             runStart;
             bot.setTyping(settingsNew.getAdminId(), false);
-            //debugPrintln(SETTINGS::listDirToString("/"));
-            //message.text;
-            /*
-            message.text = '`'; //TG_ATTR::code;
-            message.text += BotSettings::listDirToString("/");
-            message.text += '`'; //TG_ATTR::code;
-            */
             message.text += TelegramMD::asCode( BotSettings::listDirToString("/"));
             // message.chatID = u.message().from().id();
             printRunTime;
@@ -272,40 +266,51 @@ void handleCommand(fb::Update& u){
             // debugPrint("LastMsg:"); debugPrintln(lm.get());
           }
           break;
-
-        case "/cat"_h:
-          if ( u.message().text().count(" ") < 2 ) break;
-          else {
-          auto arg = u.message().text().getSub(1, " ");
-          bot.setTyping(settingsNew.getAdminId(), false);
-            if( ! LittleFS.exists(arg.c_str()) ){
-              message.text += F("File ");
-              message.text += TelegramMD::asCode( arg ); //.c_str();
-              message.text += F(" not exist");
-              break;
+        case "/rm"_h:
+          if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
+            auto arg = u.message().text().getSub(1, " ");
+            message.text += F("File ");
+            message.text += TelegramMD::asCode( arg.c_str() ); //.c_str();
+            message.text += ' ';
+            if( ! arg.valid() ||  ! LittleFS.exists(arg.c_str()) ){  
+              message.text += F("not exist");  
+            } else {
+              auto res = LittleFS.remove( arg.c_str() );
+              if ( res ){
+                message.text += F("deleted");
+              } else {
+                message.text += F("error");
+              }
             }
-            auto f = LittleFS.open(arg.c_str(), "r");
-            if ( ! f ) {
-              message.text += F("Error open file "); //`");
-              message.text += TelegramMD::asCode( arg ); //.c_str();
-              //message.text += '`';
-              break; 
-            } 
-            String s = f.readString();
-            f.close();
+          }
+          break;
+        case "/cat"_h:
+          if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
+            if ( u.message().text().count(" ") < 2 ) break;
+            else {
+            auto arg = u.message().text().getSub(1, " ");
+            bot.setTyping(settingsNew.getAdminId(), false);
+              if( ! LittleFS.exists(arg.c_str()) ){
+                message.text += F("File ");
+                message.text += TelegramMD::asCode( arg ); //.c_str();
+                message.text += F(" not exist");
+                break;
+              }
+              auto f = LittleFS.open(arg.c_str(), "r");
+              if ( ! f ) {
+                message.text += F("Error open file "); //`");
+                message.text += TelegramMD::asCode( arg ); //.c_str();
+                //message.text += '`';
+                break; 
+              } 
+              String s = f.readString();
+              f.close();
 
-          // if ( settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
-          //   bot.setTyping(settingsNew.getAdminId(), false);            
-          //   String s = settingsNew.loadJson();
-            debugPrintln(s);
-            s.replace('\\','/');
-            //debugPrintln(SETTINGS::listDirToString("/"));
-            //message.text;
+              debugPrintln(s);
+              s.replace('\\','/');
 
-            message.text += TelegramMD::asCode( s );
-            // message.text += '`'; //TG_ATTR::code;
-            // message.text += s.c_str();
-            // message.text += '`'; //TG_ATTR::code;
+              message.text += TelegramMD::asCode( s );
+            }
           }
           break;
         case "/starPortal"_h:

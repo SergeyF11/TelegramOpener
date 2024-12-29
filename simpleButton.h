@@ -1,7 +1,7 @@
 #include "debug.h"
 #pragma once
 
-#include <FastBot2s.h>
+#include "myFastBotClient.h"
 #include "env.h"
 //#include "LastMsgInFile.h"
 #include "newFsSettings.h"
@@ -66,10 +66,10 @@ class SimpleButton  {
   
   SimpleButton()
   {  };
-  SimpleButton(FastBot2& bot, unsigned long expiredPeriod){
+  SimpleButton(FastBot2Client& bot, unsigned long expiredPeriod){
     this->set( bot, expiredPeriod);
   };
-  void set(FastBot2& bot, unsigned long expiredPeriod){
+  void set(FastBot2Client& bot, unsigned long expiredPeriod){
     this->_expiredPeriod = expiredPeriod;
     this->botP = &bot;
   };
@@ -248,7 +248,7 @@ debugPrint("fb::text.messageID="); debugPrintln(text.messageID);
 
  private:
 
-  FastBot2 * botP = nullptr;
+  FastBot2Client * botP = nullptr;
   unsigned long lastUpdate;
   unsigned long _expiredPeriod;
   unsigned long _delta = 0; 
