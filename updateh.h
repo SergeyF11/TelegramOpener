@@ -103,7 +103,7 @@ void handleDocument(fb::Update& u) {
                }
            }
 
-      } else if (u.message().document().name() == CertStoreFiles::fileData ) {
+      } else if (u.message().document().name() == CertStoreFiles::fileData+1 ) {
           fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
           if (fetch) {
              File file = LittleFS.open(CertStoreFiles::fileData, "w");

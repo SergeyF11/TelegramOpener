@@ -18,6 +18,7 @@ extern MenuIds menuIds;
 static String gitVersion = version.toString();
 static String gitBinFile = App::getBinFile();
 //const static char certs_ar[] PROGMEM ="certs.ar";
+extern CertStore* certStore;
 
 namespace GitHubUpgrade {
     
@@ -36,59 +37,78 @@ namespace GitHubUpgrade {
     // static String error;
     ESPOTAGitHub *gitHubUpgrade;
     BearSSL::X509List *trustedGitHubRoot; //(GITHUB_CERTIFICATE_ROOT);
-    BearSSL::CertStore *certStore;
+//    BearSSL::CertStore *certStore;
+    
 
     enum SecureConnections {
         insecureConnection = 0,
         x509ListConnection,
         certsStoreConnection, 
     };
+ 
 
-    void OtaClean(bool all=false){
-        if ( certStore != nullptr ) { delete(certStore); certStore = nullptr; }
-        if ( trustedGitHubRoot != nullptr ) { delete(trustedGitHubRoot); trustedGitHubRoot = nullptr; }
-        if ( all && gitHubUpgrade != nullptr ) { delete(gitHubUpgrade) ; gitHubUpgrade = nullptr; }
-    };
+    // void OtaClean(bool all=false){
+    //     if ( certStore != nullptr ) { delete(certStore); certStore = nullptr; }
+    //     if ( trustedGitHubRoot != nullptr ) { delete(trustedGitHubRoot); trustedGitHubRoot = nullptr; }
+    //     if ( all && gitHubUpgrade != nullptr ) { delete(gitHubUpgrade) ; gitHubUpgrade = nullptr; }
+    // };
 
     SecureConnections initOtaUpgrade( FS& fs=LittleFS){
-        if ( certStore != nullptr ) return SecureConnections::certsStoreConnection;
-        else {
+        SecureConnections result = SecureConnections::insecureConnection;
+
+        //Try to set certs store
+        if ( certStore != nullptr ) {
+            debugPrintln("Use existed certs store");                
+            result = SecureConnections::certsStoreConnection; 
+        } else {
             if ( fs.exists( CertStoreFiles::fileData )){
                 certStore = new( BearSSL::CertStore );
-                int numCerts = certStore->initCertStore(fs, CertStoreFiles::fileIdx, CertStoreFiles::fileData);
+                int numCerts = certStore->initCertStore(fs, CertStoreFiles::fileIdx, CertStoreFiles::fileData);                
                 if ( numCerts != 0 ) {
                     debugPrintf("Exported %d certificates from %s\n", numCerts, CertStoreFiles::fileData);
-
-                    gitHubUpgrade = new ESPOTAGitHub(
-                        certStore,    
-                        Author::gitHubAka, 
-                        App::name, gitVersion.c_str(), 
-                        gitBinFile.c_str(), false );
-                    return SecureConnections::certsStoreConnection;       
+                    result= SecureConnections::certsStoreConnection;       
                 } else {
                     delete(certStore);
                     certStore = nullptr;
                 }
             }
         } 
-        if ( trustedGitHubRoot != nullptr ) {
+        if( result == SecureConnections::certsStoreConnection ) {
+            gitHubUpgrade = new ESPOTAGitHub(
+                certStore,    
+                Author::gitHubAka, 
+                App::name, gitVersion.c_str(), 
+                gitBinFile.c_str(), false );
+            return result;                  
+        }
+
+        // try x509 list 
+        if ( trustedGitHubRoot != nullptr ) result = SecureConnections::x509ListConnection;
+        else {
             trustedGitHubRoot = new BearSSL::X509List;
             bool res = false;
             res = trustedGitHubRoot->append(GITHUB_CERTIFICATE_ROOT );
             res = res && trustedGitHubRoot->append(GITHUB_CERTIFICATE_ROOT1 );
             if ( res ){
-                gitHubUpgrade = new ESPOTAGitHub( 
-                    trustedGitHubRoot, 
-                    Author::gitHubAka, 
-                    App::name, gitVersion.c_str(), 
-                    gitBinFile.c_str(), false) ;
-                return SecureConnections::x509ListConnection;
+                result = SecureConnections::x509ListConnection;
+                
             } else {
                 delete( trustedGitHubRoot);
                 trustedGitHubRoot = nullptr;
             }
         }
+        if ( result == SecureConnections::x509ListConnection ){
+            debugPrintln("Use internal github certificate");
+            gitHubUpgrade = new ESPOTAGitHub( 
+                trustedGitHubRoot, 
+                Author::gitHubAka, 
+                App::name, gitVersion.c_str(), 
+                gitBinFile.c_str(), false) ;
+            return result;
+        }
     
+        // use unsecure 
+        debugPrintln("Use insecure GitHub connection");
         gitHubUpgrade = new  ESPOTAGitHub( 
             Author::gitHubAka, 
             App::name, gitVersion.c_str(), 
@@ -175,7 +195,7 @@ namespace GitHubUpgrade {
             }
 
         }
-        OtaClean();
+        //OtaClean();
         return has;
     }
 
