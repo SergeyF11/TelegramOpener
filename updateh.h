@@ -222,7 +222,8 @@ void handleCommand(fb::Update& u){
               //needStart = NeedStart::Portal;
               //delay(1000);
               //bot.skipUpdates();
-              bot.reboot();
+              //bot.reboot();
+              needStart = NeedStart::Reboot;  
             } else {
               debugPrintln("Error file deleted.");
             }
@@ -241,10 +242,11 @@ void handleCommand(fb::Update& u){
           //message.chatID = settingsNew.getAdminId();
           message.text = TelegramMD::asItallic( rebootMsg,  MARKDOWN_TG::escape ); //rebootMsg_MD;
           //message.setModeMD;
-          bot.sendMessage(message, false);
+          bot.sendMessage(message, true);
           bot.setTyping( settingsNew.getAdminId(), false);
           message.text = "";
-          bot.reboot();
+          //bot.reboot();
+          needStart = NeedStart::Reboot; 
         }
           //ESP.restart();
           break;

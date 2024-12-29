@@ -208,9 +208,9 @@ namespace Time {
                 buf = nullptr;
             }
         };
-    char * toStr() {
+    char * toStr(const time_t& now = time(nullptr))  {
         static constexpr char tmpl[] PROGMEM = "%4d-%02d-%02d %02d:%02d:%02d";
-        auto now = time(nullptr);
+        //auto now = time(nullptr);
         auto _tm = localtime( &now );
         _free();
         buf = (char *)malloc(20);

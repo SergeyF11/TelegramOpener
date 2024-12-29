@@ -16,7 +16,7 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,9
+#define VERSION 0,1,10
 #include "env.h"
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
@@ -337,6 +337,9 @@ void loop(){
 
   
   if ( bot.canReboot() ) {
+    debugPrintln("Reboot esp...");
+    Serial.flush();
+    delay(1);
     ESP.restart(); 
   }
 
@@ -402,6 +405,16 @@ void loop(){
           webPortalMsgId = 0;
         }
         needStart = NeedStart::None; 
+      }
+      break;
+    case NeedStart::Reboot:
+      if( bot.isPolling() ) {
+        bot.skipUpdates();
+        //bot.tickManual();
+        debugPrintln("Reboot...");
+        Serial.flush();
+        delay(1);
+        ESP.reset();
       }
       break;
     }

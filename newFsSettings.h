@@ -180,7 +180,11 @@ namespace BotSettings{
     time_t cr = file.getCreationTime();
     time_t lw = file.getLastWrite();
     file.close();
-    
+    out.concat(F(" C:")); 
+    out += Time::toStr( cr);
+    out.concat(F(" M:"));
+    out += Time::toStr( lw);
+
     out.concat(F("\r\n"));
 
   }

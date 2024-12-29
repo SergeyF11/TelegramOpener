@@ -82,6 +82,7 @@ struct WrongCount {
 //  uint periodMs=1000;
 //  long unsigned nextMs;
   uint count=0;
+  unsigned long changeMs =0; 
   uint accident;
   void (*func)(uint);
   void (*accidentFunc)(void);
@@ -100,18 +101,22 @@ struct WrongCount {
   bool isAccident() { return this->count >= this->accident; };
   void reset(){ 
     debugPretty;
-    debugPrintln(__TIME__); 
-    //this->nextMs+=this->periodMs; 
+    //debugPrintln(__TIME__); 
+    //this->nextMs+=this->periodMs;
+    changeMs=millis();  
     this->count=0; };
   //void increase(){ this->count++; };
-  uint operator++ (int) { debugPretty; return ++this->count; };
-  // void tick(){
-  //   if( ! this->isWrong() ) { builtInLed.flash(1000); return; }
-  //   else {  builtInLed.flash(200);
-  //    if ( this->isAccident() ) ESP.restart(); 
-  //   }
-  // };
-    void tick(){
+  uint operator++ (int) { 
+    debugPretty;
+    changeMs=millis(); 
+    return ++this->count; };
+
+  void tick(unsigned long incTimeoutMs=POLLING_TIME ){
+    if ( millis() - changeMs >= incTimeoutMs ){
+      //count++;
+      (*this)++;
+    }
+
       // long unsigned nowMs=millis();
     //if ( this->nextMs== millis() ){ debugPretty; this->nextMs+=this->periodMs; ++this->count; }  
     if( ! this->isWrong() ) this->func(1000);

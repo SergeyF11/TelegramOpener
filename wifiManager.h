@@ -28,7 +28,8 @@ enum NeedStart {
   Portal = 1,
   Web = 2,
   WebRunning = 3,
-  WebStop = 4
+  WebStop = 4,
+  Reboot,
 };
 
 NeedStart needStart=None;
