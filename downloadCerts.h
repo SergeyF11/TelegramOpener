@@ -86,9 +86,17 @@ namespace CertificateStore {
         uint8_t buff[1024] = { 0 };
         size_t writed = 0;
         int length = len;
-        if ( len == -1 ){ client.setTimeout(10000); }
-
-        while (  len > 0 || (len == -1 && client.connected() ) )
+        if ( len == -1 ){ client.setTimeout(8000); }
+        // (bool *)(unsigned long) timeOut = [](unsigned long start=0){
+        //     if ( start != 0 ){
+        //         static unsigned long startMs = start;
+        //         return true;
+        //     } else {
+        //         return millis()-startMs >= start;
+        //     }
+        // };
+        // timeOut(millis());  
+        while (  client.connected() && ( len > 0 || len == -1 /* && ! timeOut() */ ) )
         {
             // get available data size
             size_t size = client.available();
