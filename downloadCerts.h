@@ -3,6 +3,7 @@
 #include <WiFiClientSecure.h>
 #include <LittleFS.h>
 #include <ESP_OTA_GitHub.h>
+#include "env.h"
 
 //#include "myFastBotClient.h"
 //#include <ESP8266HTTPClient.h>
@@ -22,7 +23,8 @@ namespace CertificateStore {
     namespace myLink {
     static const char proto[] PROGMEM = "https://";
     static const char host[] PROGMEM = "raw.githubusercontent.com";
-    static const char path[] PROGMEM = "/SergeyF11/TelegramOpener/refs/heads/main/data/certs.ar";
+    //static const char path[] PROGMEM = "/SergeyF11/TelegramOpener/refs/heads/main/data/certs.ar";
+    static const char path[] PROGMEM = "/refs/heads/main/data/certs.ar";
     const int port = 443;
     };
     
@@ -33,10 +35,14 @@ namespace CertificateStore {
 
         WiFiClientSecure client;
         //client.setInsecure();
+#if defined GITHUB_CERTIFICATE_ROOT and defined GITHUB_CERTIFICATE_ROOT1        
         X509List certsList;
         certsList.append(GITHUB_CERTIFICATE_ROOT);
         certsList.append(GITHUB_CERTIFICATE_ROOT1);
         client.setTrustAnchors(&certsList);
+#else
+        client.setInsecure();
+#endif
         bool mfln = client.probeMaxFragmentLength( myLink::host, myLink::port, 1024);
         if (mfln) {
             client.setBufferSizes(1024, 1024);
@@ -44,9 +50,13 @@ namespace CertificateStore {
         client.setTimeout(500);
 
         if (! client.connect( myLink::host, myLink::port) ) return Errors::noConnect;
+
+#if defined GITHUB_CERTIFICATE_ROOT and defined GITHUB_CERTIFICATE_ROOT1        
         debugPrintf("Client connected to %s with %d certificates\n", myLink::host, certsList.getCount());
-        
-        ESPOTAGitHub::_HTTPget(client, myLink::host, myLink::path, nullptr );
+#else
+        debugPrintf("Client connected to %s with insecure connection\n", myLink::host );
+#endif       
+        ESPOTAGitHub::_HTTPget(client, myLink::host, Author::gitHubAka, App::name ,myLink::path, nullptr );
     // client.print(F("GET ")); /* client.print(myLink::proto );
     // client.print( myLink::host ); */ client.print(myLink::path);
     // client.print(F(" HTTP/1.1\r\n"));

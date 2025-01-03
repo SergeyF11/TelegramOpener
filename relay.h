@@ -111,7 +111,7 @@ struct WrongCount {
     changeMs=millis(); 
     return ++this->count; };
 
-  void tick(unsigned long incTimeoutMs=POLLING_TIME ){
+  void tick(unsigned long incTimeoutMs=5*POLLING_TIME*3 ){
     if ( millis() - changeMs >= incTimeoutMs ){
       //count++;
       (*this)++;

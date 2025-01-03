@@ -14,8 +14,9 @@ namespace Telegram {
     const char fingerprint[] PROGMEM = "1F:77:5F:20:C5:D3:BD:67:DE:E8:07:9B:59:1D:22:E9:C0:E4:52:4B"; //api.telegram.org
 };
 
-int botCertsStore(WiFiClientSecure& cl, FS& fs, const char * fileData=CertStoreFiles::fileData){
+CertStore* botCertsStore(WiFiClientSecure& cl, FS& fs, const char * fileData=CertStoreFiles::fileData){
     int numCerts = 0;
+    CertStore * certStore = nullptr;
     /*if ( certsStore != nullptr){ 
         numCerts++;
     } else */
@@ -36,7 +37,7 @@ int botCertsStore(WiFiClientSecure& cl, FS& fs, const char * fileData=CertStoreF
     
     if ( numCerts == 0 ) {
         cl.setFingerprint(Telegram::fingerprint );
-        numCerts = -1;
+        //numCerts = -1;
     }
-    return numCerts;
+    return certStore;
 };

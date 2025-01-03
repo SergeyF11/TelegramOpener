@@ -15,7 +15,7 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,10
+#define VERSION 0,1,0
 #include "env.h"
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
@@ -172,15 +172,16 @@ wm.addParameter(&button_report);
       //debugPrintln( Time );
       //Serial.print()
   #endif
-  auto res = botCertsStore(client, LittleFS);
-  if ( res > 0 ) {
-    debugPrintf("Use certs store for %d records\n", res);
-  } else if ( res != 0 ) {
-    debugPrintln("Use Telegram fingerprint\n");
+  certStore = botCertsStore(client, LittleFS);
+  if ( certStore != nullptr) {
+    debugPrintf("Use certs store [%llu]\n", certStore );
   } else {
-    client.setInsecure();
-    debugPrintln("Use insecure Telegram commection\n");
+    debugPrintln("Use Telegram fingerprint\n");
   }
+  // } else {
+  //   client.setInsecure();
+  //   debugPrintln("Use insecure Telegram commection\n");
+  // }
 
   bot.attachUpdate(updateh);   // подключить обработчик обновлений
   bot.setToken( settingsNew.getToken() );   // установить токен
@@ -312,7 +313,7 @@ wm.addParameter(&button_report);
 //GitHubUpgrade::initOtaUpgrade(LittleFS);
 
 #if defined debug_print or defined GitHubUpgrade_ANY_TIME
-  GitHubUpgrade::checkAt( GitHubUpgrade::AnyTime, GitHubUpgrade::AnyTime, GitHubUpgrade::AnyTime );
+  GitHubUpgrade::checkAt( GitHubUpgrade::At::Any, GitHubUpgrade::At::Any, GitHubUpgrade::At::Any );
   //debugPrintln("Check upgrade done");
 #else
   GitHubUpgrade::checkAt( );

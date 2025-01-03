@@ -1,12 +1,3 @@
-// #include "core/types/UserRead.h"
-// #include <cstdio>
-// #include "core/updates.h"
-// #include "debug.h"
-// #include "core/types/Message.h"
-// #include <ctime>
-// #include "core/types/Update.h"
-// #include "WString.h"
-// #include <ESP8266WiFi.h> 
 #pragma once
 #include "github_upgrade.h"
 #include "myFastBotClient.h"
@@ -226,6 +217,13 @@ void handleCommand(fb::Update& u){
               needStart = NeedStart::Reboot;  
             } else {
               debugPrintln("Error file deleted.");
+            }
+          }
+          break;
+        case "/clear_ignore"_h:
+          if ( settingsNew.isAdmin(u.message().from().id() )){
+            if ( menuIds.has("ignore") ){
+              menuIds.remove("ignore");
             }
           }
           break;

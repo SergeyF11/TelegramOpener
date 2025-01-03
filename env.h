@@ -52,6 +52,7 @@ namespace App {
         uint8_t low = 0;
         char * betta = nullptr;
         void addBetta(const char * b){
+            debugPretty;
             if ( b != nullptr && *b != '\0' ){
                 betta = (char *)malloc( strlen(b));
                 strcpy(betta,b);
@@ -100,7 +101,7 @@ namespace App {
             }
             return res; //false; 
         };
-        bool operator<(const Version& a) const { return a>*this; };
+        bool operator<(const Version& a) const { return a > (*this); };
 
         bool isBetta() const {
             return betta != nullptr;
@@ -120,25 +121,29 @@ namespace App {
         void fromString(const String& s ) {
             // debugPretty;
             // debugPrintln(s);
-
+            if( s.isEmpty() ){
+                debugPretty;
+                // high = 0;
+                // middle = 0;
+                // low = 0;
+                return;
+            }
             char* buf = (char *)malloc(s.length()+1 );
             strcpy( buf, s.c_str());
 
             char * v = strtok( buf, ".");
             high = atoi(v); 
-
             v = strtok( NULL, ".");
             middle = atoi(v);
 
             v = strtok( NULL, ".");
-            
+
             if ( v != NULL ) {
                 low = atoi(v);
                 int bettaP = String(low).length();
                 if ( bettaP < strlen(v) ) 
                     addBetta( (const char *)(v + bettaP) );
-            }
-            else low = 0;
+            } else low = 0;
             free(buf);
         };            
     };
