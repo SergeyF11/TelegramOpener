@@ -47,7 +47,7 @@ namespace CertificateStore {
         if (mfln) {
             client.setBufferSizes(1024, 1024);
         }
-        client.setTimeout(500);
+        client.setTimeout(1500);
 
         if (! client.connect( myLink::host, myLink::port) ) return Errors::noConnect;
 
@@ -96,7 +96,7 @@ namespace CertificateStore {
         uint8_t buff[1024] = { 0 };
         size_t writed = 0;
         int length = len;
-        if ( len == -1 ){ client.setTimeout(8000); }
+        /* if ( len == -1 ) */{ client.setTimeout(8000); }
         // (bool *)(unsigned long) timeOut = [](unsigned long start=0){
         //     if ( start != 0 ){
         //         static unsigned long startMs = start;
@@ -106,7 +106,7 @@ namespace CertificateStore {
         //     }
         // };
         // timeOut(millis());  
-        while (  client.connected() && ( len > 0 || len == -1 /* && ! timeOut() */ ) )
+        while (  len > 0 || ( len == -1 && client.connected() /* && ! timeOut() */ ) )
         {
             // get available data size
             size_t size = client.available();
@@ -124,7 +124,7 @@ namespace CertificateStore {
                     len -= c;
                 }
             }
-            delay(0);
+            delay(10);
         }
         delay(1);
         file.close();

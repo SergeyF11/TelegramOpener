@@ -15,7 +15,7 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,0
+#define VERSION 0,1,11
 #include "env.h"
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
