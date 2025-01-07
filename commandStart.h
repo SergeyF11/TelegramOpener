@@ -4,7 +4,7 @@
 #include "core/types/Message.h"
 
 #pragma once
-#define NUL_STR ((char*)0)
+//#define NUL_STR ((char*)0)
 
 #include "myFastBotClient.h"
 //#include "fsSettings.h"

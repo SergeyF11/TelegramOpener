@@ -17,12 +17,25 @@ static const char * SAY_HI_MD PROGMEM = _SAY_HI_MD_;
 #define NTP_SERVERS "ntp1.stratum2.ru" , "ru.pool.ntp.org", "pool.ntp.org"
 #define _TRY_LATTER_ "Что-то пошло не так. Попробуйте ещё раз."
 #define _CHANNEL_FOR_CONTROL_ "Мой канал управления "
+#define NULL_STR (char*)nullptr
+
 static const char * CHANNEL_FOR_CONTROL PROGMEM = _CHANNEL_FOR_CONTROL_;
 static const char * SAY_HI PROGMEM = _SAY_HI_;
 static const char * TRY_LATTER PROGMEM = _TRY_LATTER_;
 
+
 #include "TelegramMD.h"
 
+namespace Url {
+    String _preSlash(const char * s){
+        String out;
+        if( s != nullptr && s[0] != '/' ){
+            out += '/';
+        }
+        out += s;
+        return out;
+    };
+};
 
 namespace Author {
     static const char * firstName PROGMEM = "Sergey";

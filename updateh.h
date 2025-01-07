@@ -345,7 +345,7 @@ void handleCommand(fb::Update& u){
 
               if ( bot.sendMessage(message) ){
                 webPortalMsgId = bot.lastBotMessage();
-                //message.text = NUL_STR;
+                //message.text = NULL_STR;
               }
               break;
               
@@ -363,7 +363,7 @@ void handleCommand(fb::Update& u){
             }
             if ( ! message.text.isEmpty() ){
               debugPrintln( message.text);
-              message.text = NUL_STR;
+              message.text = NULL_STR;
             }
           }
           break;

@@ -1,6 +1,9 @@
 #pragma once
 
-#include <ESP_OTA_GitHub.h>
+//#include <ESP_OTA_GitHub.h>
+#include <ESP8266HTTPClient.h>
+#include <ESP8266httpUpdate.h>
+//#include "downloadCerts.h"
 #include "env.h"
 #include <time.h>
 #include "myFastBotClient.h"
@@ -11,25 +14,72 @@
 
 
 extern BotSettings::Settings settingsNew;
+extern CertStore * certStore;
 extern FastBot2Client bot;
 extern App::Version version;
 extern MenuIds menuIds;
+extern WiFiClientSecure client;
 
 //static String gitVersion = version.toString();
 //static String gitBinFile = App::getBinFile();
 //const static char certs_ar[] PROGMEM ="certs.ar";
 
-extern CertStore* certStore;
-BearSSL::X509List *trustedGitHubRoot;
-ESPOTAGitHub *gitHubUpgrade;
+// extern CertStore* certStore;
+// BearSSL::X509List *trustedGitHubRoot;
+// ESPOTAGitHub *gitHubUpgrade;
+
+// class Url : public String {
+//     public:
+//     Url(){};
+//     Url(String& s){
+//         this->_this = _preSlash( s.c_str() );
+//     };
+//     private:
+//     String _this;
+//     String _preSlash(const char * s){
+//         String out;
+//         if( s != nullptr && s[0] != '/' ){
+//             out += '/';
+//         }
+//         out += s;
+//         return out;
+//     };
+//     String operator +=(){
+
+//     };
+// };
+
+
 
 namespace GitHubUpgrade {
-    static const String appBinFile = App::getBinFile();
+    static const char apiHost[] PROGMEM = "api.github.com";
+    static const char latest[] PROGMEM = "/releases/latest";
+    static const int port = 443;
+    static const char contentType[] PROGMEM = "application/octet-stream";
+
+
+    enum Errors {
+        Ok,
+        No_New_Version,
+        Failed_Connection,
+        No_Valid_Binary,
+        No_Tag_Name,
+        Failed_JSON_Parse,
+        PreRelease_Version,
+    };
+    static Errors _lastErrorCode;
+    char _releaseTag[] = "0.0.0dbg";
+
+    //static const String appBinFile = App::getBinFile();
     
+
+    static const time_t _likeRealTime =  2*24*60*60;
     static bool has = false;
     // static int checkedDay=0;
     //static String latestTag;
     static bool needUpgrade = false;
+    static String _downloadURL = (char *)nullptr;
+
     struct At {
         int weekDay=5;
         int hour=4;
@@ -38,7 +88,7 @@ namespace GitHubUpgrade {
  
         bool checkedDay(const time_t* setDay=nullptr){ 
             const time_t now = time(nullptr);
-            if ( now < 2*24*60*60 ) return false;
+            if ( now < _likeRealTime ) return false;
 
             const tm* nowTime =localtime(&now);
 
@@ -91,89 +141,89 @@ namespace GitHubUpgrade {
     //     if ( all && gitHubUpgrade != nullptr ) { delete(gitHubUpgrade) ; gitHubUpgrade = nullptr; }
     // };
 
-    SecureConnections initOtaUpgrade( FS& fs=LittleFS, const SecureConnections set=SecureConnections::autoTypeConnection ){
-        SecureConnections result = SecureConnections::insecureConnection;
-        if ( set == SecureConnections::autoTypeConnection ){
+//     SecureConnections initOtaUpgrade( FS& fs=LittleFS, const SecureConnections set=SecureConnections::autoTypeConnection ){
+//         SecureConnections result = SecureConnections::insecureConnection;
+//         if ( set == SecureConnections::autoTypeConnection ){
         
-        //debugPrintf("Try to upgrade %s version\n", version.toString().c_str());
+//         //debugPrintf("Try to upgrade %s version\n", version.toString().c_str());
 
-        //Try to set certs store
-        if ( certStore != nullptr ) {
-            debugPrintf("Use existed certs store [%x]\n", certStore );                
-            result = SecureConnections::certsStoreConnection; 
-        } else {
-            if ( fs.begin() && fs.exists( CertStoreFiles::fileData )){
-                certStore = new( BearSSL::CertStore );
-                int numCerts = certStore->initCertStore(fs, CertStoreFiles::fileIdx, CertStoreFiles::fileData);                
-                if ( numCerts != 0 ) {
-                    debugPrintf("Exported %d certificates from %s\n", numCerts, CertStoreFiles::fileData);
-                    result= SecureConnections::certsStoreConnection;       
-                } else {
-                    debugPrintf("Wrong certificate store in file %s\n", CertStoreFiles::fileData );
-                    delete(certStore);
-                    certStore = nullptr;
-                }
-            }
-        } 
+//         //Try to set certs store
+//         if ( certStore != nullptr ) {
+//             debugPrintf("Use existed certs store [%x]\n", certStore );                
+//             result = SecureConnections::certsStoreConnection; 
+//         } else {
+//             if ( fs.begin() && fs.exists( CertStoreFiles::fileData )){
+//                 certStore = new( BearSSL::CertStore );
+//                 int numCerts = certStore->initCertStore(fs, CertStoreFiles::fileIdx, CertStoreFiles::fileData);                
+//                 if ( numCerts != 0 ) {
+//                     debugPrintf("Exported %d certificates from %s\n", numCerts, CertStoreFiles::fileData);
+//                     result= SecureConnections::certsStoreConnection;       
+//                 } else {
+//                     debugPrintf("Wrong certificate store in file %s\n", CertStoreFiles::fileData );
+//                     delete(certStore);
+//                     certStore = nullptr;
+//                 }
+//             }
+//         } 
 
-        // try x509 list 
-#if defined GITHUB_CERTIFICATE_ROOT and defined GITHUB_CERTIFICATE_ROOT1         
-        if ( result == SecureConnections::insecureConnection ){
-            if ( trustedGitHubRoot != nullptr ) result = SecureConnections::x509ListConnection;
-            else {
-                trustedGitHubRoot = new BearSSL::X509List;
-                bool res = false;
-                res = trustedGitHubRoot->append(GITHUB_CERTIFICATE_ROOT );
-                res = res && trustedGitHubRoot->append(GITHUB_CERTIFICATE_ROOT1 );
-                if ( res ){
-                    result = SecureConnections::x509ListConnection;
-                    debugPrintf("Append %u certificate(s)\n", trustedGitHubRoot->getCount() );
-                } else {
-                    debugPrintln("Wrong certificate X509 list" );
-                    delete( trustedGitHubRoot);
-                    trustedGitHubRoot = nullptr;
-                }
-            }
-        }
-#endif
+//         // try x509 list 
+// #if defined GITHUB_CERTIFICATE_ROOT and defined GITHUB_CERTIFICATE_ROOT1         
+//         if ( result == SecureConnections::insecureConnection ){
+//             if ( trustedGitHubRoot != nullptr ) result = SecureConnections::x509ListConnection;
+//             else {
+//                 trustedGitHubRoot = new BearSSL::X509List;
+//                 bool res = false;
+//                 res = trustedGitHubRoot->append(GITHUB_CERTIFICATE_ROOT );
+//                 res = res && trustedGitHubRoot->append(GITHUB_CERTIFICATE_ROOT1 );
+//                 if ( res ){
+//                     result = SecureConnections::x509ListConnection;
+//                     debugPrintf("Append %u certificate(s)\n", trustedGitHubRoot->getCount() );
+//                 } else {
+//                     debugPrintln("Wrong certificate X509 list" );
+//                     delete( trustedGitHubRoot);
+//                     trustedGitHubRoot = nullptr;
+//                 }
+//             }
+//         }
+// #endif
 
 
-        } else {
-            result = set;
-        }
+//         } else {
+//             result = set;
+//         }
         
-        switch (result){
-            case SecureConnections::insecureConnection:
-            debugPrintln("Use insecure GitHub connection");
-            gitHubUpgrade = new  ESPOTAGitHub( 
-                Author::gitHubAka, 
-                App::name, version.toString().c_str(), 
-                appBinFile.c_str(), false );
+//         switch (result){
+//             case SecureConnections::insecureConnection:
+//             debugPrintln("Use insecure GitHub connection");
+//             gitHubUpgrade = new  ESPOTAGitHub( 
+//                 Author::gitHubAka, 
+//                 App::name, version.toString().c_str(), 
+//                 appBinFile.c_str(), false );
             
-            break;
+//             break;
 
-            case SecureConnections::x509ListConnection:
-            //        if ( result == SecureConnections::x509ListConnection ){
-            debugPrintln("Use internal github certificate");
-            gitHubUpgrade = new ESPOTAGitHub( 
-                trustedGitHubRoot, 
-                Author::gitHubAka, 
-                App::name, version.toString().c_str(), 
-                appBinFile.c_str(), false) ;
-            break;
+//             case SecureConnections::x509ListConnection:
+//             //        if ( result == SecureConnections::x509ListConnection ){
+//             debugPrintln("Use internal github certificate");
+//             gitHubUpgrade = new ESPOTAGitHub( 
+//                 trustedGitHubRoot, 
+//                 Author::gitHubAka, 
+//                 App::name, version.toString().c_str(), 
+//                 appBinFile.c_str(), false) ;
+//             break;
 
-            case SecureConnections::certsStoreConnection:
-            gitHubUpgrade = new ESPOTAGitHub(
-                certStore,    
-                Author::gitHubAka, 
-                App::name, version.toString().c_str(), 
-                appBinFile.c_str(), false );
-            break;
-        }
+//             case SecureConnections::certsStoreConnection:
+//             gitHubUpgrade = new ESPOTAGitHub(
+//                 certStore,    
+//                 Author::gitHubAka, 
+//                 App::name, version.toString().c_str(), 
+//                 appBinFile.c_str(), false );
+//             break;
+//         }
 
         
-        return set;
-    };
+//         return set;
+//     };
 
        
     // ESPOTAGitHub gitHubUpgrade( 
@@ -183,39 +233,110 @@ namespace GitHubUpgrade {
     //             gitBinFile.c_str(), false);
                 
     void checkAt(const int weekDay=5, const int hour=4, const int min=0 ){
-        at.set(weekDay, hour, min); //at = At{weekDay, hour, min};
-        // at.weekDay = weekDay;
-        // at.hour = hour;
-        // at.min = min;
+        at.set(weekDay, hour, min); 
     };
 
     bool check(){
-        
-        // ESPOTAGitHub GitHubUpgrade( 
-        //     Author::gitHubAka, 
-        //     App::name, gitVersion.c_str(), 
-        //     gitBinFile.c_str(), false);
-        // auto now = time(nullptr);
-        // if ( now < 2*24*60*60ll ) return false;
-        
-        if( at.checkedDay()) return false;
-        //if (  now < 6000ll || nowTime->tm_yday == checkedDay ) return false;
-        if ( at.isTime() ) {
-        // if ( ( at.weekDay == AnyTime ||  nowTime->tm_wday == at.weekDay ) &&
-        //     ( at.hour == AnyTime || nowTime->tm_hour == at.hour ) && 
-        //     ( at.min == AnyTime || nowTime->tm_min == at.min )) {
+        if( at.checkedDay() || ( ! at.isTime() )) return false;
+        //if ( at.isTime() ) {   
+        if ( ! has ) {
+                // WiFiClientSecure client;
+                // if ( certStore != nullptr ) {
+                //     client.setCertStore( certStore );
+                //     debugPrintln("Certs store GiyHub connection");
+                // } else {
+                //     client.setInsecure();
+                //     debugPrintln("Insecure GiyHub connection");
+                // }
+                String url( F("/repos/")); 
+                url += Author::gitHubAka;
+                url += Url::_preSlash( App::name );
+                url += latest;
+                HTTPClient http;
+                if ( http.begin(client, apiHost, port, url, /*https=*/true )){
+                    
+                    int httpCode = http.GET();
+                    debugPretty;
+                    debugPrintf("Get %s:%d %s\n\tResult: %d\n", apiHost, port, url.c_str(), httpCode);
+                    
+                    if ( httpCode == HTTP_CODE_OK ){
+                        
+                        //debugPrintf("getString: \'%s\'\n", http.getString().c_str() );
+                        gson::Parser doc;
+                        if ( doc.parse( http.getString() ) && doc.has("tag_name")){
+                            doc["tag_name"].toStr(_releaseTag);  //toString();
+                            String release_name = doc["name"].toString();
+                            bool release_prerelease = doc["prerelease"].toBool();
+                            
+                            //if (strcmp(_releaseTag, _currentTag) != 0) {
+                                if (!_preRelease) {
+                                    if (release_prerelease) {
+                                        _lastErrorCode = Errors::PreRelease_Version; //F("Latest release is a pre-release and GHOTA_ACCEPT_PRERELEASE is set to false.");
+                                        return false;
+                                    }
+                                }
+                            //}
+                            
+                            if ( doc.has("assets") && doc["assets"].isArray() ){ //&& doc["assets"].isArray() ){
+                                int i = 0;
+                                bool valid_asset = false;
+                                
+                                while(  doc["assets"][i].isObject() ){
+                                
+                                    String asset_type = doc["assets"][i]["content_type"].toString();
+                                    String asset_name = doc["assets"][i]["name"].toString();
+                                    String asset_url =  doc["assets"][i]["browser_download_url"].toString();
+                                    //releaseNote = doc["name"].toString();
+                                        
+                                    if (strcmp(asset_type.c_str(), contentType) == 0 && strcmp(asset_name.c_str(), App::getBinFile().c_str() ) == 0) {
+                                        _downloadURL = asset_url;
+                                        valid_asset = true;
+                                        break;
+                                    } else {
+                                        valid_asset = false;
+                                    }
+                                    i++;
+                                }
+                                //doc.reset();
+                                if (valid_asset) {
+                                    _lastErrorCode = Errors::Ok;
+                                    //result = true;
+                                    //return true;
+                                } else {
+                                    _lastErrorCode = Errors::No_Valid_Binary; //F("No valid binary found for latest release.");
+                                    //return false;
+                                }
+                            } else {
+                                _lastErrorCode = Errors::No_Tag_Name;
+                            }
+                    } else {
+                        _lastErrorCode = Errors::Failed_JSON_Parse;
+                    }
+
+                } else {
+                    _lastErrorCode = Errors::Failed_Connection;
+                }
+                // initOtaUpgrade(LittleFS, SecureConnections::insecureConnection);
+                // has = gitHubUpgrade->checkUpgrade();
             
-            if ( ! has ) {
-                initOtaUpgrade(LittleFS, SecureConnections::insecureConnection);
-                has = gitHubUpgrade->checkUpgrade();
             } else {
                 debugPrint("Prechecked version ");
-                debugPrintln( gitHubUpgrade->getLatestTag() );
+                debugPrintln( _releaseTag ); //gitHubUpgrade->getLatestTag() );
             }
+
+            if ( _lastErrorCode == Errors::Ok ) {
+                has = true;
+            } else {
+                debugPretty;
+                debugPrint("Error:");
+                debugPrintln( _lastErrorCode );    
+                return false;
+            } 
+
             auto now = time( nullptr);
             at.checkedDay( &now );
             
-            App::Version gitHubV(gitHubUpgrade->getLatestTag());
+            App::Version gitHubV( _releaseTag ); //gitHubUpgrade->getLatestTag());
             debugPrintf("GitHub newest version is %s\n", gitHubV.toString().c_str());
 
             if ( ! ( gitHubV > version ) ) {
@@ -237,35 +358,76 @@ namespace GitHubUpgrade {
             if ( has ) {
                 // latestTag = GitHubUpgrade.getLatestTag();
                 debugPretty; 
-                debugPrintln(gitHubUpgrade->getLatestTag() );
+                debugPrintln( _releaseTag ); //gitHubUpgrade->getLatestTag() );
                 // downloadUrl =  GitHubUpgrade.getUpgradeURL();
-               
+                
             } else {    
                 debugPretty;
                 // error = GitHubUpgrade.getLastError();
-                debugPrintln(gitHubUpgrade->getLastError());
-
+                debugPrint("Error:" );// gitHubUpgrade->getLastError());
+                debugPrintln( _lastErrorCode );
             }
-
         }
         return has;
+//    }
+
+    //     return has;
+    // } else 
+    //     return false;
     };
 
     String tag(){
-        if ( has ) return gitHubUpgrade->getLatestTag(); //latestTag;
+        if ( has ) return String(_releaseTag ); //gitHubUpgrade->getLatestTag(); //latestTag;
         return NULL_STR;
     };
 
     bool doIt(){
         if ( has ){
-            has = ! gitHubUpgrade->doUpgrade();
-            return ! has;
+            //has = ! gitHubUpgrade->doUpgrade();
+            // WiFiClientSecure client;
+            // if ( certStore != nullptr ) {
+            //     certStore->initCertStore( LittleFS, CertStoreFiles::fileIdx, CertStoreFiles::fileData);
+            //     client.setCertStore( certStore );
+            //     debugPrintln("Certs store GiyHub connection");
+            // } else {
+            //     client.setInsecure();
+            //     debugPrintln("Insecure GiyHub connection");
+            // }
+            // bool mfln = client.probeMaxFragmentLength( apiHost, port, 1024);
+            // if (mfln) {
+            //     client.setBufferSizes(1024, 1024);
+            // }
+            
+            ESPhttpUpdate.setClientTimeout(8000);
+            ESPhttpUpdate.setLedPin(LED_BUILTIN, LOW);
+            ESPhttpUpdate.rebootOnUpdate(false);
+            ESPhttpUpdate.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+
+            debugPretty;
+            debugPrintf("Update %s\n", _downloadURL.c_str() );
+
+            t_httpUpdate_return ret = ESPhttpUpdate.update( client, _downloadURL) ;
+            if ( ret == HTTP_UPDATE_OK ) {
+                has = ! has;
+                return ! has;
+            } else {
+                debugPretty;
+                debugPrintf("Error: %d\n", ret );
+            }
         }
         return has;
     };
 
     String Error(){
-        return gitHubUpgrade->getLastError();
+        String out;
+        switch (_lastErrorCode) {
+            case Errors::Ok:
+            break;
+
+            default:
+            out += _lastErrorCode;
+        }
+        return out; //gitHubUpgrade->getLastError();
     };
 
 //void tick( FastBot2& bot,const BotSettings::Settings& settingsNew){
