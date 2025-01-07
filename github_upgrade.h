@@ -266,15 +266,17 @@ namespace GitHubUpgrade {
                         if ( doc.parse( http.getString() ) && doc.has("tag_name")){
                             doc["tag_name"].toStr(_releaseTag);  //toString();
                             String release_name = doc["name"].toString();
-                            bool release_prerelease = doc["prerelease"].toBool();
+                            bool prerelease = doc["prerelease"].toBool();
                             
                             //if (strcmp(_releaseTag, _currentTag) != 0) {
-                                if (!_preRelease) {
-                                    if (release_prerelease) {
-                                        _lastErrorCode = Errors::PreRelease_Version; //F("Latest release is a pre-release and GHOTA_ACCEPT_PRERELEASE is set to false.");
-                                        return false;
-                                    }
+                            //    if (!_preRelease) {
+                            #if not defined debug_print
+                                if (prerelease) {
+                                    _lastErrorCode = Errors::PreRelease_Version; //F("Latest release is a pre-release and GHOTA_ACCEPT_PRERELEASE is set to false.");
+                                    return false;
                                 }
+                            #endif
+                            //    }
                             //}
                             
                             if ( doc.has("assets") && doc["assets"].isArray() ){ //&& doc["assets"].isArray() ){
