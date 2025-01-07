@@ -1,5 +1,5 @@
- #define debug_print 1
- #define GitHubUpgrade_ANY_TIME
+// #define debug_print 1
+// #define GitHubUpgrade_ANY_TIME
 
 #define WIFI_POWER 5.0
 

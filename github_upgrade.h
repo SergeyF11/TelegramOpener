@@ -270,12 +270,12 @@ namespace GitHubUpgrade {
                             
                             //if (strcmp(_releaseTag, _currentTag) != 0) {
                             //    if (!_preRelease) {
-                            #if not defined debug_print
-                                if (prerelease) {
-                                    _lastErrorCode = Errors::PreRelease_Version; //F("Latest release is a pre-release and GHOTA_ACCEPT_PRERELEASE is set to false.");
-                                    return false;
-                                }
-                            #endif
+                            // #if not defined debug_print
+                            //     if (prerelease) {
+                            //         _lastErrorCode = Errors::PreRelease_Version; //F("Latest release is a pre-release and GHOTA_ACCEPT_PRERELEASE is set to false.");
+                            //         return false;
+                            //     }
+                            // #endif
                             //    }
                             //}
                             
