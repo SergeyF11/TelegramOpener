@@ -121,9 +121,9 @@ static const char * _started = portalStarted +20;
 static const char  portalClosed[] PROGMEM = "Портал закрыт";
 
 static const char  rebootMsg[] PROGMEM = "Reboot...";
-static const char rawContent[] PROGMEM = "/refs/heads/main/README_rus.pdf";
+//static const char rawContent[] PROGMEM = "/refs/heads/main/README_rus.pdf";
 //                                        0123456789ABCDEFgh == 17    
-static const char * pdfRu = rawContent +17;
+static const char * pdfRu = "README_rus.pdf"; //rawContent +17;
 
 
 void handleCommand(fb::Update& u){
@@ -153,11 +153,11 @@ void handleCommand(fb::Update& u){
             // pdf += F("/blob/main/README_rus.pdf");
             // fb::File help( "README_rus.pdf", fb::File::Type::document, 
             //   pdf.c_str() ); 
-            String pdf = App::getRawContent(rawContent);//"/refs/heads/main/README_rus.pdf");
+            String pdfPath = App::getRawContent(pdfRu);//"/refs/heads/main/README_rus.pdf");
             debugPretty;
             fb::File help( pdfRu, //"README_rus.pdf", 
               fb::File::Type::document, 
-              pdf.c_str());
+              pdfPath.c_str());
             
             help.chatID = message.chatID;
             bot.sendFile( help, false);

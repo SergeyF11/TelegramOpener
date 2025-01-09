@@ -135,103 +135,7 @@ namespace GitHubUpgrade {
         autoTypeConnection,
     };
  
-    // void OtaClean(bool all=false){
-    //     if ( certStore != nullptr ) { delete(certStore); certStore = nullptr; }
-    //     if ( trustedGitHubRoot != nullptr ) { delete(trustedGitHubRoot); trustedGitHubRoot = nullptr; }
-    //     if ( all && gitHubUpgrade != nullptr ) { delete(gitHubUpgrade) ; gitHubUpgrade = nullptr; }
-    // };
-
-//     SecureConnections initOtaUpgrade( FS& fs=LittleFS, const SecureConnections set=SecureConnections::autoTypeConnection ){
-//         SecureConnections result = SecureConnections::insecureConnection;
-//         if ( set == SecureConnections::autoTypeConnection ){
-        
-//         //debugPrintf("Try to upgrade %s version\n", version.toString().c_str());
-
-//         //Try to set certs store
-//         if ( certStore != nullptr ) {
-//             debugPrintf("Use existed certs store [%x]\n", certStore );                
-//             result = SecureConnections::certsStoreConnection; 
-//         } else {
-//             if ( fs.begin() && fs.exists( CertStoreFiles::fileData )){
-//                 certStore = new( BearSSL::CertStore );
-//                 int numCerts = certStore->initCertStore(fs, CertStoreFiles::fileIdx, CertStoreFiles::fileData);                
-//                 if ( numCerts != 0 ) {
-//                     debugPrintf("Exported %d certificates from %s\n", numCerts, CertStoreFiles::fileData);
-//                     result= SecureConnections::certsStoreConnection;       
-//                 } else {
-//                     debugPrintf("Wrong certificate store in file %s\n", CertStoreFiles::fileData );
-//                     delete(certStore);
-//                     certStore = nullptr;
-//                 }
-//             }
-//         } 
-
-//         // try x509 list 
-// #if defined GITHUB_CERTIFICATE_ROOT and defined GITHUB_CERTIFICATE_ROOT1         
-//         if ( result == SecureConnections::insecureConnection ){
-//             if ( trustedGitHubRoot != nullptr ) result = SecureConnections::x509ListConnection;
-//             else {
-//                 trustedGitHubRoot = new BearSSL::X509List;
-//                 bool res = false;
-//                 res = trustedGitHubRoot->append(GITHUB_CERTIFICATE_ROOT );
-//                 res = res && trustedGitHubRoot->append(GITHUB_CERTIFICATE_ROOT1 );
-//                 if ( res ){
-//                     result = SecureConnections::x509ListConnection;
-//                     debugPrintf("Append %u certificate(s)\n", trustedGitHubRoot->getCount() );
-//                 } else {
-//                     debugPrintln("Wrong certificate X509 list" );
-//                     delete( trustedGitHubRoot);
-//                     trustedGitHubRoot = nullptr;
-//                 }
-//             }
-//         }
-// #endif
-
-
-//         } else {
-//             result = set;
-//         }
-        
-//         switch (result){
-//             case SecureConnections::insecureConnection:
-//             debugPrintln("Use insecure GitHub connection");
-//             gitHubUpgrade = new  ESPOTAGitHub( 
-//                 Author::gitHubAka, 
-//                 App::name, version.toString().c_str(), 
-//                 appBinFile.c_str(), false );
-            
-//             break;
-
-//             case SecureConnections::x509ListConnection:
-//             //        if ( result == SecureConnections::x509ListConnection ){
-//             debugPrintln("Use internal github certificate");
-//             gitHubUpgrade = new ESPOTAGitHub( 
-//                 trustedGitHubRoot, 
-//                 Author::gitHubAka, 
-//                 App::name, version.toString().c_str(), 
-//                 appBinFile.c_str(), false) ;
-//             break;
-
-//             case SecureConnections::certsStoreConnection:
-//             gitHubUpgrade = new ESPOTAGitHub(
-//                 certStore,    
-//                 Author::gitHubAka, 
-//                 App::name, version.toString().c_str(), 
-//                 appBinFile.c_str(), false );
-//             break;
-//         }
-
-        
-//         return set;
-//     };
-
-       
-    // ESPOTAGitHub gitHubUpgrade( 
-    //              &trustedGitHubRoot, 
-    //             Author::gitHubAka, 
-    //             App::name, gitVersion.c_str(), 
-    //             gitBinFile.c_str(), false);
-                
+                   
     void checkAt(const int weekDay=5, const int hour=4, const int min=0 ){
         at.set(weekDay, hour, min); 
     };
@@ -240,14 +144,7 @@ namespace GitHubUpgrade {
         if( at.checkedDay() || ( ! at.isTime() )) return false;
         //if ( at.isTime() ) {   
         if ( ! has ) {
-                // WiFiClientSecure client;
-                // if ( certStore != nullptr ) {
-                //     client.setCertStore( certStore );
-                //     debugPrintln("Certs store GiyHub connection");
-                // } else {
-                //     client.setInsecure();
-                //     debugPrintln("Insecure GiyHub connection");
-                // }
+
                 String url( F("/repos/")); 
                 url += Author::gitHubAka;
                 url += Url::_preSlash( App::name );
@@ -267,18 +164,7 @@ namespace GitHubUpgrade {
                             doc["tag_name"].toStr(_releaseTag);  //toString();
                             String release_name = doc["name"].toString();
                             bool prerelease = doc["prerelease"].toBool();
-                            
-                            //if (strcmp(_releaseTag, _currentTag) != 0) {
-                            //    if (!_preRelease) {
-                            // #if not defined debug_print
-                            //     if (prerelease) {
-                            //         _lastErrorCode = Errors::PreRelease_Version; //F("Latest release is a pre-release and GHOTA_ACCEPT_PRERELEASE is set to false.");
-                            //         return false;
-                            //     }
-                            // #endif
-                            //    }
-                            //}
-                            
+                                                       
                             if ( doc.has("assets") && doc["assets"].isArray() ){ //&& doc["assets"].isArray() ){
                                 int i = 0;
                                 bool valid_asset = false;
@@ -318,8 +204,6 @@ namespace GitHubUpgrade {
                 } else {
                     _lastErrorCode = Errors::Failed_Connection;
                 }
-                // initOtaUpgrade(LittleFS, SecureConnections::insecureConnection);
-                // has = gitHubUpgrade->checkUpgrade();
             
             } else {
                 debugPrint("Prechecked version ");
@@ -385,20 +269,6 @@ namespace GitHubUpgrade {
 
     bool doIt(){
         if ( has ){
-            //has = ! gitHubUpgrade->doUpgrade();
-            // WiFiClientSecure client;
-            // if ( certStore != nullptr ) {
-            //     certStore->initCertStore( LittleFS, CertStoreFiles::fileIdx, CertStoreFiles::fileData);
-            //     client.setCertStore( certStore );
-            //     debugPrintln("Certs store GiyHub connection");
-            // } else {
-            //     client.setInsecure();
-            //     debugPrintln("Insecure GiyHub connection");
-            // }
-            // bool mfln = client.probeMaxFragmentLength( apiHost, port, 1024);
-            // if (mfln) {
-            //     client.setBufferSizes(1024, 1024);
-            // }
             
             ESPhttpUpdate.setClientTimeout(8000);
             ESPhttpUpdate.setLedPin(LED_BUILTIN, LOW);
@@ -440,14 +310,8 @@ void tick(){
         debugPrintln("Delete old menu");
         auto res = bot.deleteMessage(settingsNew.getAdminId(),  menuIds.getUpgradeId(settingsNew.getAdminId()));
         debugBotResult(res, "Delete old menu");
-        // if ( res.valid() ){
-        //     debugPrintln("deleted");
-        // } else {
-        //     debugPrintln( "ERROR: delete old menu");
-        // }
       }
-        // String menu(F("up;ig~"));
-        // menu += GitHubUpgrade::tag();
+
       fb::InlineMenu menu(F("Обновить;Пропустить"), F("up;ig"));
 
       String buf(F("Текущая версия `"));

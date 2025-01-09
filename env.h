@@ -41,6 +41,7 @@ namespace Author {
     static const char * firstName PROGMEM = "Sergey";
     static const char * secondName PROGMEM = "Fedotov";
     static const char * gitHubAka PROGMEM = "SergeyF11";
+       
     String getName(){
         String name(firstName);
         name += ' ';
@@ -58,6 +59,10 @@ namespace Author {
 };
 namespace App {
     static const char * name PROGMEM = "TelegramOpener";
+//    static const char dataCerts[] PROGMEM = "data/certs.ar";
+    static const char GITHUB_IO_FINGERPRINT[] PROGMEM = "97:D8:C5:70:0F:12:24:6C:88:BC:FA:06:7E:8C:A7:4D:A8:62:67:28";
+    const int gitHubPort = 443;
+
     struct Version {
         //private:
         uint8_t high = 0;
@@ -205,12 +210,18 @@ namespace App {
         out += App::name;
         return out;
     };
-    String getRawContent(const char * suffix){
-        String out( F("https://raw.githubusercontent.com/"));
+    static const char gitHubUserContent[] PROGMEM = "https://raw.githubusercontent.com";
+    static const char * gitHubUserContentHost = gitHubUserContent + 8;
+
+    String getRawContent(const char * fileName, bool host=true){
+        String out;
+        if(  host ) out += gitHubUserContent;
+        out += '/';
         out += Author::gitHubAka;
         out += '/';
         out += App::name;
-        out += suffix;
+        out += F("/refs/heads/main/");
+        out += fileName;
         return out;
         //SergeyF11/TelegramOpener/refs/heads/main/README_rus.pdf"))
     }

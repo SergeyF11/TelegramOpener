@@ -11,7 +11,9 @@
 //#include <ESP8266HTTPClient.h>
 
 namespace CertStoreFiles {
-    const char fileData[] PROGMEM = "/certs.ar";
+    const char dataCerts[] PROGMEM = "data/certs.ar";
+    ///"certs.ar"
+    const char * fileData = dataCerts+4; //"/certs.ar";
     const char fileIdx[] PROGMEM = "/certs.idx";
 };
 namespace CertificateStore { 
@@ -21,15 +23,9 @@ namespace CertificateStore {
         noConnect,
         errorFile,
         notFound,
+        noContent,
     };
-    namespace myLink {
-    //static const char proto[] PROGMEM = "https://";
-    static const char host[] PROGMEM = "raw.githubusercontent.com";
-    //static const char path[] PROGMEM = "/SergeyF11/TelegramOpener/refs/heads/main/data/certs.ar";
-    static const char path[] PROGMEM = "/refs/heads/main/data/certs.ar";
-    const int port = 443;
-    };
-    
+
     Errors download(FS& fs, const char * fileName = CertStoreFiles::fileData ){
         //bool res = false;
         debugPretty;
@@ -43,101 +39,69 @@ namespace CertificateStore {
         certsList.append(GITHUB_CERTIFICATE_ROOT1);
         client.setTrustAnchors(&certsList);
 #else
-        client.setInsecure();
+        client.setFingerprint(App::GITHUB_IO_FINGERPRINT);
+        //client.setInsecure();
 #endif
-        bool mfln = client.probeMaxFragmentLength( myLink::host, myLink::port, 1024);
+        bool mfln = client.probeMaxFragmentLength( App::gitHubUserContentHost, App::gitHubPort, 1024);
         if (mfln) {
             client.setBufferSizes(1024, 1024);
         }
         client.setTimeout(1500);
 
-        if (! client.connect( myLink::host, myLink::port) ) return Errors::noConnect;
+        if (! client.connect( App::gitHubUserContentHost, App::gitHubPort) ) return Errors::noConnect;
 
 #if defined GITHUB_CERTIFICATE_ROOT and defined GITHUB_CERTIFICATE_ROOT1        
         debugPrintf("Client connected to %s with %d certificates\n", myLink::host, certsList.getCount());
 #else
-        debugPrintf("Client connected to %s with insecure connection\n", myLink::host );
+        debugPrintf("Client connected to %s with fingerprint checking\n", App::gitHubUserContentHost );
 #endif
-                // String url( Url::_preSlash(Author::gitHubAka) ); 
-                // url += Url::_preSlash( App::name );
-                // url += myLink::path;
-                // HTTPClient http;
-                // http.setTimeout(8000);
 
-                // if ( http.begin(client, myLink::host, myLink::port, url, /*https=*/true )){
-                    
-                //     int httpCode = http.GET();
-                //     debugPretty;
-                //     debugPrintf("Get %s:%d %s\n\tResult: %d\n", myLink::host, myLink::port, url.c_str(), httpCode);
-                    
-                //     if ( httpCode == HTTP_CODE_OK ){
-                      
+        const char * tmpFile = fileName +3;
+        if ( fs.exists( tmpFile) ) fs.remove( tmpFile);
+        auto file = fs.open(tmpFile, "w+"); 
+        if( ! file ) return Errors::errorFile;
 
-    //    ESPOTAGitHub::_HTTPget(client, myLink::host, Author::gitHubAka, App::name ,myLink::path, nullptr );
-    client.print(F("GET ")); /* client.print(myLink::proto );
-    client.print( myLink::host ); */ 
-    client.print( Url::_preSlash( Author::gitHubAka));
-    client.print( Url::_preSlash( App::name ));
-    client.print(myLink::path);
-    client.print(F(" HTTP/1.1\r\n"));
-    client.print(F("Host: ") ); client.println( myLink::host );
-    client.println(F("User-Agent: ESP8266"));
-    client.println(F("Connection: close\r\n"));
+    debugPrintMemory;
+    runStart;
 
-    const char * tmpFile = fileName +3;
-    if ( fs.exists( tmpFile) ) fs.remove( tmpFile);
-    auto file = fs.open(tmpFile, "w+"); 
-    if( ! file ) return Errors::errorFile;
-    
-                        // int len = http.getSize();
-                        // int length = len;
-                        // debugPrintf("Length:%d\n", len);
+    client.println( String(F("GET ")) + App::getRawContent( CertStoreFiles::dataCerts, /*host=*/false) +F(" HTTP/1.1\r\n"
+                    "Host: ") + App::gitHubUserContentHost + F("\r\n"
+                    "User-Agent: ESP8266\r\n"
+                    "Connection: close\r\n"));
+    // client.println( String(F("GET "
+    //                 "/")) + Author::gitHubAka + "/" + App::name + myLink::path +F(" HTTP/1.1\r\n"
+    //                 "Host: ") + myLink::host + F("\r\n"
+    //                 "User-Agent: ESP8266\r\n"
+    //                 "Connection: close\r\n"));
+    printRunTime;
+    debugPrintMemory;
 
-                        // uint8_t buff[1024] = { 0 };
-                        // size_t writed = 0;
-
-                        // auto stream = http.getStream();
-
-                        // size_t size = 1;
-
-                        //     if (size)
-                        //     {
-                        //         // read up to 1024 byte
-                        //         int c = client.readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-
-                        // while ( len > 0 || ( len == -1 && size > 0  )){
-                        // //     // get available data size
-                        //     size_t size = stream.available();
-                        //     digitalWrite( BUILTIN_LED, !digitalRead( BUILTIN_LED));
-                        //     if (size)
-                        //     {
-                        //         // read up to 1024 byte
-                        //         int c = stream.readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-                        //         //debugPrintf("Availible %d, readed %d\n", size, c);
-                                
-                        //         // write it to file
-                        //         writed += file.write(buff, c);
-
-                        //         if (len > 0)
-                        //         {
-                        //             len -= c;
-                        //         }
-                        //     }
-                        //     delay(10);
-                        // }
-                        // delay(1);
-                        // file.close();
-                    
-                        
-        int len;
+        int len = -1;
         int httpCode;
         String httpError;
+        bool contentOctetStream = false;
+
+        auto getHeader = [](const char * header, String& s){
+            int headerLen = strlen(header);
+            if ( s.substring(0,headerLen).equalsIgnoreCase( header) ){
+                s = s.substring(headerLen+1);
+                s.trim();
+                s.toLowerCase();
+                debugPrintf("Header: %s , value: \'%s\'\n", header, s.c_str());
+                return true;
+            }
+            return false;
+        };
 
         while (client.connected()) {
             String response = client.readStringUntil('\n');
             //debugPrintln(response);
-            if ( response.substring(0,15).equalsIgnoreCase(F("content-length:"))) {
-	          	len = response.substring(15).toInt();
+            if ( getHeader( PSTR("content-type"), response )){
+                if( response.endsWith(F("octet-stream")))
+                    contentOctetStream = true;
+            }
+            if ( getHeader( PSTR("content-length"), response )) {
+	          	len = response.toInt();
 	        }
             if ( response.startsWith(F("HTTP/1.1")) ){
                 
@@ -154,31 +118,17 @@ namespace CertificateStore {
         } else {
             debugPrintf("Response: %d %s\n", httpCode, httpError);
         }
-        uint8_t buff[1024] = { 0 };
+        if ( ! contentOctetStream || len == 0 ){
+            debugPrintf("No Content: octed=%s, len = %d\n", contentOctetStream ? "true":"false", len );
+            return Errors::noContent;
+        }
+        uint8_t buff[512] = { 0 };
         size_t writed = 0;
         int length = len;
         /* if ( len == -1 ) */{ client.setTimeout(8000); }
-        // (bool *)(unsigned long) timeOut = [](unsigned long start=0){
-        //     if ( start != 0 ){
-        //         static unsigned long startMs = start;
-        //         return true;
-        //     } else {
-        //         return millis()-startMs >= start;
-        //     }
-        // };
-        // timeOut(millis()); 
-        
-        // auto ledTogle = [](int period){
-        //     static uint8_t status = HIGH;
-        //     static auto changeMs = millis();
-        //     if ( millis() - changeMs >= period ){
-        //         status = ! status;
-        //         digitalWrite( BUILTIN_LED, status );
-        //         changeMs = millis();
-        //     }
-        // }; 
+ 
         auto ledTogle = [](void){
-            static uint8_t status = HIGH;
+            static uint8_t status = LOW;
             digitalWrite( BUILTIN_LED, status );
             status = ! status;
         };
@@ -200,11 +150,9 @@ namespace CertificateStore {
                 {
                     len -= c;
                 }
-                //digitalWrite( BUILTIN_LED, !digitalRead( BUILTIN_LED));
+
                 ledTogle();
-            } /* else {
-                delay(10);
-            } */
+            } 
             delay(0);
         }
         delay(1);

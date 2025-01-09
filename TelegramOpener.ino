@@ -1,5 +1,5 @@
-// #define debug_print 1
-// #define GitHubUpgrade_ANY_TIME
+ #define debug_print 1
+ #define GitHubUpgrade_ANY_TIME
 
 #define WIFI_POWER 5.0
 
@@ -15,7 +15,7 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,12
+#define VERSION 0,1,1
 #include "env.h"
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
