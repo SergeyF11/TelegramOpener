@@ -116,7 +116,7 @@ void handleDocument(fb::Update& u) {
 static const char webPortal[] PROGMEM = "Веб портал"; 
 static const char  portalStarted[] PROGMEM = "Captive портал запущен...";
 //                                            0123456789ABCDEF
-static const char * _portalStarted = portalStarted +7;
+//static const char * _portalStarted = portalStarted +7;
 static const char * _started = portalStarted +20;
 static const char  portalClosed[] PROGMEM = "Портал закрыт";
 
@@ -178,13 +178,54 @@ void handleCommand(fb::Update& u){
           break;
         case "/sysinfo"_h:
           if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
+            // AddedString text(message.text);
+            // text.setDelimeter('/');
+            // text << F("CPU freq ") << ESP.getCpuFreqMHz() << 
+            //         F("MHz\nFree heap=") << ESP.getFreeHeap();
+            // debugPrintf("AddedString result: \'%s\'\n", message.text.c_str());
+
             message.mode = fb::Message::Mode::Text;
-            message.text = F("CPU freq ");
-            message.text += ESP.getCpuFreqMHz();
-            message.text += F("MHz\nFree heap=");
-            message.text += ESP.getFreeHeap();
-            message.text += F("\nMax free block=");
-            message.text += ESP.getMaxFreeBlockSize();
+           auto _mode = [](const int m){
+              switch( m ){
+                case FM_QIO:
+                  return PSTR("QIO");
+                case FM_QOUT:
+                  return PSTR("QOUT");
+                case FM_DIO:
+                  return PSTR("DIO");
+                case FM_DOUT:
+                  return PSTR("DOUT");
+              }
+              return PSTR("UNKNOWN");
+            };            
+            auto sizeKb = [](const unsigned int size){ return String(size/1024)+F("kB"); };
+
+            #define MT(x,y)  { message.text += F(x); message.text += (y); }
+              MT("CPU freq ", ESP.getCpuFreqMHz());
+              MT("MHz\nFree heap=", ESP.getFreeHeap());
+              MT("\nMax free block=", ESP.getMaxFreeBlockSize());
+              // {
+              //   auto id = String(ESP.getChipId(), HEX);
+              //   id.toUpperCase();
+              //   MT("\nChip Id: ",id) ;
+              //   id = String(ESP.getFlashChipId(),HEX);
+              //   id.toUpperCase();
+              //   MT("\nFlash chip Id: ", id);            
+              // }
+              
+              MT("\nChip Id: ",String(ESP.getChipId(), HEX));
+              MT("\nFlash Id: ",  String(ESP.getFlashChipId(),HEX));
+              MT("\n  mode: ", _mode(ESP.getFlashChipMode()) );
+              MT("\n  size=", sizeKb(ESP.getFlashChipRealSize()) );
+              MT("\nReset Resason: ",ESP.getResetReason());
+              MT("\nCore version: ", ESP.getCoreVersion());
+              MT("\nSDK version: ",ESP.getSdkVersion ());
+              MT("\nSketch version: ", App::appVersion(version, __DATE__,__TIME__));
+              MT("\n  size=", sizeKb(ESP.getSketchSize()) );
+              MT("\n  MD5=",ESP.getSketchMD5());
+            //MT("\nFull version ",ESP.getFullVersion());
+            #undef MT(x,y) 
+
             printMemory.needPrint();
           }
           break;
@@ -521,8 +562,7 @@ void updateh(fb::Update& u) {
 
       } else if( resp.startsWith( "up" )) {
         // do GitHub upgrade
-        GitHubUpgrade::needUpgrade = true;
-        
+        GitHubUpgrade::needUpgrade = true;  
       } else if ( resp.startsWith( "ig" )){
           menuIds.set("ignore", GitHubUpgrade::tag() );
           if ( menuIds.getUpgradeId(settingsNew.getAdminId()) != 0)

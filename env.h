@@ -26,15 +26,74 @@ static const char * TRY_LATTER PROGMEM = _TRY_LATTER_;
 
 #include "TelegramMD.h"
 
-namespace Url {
-    String _preSlash(const char * s){
-        String out;
-        if( s != nullptr && s[0] != '/' ){
-            out += '/';
-        }
-        out += s;
-        return out;
+
+
+class AddedString : public String {
+    private:
+        String * s;
+        char _delimeter = '\0';
+        AddedString _concat(const char * _s){
+            if ( _delimeter != '\0' && _s != nullptr && _s[0] != _delimeter ) {
+                *s += _delimeter; 
+            } 
+            *s += _s;
+            return *this;    
+        };
+    public:
+    //AddedString(){};
+    AddedString(String& _s) : s(&_s) {};
+    void setDelimeter(const char d){
+        _delimeter = d;
     };
+
+    AddedString operator<<(const char * _s){
+        return _concat(_s);
+    };
+    AddedString operator<<(const String& _s){
+        return _concat(_s.c_str());
+        
+    };
+    AddedString operator<<(const unsigned int _s){
+        return _concat(String(_s).c_str());
+        //return *this;
+    };
+    AddedString operator<<(const int _s){
+        return _concat(String(_s).c_str());
+        //return *this;
+    };
+
+    // template <typename T>
+    // AddedString *operator<<(const T &rhs) {
+    //         concat(rhs);
+    //         return this;
+    //     };
+
+    //  operator String() const {
+    //     return *this;
+    // };
+    // AddedString * operator<<(const char * _s){
+    //     this->s += _s;
+    //     return this;
+    // };
+};
+
+namespace Url {
+    //String& slah(const char * s){};
+    String& slash(String& s, const char * add){
+        if( add != nullptr && add[0] != '/' ){
+            s += '/';
+        }
+        s += add;
+        return s;
+    };
+    // String _preSlash(const char * s){
+    //     String out;
+    //     if( s != nullptr && s[0] != '/' ){
+    //         out += '/';
+    //     }
+    //     out += s;
+    //     return out;
+    // };
 };
 
 namespace Author {
@@ -206,8 +265,8 @@ namespace App {
     String getHomePage(){
         String out(F("https://github.com/"));
         out += Author::gitHubAka;
-        out += '/';
-        out += App::name;
+        //out += '/';
+        /* out += */ Url::slash(out, App::name );
         return out;
     };
     static const char gitHubUserContent[] PROGMEM = "https://raw.githubusercontent.com";
@@ -216,12 +275,13 @@ namespace App {
     String getRawContent(const char * fileName, bool host=true){
         String out;
         if(  host ) out += gitHubUserContent;
-        out += '/';
-        out += Author::gitHubAka;
-        out += '/';
-        out += App::name;
-        out += F("/refs/heads/main/");
-        out += fileName;
+//        out += '/';
+        Url::slash( out, Author::gitHubAka);
+        //out += '/';
+        Url::slash( out, App::name );
+        Url::slash( out, PSTR("refs/heads/main"));
+        //out += F("/refs/heads/main");
+        Url::slash( out,fileName );
         return out;
         //SergeyF11/TelegramOpener/refs/heads/main/README_rus.pdf"))
     }

@@ -333,9 +333,6 @@ void loop(){
   bot.tick();
   menuIds.tick();
 
-  myButton.tick( settingsNew );
-
-  
   if ( bot.canReboot() ) {
     debugPrintln("Reboot esp...");
     Serial.flush();
@@ -343,12 +340,11 @@ void loop(){
     ESP.restart(); 
   }
 
-
-  if ( ! bot.isPolling() ) {
+  if ( bot.isPolling() ) {
+    myButton.tick( settingsNew );
+  } else {
     GitHubUpgrade::tick( );
-    //GitHubUpgrade::OtaClean(true);
-  }  
-
+  }
  
   switch ( needStart )
     {
@@ -389,6 +385,7 @@ void loop(){
       break;
     case NeedStart::WebStop:
       wm.stopWebPortal();
+      needStart = NeedStart::None;
       break;
     case NeedStart::WebRunning:
       builtInLed.flash(50);
@@ -405,7 +402,7 @@ void loop(){
           webPortalMsgId = 0;
         }
         needStart = NeedStart::None; 
-      }
+      }  
       break;
     case NeedStart::Reboot:
       if( bot.isPolling() ) {

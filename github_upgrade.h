@@ -79,6 +79,7 @@ namespace GitHubUpgrade {
     //static String latestTag;
     static bool needUpgrade = false;
     static String _downloadURL = (char *)nullptr;
+    static String _releaseInfoURL = (char *)nullptr;
 
     struct At {
         int weekDay=5;
@@ -88,14 +89,17 @@ namespace GitHubUpgrade {
  
         bool checkedDay(const time_t* setDay=nullptr){ 
             const time_t now = time(nullptr);
-            if ( now < _likeRealTime ) return false;
+            if ( now < _likeRealTime ) return true;
 
             const tm* nowTime =localtime(&now);
 
             if ( setDay != nullptr){
                 auto setTime = localtime(setDay);
                 _checkedDay = setTime->tm_yday;
-            }
+            } 
+            // else {
+            //     debugPrintf("Checked day = %d, now = %d\n", _checkedDay, nowTime->tm_yday);
+            // }
             return _checkedDay == nowTime->tm_yday;
         };        
 
@@ -120,20 +124,13 @@ namespace GitHubUpgrade {
         };
     };
     static At at; 
-    //static const int AnyTime = -1;
-    // static String downloadUrl;
-    // static String error;
     
-     //(GITHUB_CERTIFICATE_ROOT);
-    //BearSSL::CertStore *certStore;
-    
-
-    enum SecureConnections {
-        insecureConnection = 0,
-        x509ListConnection,
-        certsStoreConnection, 
-        autoTypeConnection,
-    };
+    // enum SecureConnections {
+    //     insecureConnection = 0,
+    //     x509ListConnection,
+    //     certsStoreConnection, 
+    //     autoTypeConnection,
+    // };
  
                    
     void checkAt(const int weekDay=5, const int hour=4, const int min=0 ){
@@ -141,70 +138,69 @@ namespace GitHubUpgrade {
     };
 
     bool check(){
-        if( at.checkedDay() || ( ! at.isTime() )) return false;
+        if( at.checkedDay() || ! at.isTime() ) return false;
         //if ( at.isTime() ) {   
         if ( ! has ) {
-
-                String url( F("/repos/")); 
-                url += Author::gitHubAka;
-                url += Url::_preSlash( App::name );
-                url += latest;
-                HTTPClient http;
-                if ( http.begin(client, apiHost, port, url, /*https=*/true )){
+            String url( F("/repos")); 
+            Url::slash( url, Author::gitHubAka);
+            Url::slash( url, App::name );
+            Url::slash( url, latest );
+            HTTPClient http;
+            if ( http.begin(client, apiHost, port, url, /*https=*/true )){
                     
-                    int httpCode = http.GET();
-                    debugPretty;
-                    debugPrintf("Get %s:%d %s\n\tResult: %d\n", apiHost, port, url.c_str(), httpCode);
+                int httpCode = http.GET();
+                debugPretty;
+                debugPrintf("Get %s:%d %s\n\tResult: %d\n", apiHost, port, url.c_str(), httpCode);
+                
+                if ( httpCode == HTTP_CODE_OK ){
                     
-                    if ( httpCode == HTTP_CODE_OK ){
-                        
-                        //debugPrintf("getString: \'%s\'\n", http.getString().c_str() );
-                        gson::Parser doc;
-                        if ( doc.parse( http.getString() ) && doc.has("tag_name")){
-                            doc["tag_name"].toStr(_releaseTag);  //toString();
-                            String release_name = doc["name"].toString();
-                            bool prerelease = doc["prerelease"].toBool();
-                                                       
-                            if ( doc.has("assets") && doc["assets"].isArray() ){ //&& doc["assets"].isArray() ){
-                                int i = 0;
-                                bool valid_asset = false;
-                                
-                                while(  doc["assets"][i].isObject() ){
-                                
-                                    String asset_type = doc["assets"][i]["content_type"].toString();
-                                    String asset_name = doc["assets"][i]["name"].toString();
-                                    String asset_url =  doc["assets"][i]["browser_download_url"].toString();
-                                    //releaseNote = doc["name"].toString();
-                                        
-                                    if (strcmp(asset_type.c_str(), contentType) == 0 && strcmp(asset_name.c_str(), App::getBinFile().c_str() ) == 0) {
-                                        _downloadURL = asset_url;
-                                        valid_asset = true;
-                                        break;
-                                    } else {
-                                        valid_asset = false;
-                                    }
-                                    i++;
-                                }
-                                //doc.reset();
-                                if (valid_asset) {
-                                    _lastErrorCode = Errors::Ok;
-                                    //result = true;
-                                    //return true;
+                    //debugPrintf("getString: \'%s\'\n", http.getString().c_str() );
+                    gson::Parser doc;
+                    if ( doc.parse( http.getString() ) && doc.has("tag_name")){
+                        doc["tag_name"].toStr(_releaseTag);  //toString();
+                        String release_name = doc["name"].toString();
+                        bool prerelease = doc["prerelease"].toBool();
+                                                    
+                        if ( doc.has("assets") && doc["assets"].isArray() ){ //&& doc["assets"].isArray() ){
+                            int i = 0;
+                            bool valid_asset = false;
+                            
+                            while(  doc["assets"][i].isObject() ){
+                            
+                                String asset_type = doc["assets"][i]["content_type"].toString();
+                                String asset_name = doc["assets"][i]["name"].toString();
+                                //String asset_url =  doc["assets"][i]["browser_download_url"].toString();
+                                //releaseNote = doc["name"].toString();
+                                    
+                                if (strcmp(asset_type.c_str(), contentType) == 0 && strcmp(asset_name.c_str(), App::getBinFile().c_str() ) == 0) {
+                                    _downloadURL = doc["assets"][i]["browser_download_url"].toString();
+                                    _releaseInfoURL = doc["html_url"].toString();
+                                    valid_asset = true;
+                                    break;
                                 } else {
-                                    _lastErrorCode = Errors::No_Valid_Binary; //F("No valid binary found for latest release.");
-                                    //return false;
+                                    valid_asset = false;
                                 }
-                            } else {
-                                _lastErrorCode = Errors::No_Tag_Name;
+                                i++;
                             }
+                            //doc.reset();
+                            if (valid_asset) {
+                                _lastErrorCode = Errors::Ok;
+                                //result = true;
+                                //return true;
+                            } else {
+                                _lastErrorCode = Errors::No_Valid_Binary; //F("No valid binary found for latest release.");
+                                //return false;
+                            }
+                        } else {
+                            _lastErrorCode = Errors::No_Tag_Name;
+                        }
                     } else {
-                        _lastErrorCode = Errors::Failed_JSON_Parse;
+                    _lastErrorCode = Errors::Failed_JSON_Parse;
                     }
 
                 } else {
                     _lastErrorCode = Errors::Failed_Connection;
                 }
-            
             } else {
                 debugPrint("Prechecked version ");
                 debugPrintln( _releaseTag ); //gitHubUpgrade->getLatestTag() );
@@ -225,20 +221,19 @@ namespace GitHubUpgrade {
             App::Version gitHubV( _releaseTag ); //gitHubUpgrade->getLatestTag());
             debugPrintf("GitHub newest version is %s\n", gitHubV.toString().c_str());
 
-            if ( ! ( gitHubV > version ) ) {
+            if ( ! ( gitHubV > version ) ) { // version <=
                 has = false;
                 debugPrintf("Current version %s is higher that GitHub version %s\n", 
                     version.toString().c_str(), 
                     gitHubV.toString().c_str());
 
             } else if ( menuIds.has("ignore") ){
-                    App::Version ignoreVersion(menuIds.get("ignore"));
-                    if ( ! ( ignoreVersion < gitHubV ) ){
-                        has = false;
-                        debugPrintf("Ignore version up to %s\n", 
-                        ignoreVersion.toString().c_str());    
-
-                    }
+                App::Version ignoreVersion(menuIds.get("ignore"));
+                if ( ! ( ignoreVersion < gitHubV ) ){
+                    has = false;
+                    debugPrintf("Ignore version up to %s\n", 
+                    ignoreVersion.toString().c_str());    
+                }
             }
 
             if ( has ) {
@@ -312,7 +307,13 @@ void tick(){
         debugBotResult(res, "Delete old menu");
       }
 
-      fb::InlineMenu menu(F("Обновить;Пропустить"), F("up;ig"));
+      //fb::InlineMenu menu(F("Обновить;Пропустить"), F("up;ig"));
+      fb::InlineMenu menu;
+      menu.addButton(F("Обновить"), F("up"));
+      if ( ! GitHubUpgrade::_releaseInfoURL.isEmpty() ) {
+        menu.addButton(F("Подробности"), GitHubUpgrade::_releaseInfoURL);
+      }
+      menu.addButton(F("Пропустить"), F("ig"));
 
       String buf(F("Текущая версия `"));
       buf += version.toString(); buf += F("`\n");
