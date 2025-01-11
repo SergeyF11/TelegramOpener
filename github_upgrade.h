@@ -13,7 +13,7 @@
 #include <CertStoreBearSSL.h>
 
 
-extern BotSettings::Settings settingsNew;
+extern BotSettings::Settings settings;
 extern CertStore * certStore;
 extern FastBot2Client bot;
 extern App::Version version;
@@ -195,20 +195,20 @@ namespace GitHubUpgrade {
     };
 
     bool check(){
-        if( at.checkedDay() || ! at.isTime() ) return false;
+        if( /* at.checkedDay() || */ ! at.isTime() ) return false;
         //if ( at.isTime() ) {   
-        if ( ! has ) {
+        if ( has && at.checkedDay() ) {
+            return ! has;
+        } else {
             if ( getGitHubRelease() == Errors::Ok ) {
                 has = true;
+
             } else {
                 debugPretty;
                 debugPrint("Error:");
                 debugPrintln( _lastErrorCode );    
                 return false;
-            } 
-
-            auto now = time( nullptr);
-            at.checkedDay( &now );
+            }     
             
             App::Version gitHubV( _releaseTag ); //gitHubUpgrade->getLatestTag());
             debugPrintf("GitHub newest version is %s\n", gitHubV.toString().c_str());
@@ -227,7 +227,7 @@ namespace GitHubUpgrade {
                         ignoreVersion.toString().c_str());    
                 }
             }
-
+            
             if ( has ) {
                 // latestTag = GitHubUpgrade.getLatestTag();
                 debugPretty; 
@@ -240,10 +240,9 @@ namespace GitHubUpgrade {
                 debugPrint("Error:" );// gitHubUpgrade->getLastError());
                 debugPrintln( _lastErrorCode );
             }
-        } else {
-            auto now = time( nullptr);
-            at.checkedDay( &now );
         }
+        auto now = time( nullptr);
+        at.checkedDay( &now );
         return has;
     };
 
@@ -287,16 +286,16 @@ namespace GitHubUpgrade {
         return out; //gitHubUpgrade->getLastError();
     };
 
-//void tick( FastBot2& bot,const BotSettings::Settings& settingsNew){
+//void tick( FastBot2& bot,const BotSettings::Settings& settings){
 void tick(){
-    if ( check() &&  settingsNew.hasAdmin() ){
-        unsigned long oldUpgradeMenuId = menuIds.getUpgradeId(settingsNew.getAdminId());
+    if ( check() &&  settings.hasAdmin() ){
+        unsigned long oldUpgradeMenuId = menuIds.getUpgradeId(settings.getAdminId());
         // нужно для успешного удаления
         bot.tickManual();
         if ( oldUpgradeMenuId != 0 ) {    
-            debugPrintf("Delete old menu id=%lu in admin chat %lld\n", oldUpgradeMenuId, settingsNew.getAdminId() );
-            auto res = bot.deleteMessage(settingsNew.getAdminId(),  oldUpgradeMenuId );
-            //if ( !res.valid() ) res = bot.deleteMessage(settingsNew.getAdminId(),  oldUpgradeMenuId, false);
+            debugPrintf("Delete old menu id=%lu in admin chat %lld\n", oldUpgradeMenuId, settings.getAdminId() );
+            auto res = bot.deleteMessage(settings.getAdminId(),  oldUpgradeMenuId );
+            //if ( !res.valid() ) res = bot.deleteMessage(settings.getAdminId(),  oldUpgradeMenuId, false);
             //bot.tickManual();
             debugBotResult(res, "Delete old menu");
         }
@@ -314,13 +313,13 @@ void tick(){
       buf +=  F("Новая версия `"); buf +=  GitHubUpgrade::tag(); buf += F("` доступна"); 
 
       {
-        fb::Message msg(buf.c_str(), settingsNew.getAdminId());
+        fb::Message msg(buf.c_str(), settings.getAdminId());
         msg.setModeMD();    
         msg.setInlineMenu(menu);
         //String tag = GitHubUpgrade::tag();
         
         auto res = bot.sendMessage( msg, true );
-        menuIds.setUpgradeId( settingsNew.getAdminId(), bot.lastBotMessage());
+        menuIds.setUpgradeId( settings.getAdminId(), bot.lastBotMessage());
         //bot.tickManual();
         debugBotResult(res, msg.text );
       } 
@@ -331,18 +330,18 @@ void tick(){
 
     if ( GitHubUpgrade::needUpgrade && GitHubUpgrade::has ) {
       //String tag = GitHubUpgrade::tag();
-      //LastMsg upgradeButton(settingsNew.getAdminId(),0, tag.c_str());
-      //menuIds.( String("up")+ settingsNew.getAdminId() );  
+      //LastMsg upgradeButton(settings.getAdminId(),0, tag.c_str());
+      //menuIds.( String("up")+ settings.getAdminId() );  
 
       String txt(F("Start upgrade..."));
-      if ( settingsNew.hasAdmin() ) {
+      if ( settings.hasAdmin() ) {
         {
-        fb::Message msg(txt, settingsNew.getAdminId() );
+        fb::Message msg(txt, settings.getAdminId() );
         bot.sendMessage( msg );
         }
         unsigned long startUpMsgId = bot.lastBotMessage();
 
-        // fb::TextEdit editMsg(txt, upgradeButton.get(), settingsNew.getAdminId());
+        // fb::TextEdit editMsg(txt, upgradeButton.get(), settings.getAdminId());
         // bot.editText(editMsg);
         //bot.tickManual();
       
@@ -353,13 +352,13 @@ void tick(){
             txt = GitHubUpgrade::Error(); 
         } else {
             //String tag = GitHubUpgrade::tag();
-            unsigned long upgradeButtonId = menuIds.getUpgradeId( settingsNew.getAdminId() ); 
+            unsigned long upgradeButtonId = menuIds.getUpgradeId( settings.getAdminId() ); 
             if ( upgradeButtonId != 0 ){
-                debugPrintf("Delete msg=%lu in admin chat=%lld\n", upgradeButtonId, settingsNew.getAdminId());
+                debugPrintf("Delete msg=%lu in admin chat=%lld\n", upgradeButtonId, settings.getAdminId());
                 
-                //fb::Result delete(){ return bot.deleteMessage( settingsNew.getAdminId(), upgradeButton.get(), true); };
+                //fb::Result delete(){ return bot.deleteMessage( settings.getAdminId(), upgradeButton.get(), true); };
                 fb::Result res;
-                res = bot.deleteMessage( settingsNew.getAdminId(), upgradeButtonId, false);
+                res = bot.deleteMessage( settings.getAdminId(), upgradeButtonId, false);
                 //bot.tickManual();
                 debugBotResult(res,"Delete upgrade menu");
 
@@ -370,7 +369,7 @@ void tick(){
         }
         debugPrintf("Txt=%s, to msgId=%lu\n", txt.c_str(), startUpMsgId );
         if( startUpMsgId) {
-                fb::TextEdit editMsg(txt, startUpMsgId, settingsNew.getAdminId());
+                fb::TextEdit editMsg(txt, startUpMsgId, settings.getAdminId());
                 bot.editText(editMsg);
                 debugPrintf("Txt:%s, msgId=%lu, chatId=%lld\n", editMsg.text.c_str(), editMsg.messageID, editMsg.chatID.toInt64() );
                 

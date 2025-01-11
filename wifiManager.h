@@ -121,28 +121,28 @@ void configModeCallback (WiFiManager *myWiFiManager) {
 //   // wm.stopConfigPortal();
 // }
 
-extern BotSettings::Settings settingsNew;
+extern BotSettings::Settings settings;
 extern SimpleButton myButton;
 extern FastBot2Client bot;
 
 void saveParamCallback() {
   debugPretty;
-  settingsNew.set()->AdminId(custom_botAdmin.getValue());
-  settingsNew.set()->ChatId(custom_controlChatId.getValue());
+  settings.set()->AdminId(custom_botAdmin.getValue());
+  settings.set()->ChatId(custom_controlChatId.getValue());
 
-  if( settingsNew.set()->Token(custom_tgToken.getValue()) ) {
+  if( settings.set()->Token(custom_tgToken.getValue()) ) {
     debugPretty;
-    bot.setToken(settingsNew.getToken());
+    bot.setToken(settings.getToken());
   }
-  if( settingsNew.set()->Tz(custom_timeZone.getValue()) ) { 
+  if( settings.set()->Tz(custom_timeZone.getValue()) ) { 
     debugPretty;
-    settingsNew.configTz(); 
+    settings.configTz(); 
   }
 
-  // settingsNew.set()->ButtonHeader(button_header.getValue());
-  // settingsNew.set()->ButtonName(button_name.getValue());
-  // settingsNew.set()->ButtonReport(button_report.getValue());
-  if ( settingsNew.set()->Button(
+  // settings.set()->ButtonHeader(button_header.getValue());
+  // settings.set()->ButtonName(button_name.getValue());
+  // settings.set()->ButtonReport(button_report.getValue());
+  if ( settings.set()->Button(
       button_header.getValue(), 
       button_name.getValue(), 
       button_report.getValue()) 
@@ -151,8 +151,8 @@ void saveParamCallback() {
     myButton.needUpdate(SimpleButton::NeedUpdate::setTrue);
   }
 
-  debugPrintln( settingsNew );
-  if ( ! settingsNew.save() ){
+  debugPrintln( settings );
+  if ( ! settings.save() ){
     debugPrintln("Error write settings file");
   }
 

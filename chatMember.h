@@ -13,7 +13,7 @@
 extern SimpleButton myButton;
 
 //extern SETTINGS::SettingsT settings;
-extern BotSettings::Settings settingsNew;
+extern BotSettings::Settings settings;
 
 void getNameFromEntry(String& txt, gson::Entry e, const char* prefix=((char *) 0), const char* postfix=((char *)0) ){
   txt += prefix;
@@ -66,22 +66,22 @@ void handleChatMember(fb::Update& u){
       case "left"_h :
         debugPrintln("Left chat");
         
-        message.chatID = settingsNew.getAdminId();
-        settingsNew.set()->ChatId(0);
+        message.chatID = settings.getAdminId();
+        settings.set()->ChatId(0);
         
-        if( settingsNew.save() ){       
-          //message.chatID = settingsNew.getChatId();
+        if( settings.save() ){       
+          //message.chatID = settings.getChatId();
           //message.setModeMD();
           message.text = BotChatTempl::deleteRecomends_MD;
           
           debugPrintln("New settings saved. Try create new keyboard.");
 
-          auto res = myButton.creater( settingsNew.getChatId(), settingsNew.getButton() );  
+          auto res = myButton.creater( settings.getChatId(), settings.getButton() );  
 
           if( res == SimpleButton::ReturnCode::ok ){
-            debugPrintf("New keybord for %lld created\n", settingsNew.getChatId());
+            debugPrintf("New keybord for %lld created\n", settings.getChatId());
           } else {
-            debugPrintf("ERROR: create keybord for %lld\n", settingsNew.getChatId());
+            debugPrintf("ERROR: create keybord for %lld\n", settings.getChatId());
              debugPrintln( myButton.codeToString( res ) );
           }
 
@@ -99,8 +99,8 @@ void handleChatMember(fb::Update& u){
 
       case "administrator"_h :
         debugPrintf("Set chat %lld as control channel. Make control keyboard\n", chatId);
-      if ( settingsNew.isAdmin(u.message().from().id() )) {
-        if( settingsNew.set()->ChatId( chatId ) ){ //&&
+      if ( settings.isAdmin(u.message().from().id() )) {
+        if( settings.set()->ChatId( chatId ) ){ //&&
           //channelName::save(chatId, chatTitle )) {
           //menuIds.set( String('n') + chatId, chatTitle );
           
@@ -122,9 +122,9 @@ void handleChatMember(fb::Update& u){
 
               }
             }
-            if ( settingsNew.save() ){ 
+            if ( settings.save() ){ 
               
-              auto res = myButton.creater( chatId, settingsNew.getButton() );
+              auto res = myButton.creater( chatId, settings.getButton() );
               unsigned long lastSendMs = millis();
 
               if ( res == SimpleButton::ReturnCode::ok ) {
@@ -133,13 +133,13 @@ void handleChatMember(fb::Update& u){
               }
 
               // сообщение админу 
-              if ( settingsNew.hasAdmin() ){
+              if ( settings.hasAdmin() ){
                 
-                auto adminId = settingsNew.getAdminId();
+                auto adminId = settings.getAdminId();
                 //LastMsg buttonMsg( adminId );
                 //uint msgId = lastMsg.get();
 
-                //channelName::load(settingsNew.getChatId(true));
+                //channelName::load(settings.getChatId(true));
                 if ( lastSendMs ) 
                   while( millis()-lastSendMs < 300){
                     delay(1);

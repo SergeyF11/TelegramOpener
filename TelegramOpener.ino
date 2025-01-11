@@ -1,4 +1,4 @@
-// #define debug_print 1
+ //#define debug_print 1
  //#define GitHubUpgrade_ANY_TIME
 
 #define WIFI_POWER 5.0
@@ -15,7 +15,7 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,1
+#define VERSION 0,1,14
 #include "env.h"
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
@@ -51,7 +51,7 @@ SimpleButton myButton(bot, POLLING_TIME );
 #include "wifiManager.h"
 
 const char fileName[] PROGMEM = "/bot_opener.json";
-BotSettings::Settings settingsNew(fileName);
+BotSettings::Settings settings(fileName);
 
 //LastMsg lastMsg;
 
@@ -99,14 +99,14 @@ void setup(){
 
 
 // setup some parameters
-  new (&custom_tgToken ) WiFiManagerParameter ("token", "bot token", settingsNew.getToken(), 50,"placeholder=\"your BOT token from @BotFather\"");
-   new (&custom_botAdmin ) Int64Parameter ("adminId", "admin id", settingsNew.getAdminId(), 21,"placeholder=\"bot administrator id\"");
-  new (&custom_controlChatId ) Int64Parameter ("chatId", "control chat id", settingsNew.getChatId(true), 21,"placeholder=\"control chat id\"");
-  new (&custom_timeZone) WiFiManagerParameter ("tz", "time zone", settingsNew.getTz(), 10, "placeholder=\"time zone (example:'MSK-3') or shift in hours (-3)\"");
+  new (&custom_tgToken ) WiFiManagerParameter ("token", "bot token", settings.getToken(), 50,"placeholder=\"your BOT token from @BotFather\"");
+   new (&custom_botAdmin ) Int64Parameter ("adminId", "admin id", settings.getAdminId(), 21,"placeholder=\"bot administrator id\"");
+  new (&custom_controlChatId ) Int64Parameter ("chatId", "control chat id", settings.getChatId(true), 21,"placeholder=\"control chat id\"");
+  new (&custom_timeZone) WiFiManagerParameter ("tz", "time zone", settings.getTz(), 10, "placeholder=\"time zone (example:'MSK-3') or shift in hours (-3)\"");
 
-  new (&button_header) WiFiManagerParameter ("button_header","Button header", settingsNew.getButtonHeader(), 150, "placeholder=\"Button message header\"");
-  new (&button_name) WiFiManagerParameter ("button_name","Button name", settingsNew.getButtonName(), 50, "placeholder=\"Button name\"");
-  new (&button_report) WiFiManagerParameter ("button_report","Open report", settingsNew.getButtonReport(), 100, "placeholder=\"Open report message\"");
+  new (&button_header) WiFiManagerParameter ("button_header","Button header", settings.getButtonHeader(), 150, "placeholder=\"Button message header\"");
+  new (&button_name) WiFiManagerParameter ("button_name","Button name", settings.getButtonName(), 50, "placeholder=\"Button name\"");
+  new (&button_report) WiFiManagerParameter ("button_report","Open report", settings.getButtonReport(), 100, "placeholder=\"Open report message\"");
 
  
   // add all your parameters here
@@ -184,19 +184,19 @@ wm.addParameter(&button_report);
   // }
 
   bot.attachUpdate(updateh);   // подключить обработчик обновлений
-  bot.setToken( settingsNew.getToken() );   // установить токен
+  bot.setToken( settings.getToken() );   // установить токен
   bot.skipUpdates();
   bot.attachRaw(rawResponse);
 
   //check token
   // void wrongToken(){
-  //     debugPrintf("Wrong token %s\n", settingsNew.getToken());    
+  //     debugPrintf("Wrong token %s\n", settings.getToken());    
   //     wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
   // };
   // wrongCount.accidentFunc( wrongToken );
   
   wrongCount.accidentFunc = [](void){
-    debugPrintf("Wrong token %s\n", settingsNew.getToken());    
+    debugPrintf("Wrong token %s\n", settings.getToken());    
     wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
   };
 
@@ -214,25 +214,25 @@ wm.addParameter(&button_report);
   
 
   // если есть админ, поприветствуем его и обновим клавиатуру или создадим новую
-  if ( settingsNew.hasAdmin() ){
+  if ( settings.hasAdmin() ){
     myButton.needUpdate( true );
 
-    // channelName::load(settingsNew.getChatId(true));
-    //String myChnlName = channelName::addChannelName( settingsNew.getChatId(true), '\n' );
+    // channelName::load(settings.getChatId(true));
+    //String myChnlName = channelName::addChannelName( settings.getChatId(true), '\n' );
     String myChannel;
 
-    if ( settingsNew.getChatId(true) != 0 ) {
+    if ( settings.getChatId(true) != 0 ) {
       myChannel += '\n';
       myChannel +=  CHANNEL_FOR_CONTROL;
 
-      //String myChnlName; // = menuIds.getChannelName(settingsNew.getChatId(true)); //menuIds.get( 'n', settingsNew.getChatId(true));
-      if( menuIds.hasChannelName(settingsNew.getChatId(true)) /*myChnlName.isEmpty()*/ ) {
+      //String myChnlName; // = menuIds.getChannelName(settings.getChatId(true)); //menuIds.get( 'n', settings.getChatId(true));
+      if( menuIds.hasChannelName(settings.getChatId(true)) /*myChnlName.isEmpty()*/ ) {
         myChannel += TelegramMD::asBold( 
           TelegramMD::textIn( 
-            (String)menuIds.getChannelName(settingsNew.getChatId(true)), '\'' ),
+            (String)menuIds.getChannelName(settings.getChatId(true)), '\'' ),
           MARKDOWN_TG::escape);  
       } else {
-        myChannel += TelegramMD::asBold( String('#') + (1000000000000ll + settingsNew.getChatId(true)),   MARKDOWN_TG::escape);
+        myChannel += TelegramMD::asBold( String('#') + (1000000000000ll + settings.getChatId(true)),   MARKDOWN_TG::escape);
       }
     }
     String hi = TelegramMD::asItallic( SAY_HI, MARKDOWN_TG::escape);
@@ -240,7 +240,7 @@ wm.addParameter(&button_report);
     fb::Message message;
     message.setModeMD();
 
-    message.chatID = settingsNew.getAdminId();
+    message.chatID = settings.getAdminId();
     message.text = hi;
     //message.text += TelegramMD::asItallic( SAY_HI ); //*/ SAY_HI_MD;
     message.text += myChannel;
@@ -257,7 +257,7 @@ wm.addParameter(&button_report);
     while( ! goToLoop ){
   // check errors noChat, noMesgId, wrongResponse
 
-      switch( myButton.updater( settingsNew.getChatId(), settingsNew.getButton(), true ) ){
+      switch( myButton.updater( settings.getChatId(), settings.getButton(), true ) ){
         // сюда мы не должны попасть никогда
         case SimpleButton::ReturnCode::noChat: 
           debugPrintln("No update needed without admin and chat id");
@@ -265,13 +265,13 @@ wm.addParameter(&button_report);
           break;
         // или у чата нет последнего сохраненного сообщения
         case SimpleButton::ReturnCode::noMesgId:
-          debugPrintf("No last message saved for chat '%lld\n", settingsNew.getChatId());
+          debugPrintf("No last message saved for chat '%lld\n", settings.getChatId());
         // нет корректного ответа 
         case SimpleButton::ReturnCode::wrongResponse:
           debugPrintln("Try to create new keyboard");
             // пробуем создать новою клавиатуру
             {
-            auto res = myButton.creater( settingsNew.getChatId(), settingsNew.getButton() );
+            auto res = myButton.creater( settings.getChatId(), settings.getButton() );
             debugPrintf("Result: %s\n", myButton.codeToString(res).c_str());
             if ( res != SimpleButton::ReturnCode::wrongResponse ) goToLoop = true;
             }
@@ -281,8 +281,8 @@ wm.addParameter(&button_report);
         // не получили корректного ответа
         // case SimpleButton::ReturnCode::wrongResponse:
         //   debugPrintf("Wrong response for chat '%lld' msg=%ld\n", 
-        //     settingsNew.getChatId(), 
-        //     LastMsg(settingsNew.getChatId() ).get());
+        //     settings.getChatId(), 
+        //     LastMsg(settings.getChatId() ).get());
         //   break;
         
         // в остальных случаях погнали дальше
@@ -301,7 +301,7 @@ wm.addParameter(&button_report);
     //digitalWrite(BUILTIN_LED, HIGH);
   builtInLed.off();
   wifiInfo();
-  Serial.println(settingsNew);
+  Serial.println(settings);
 
     // ============
  
@@ -341,7 +341,7 @@ void loop(){
   }
 
   if ( bot.isPolling() ) {
-    myButton.tick( settingsNew );
+    myButton.tick( settings );
     
   } else {
     builtInLed.flashOff();
@@ -372,7 +372,7 @@ void loop(){
         myButton.needUpdate( SimpleButton::NeedUpdate::setTrue );
 
         fb::Message message;
-        message.chatID = settingsNew.getAdminId();
+        message.chatID = settings.getAdminId();
         message.text = F("_portal closed_");
         message.setModeMD();
         bot.sendMessage(message, false);
@@ -394,9 +394,9 @@ void loop(){
       wm.process();
       if ( ! wm.getWebPortalActive() ) {
         if ( webPortalMsgId ){
-          //bot.deleteMessage ( settingsNew.getAdminId(), webPortalMsgId, false );
+          //bot.deleteMessage ( settings.getAdminId(), webPortalMsgId, false );
           fb::TextEdit editMsg;
-          editMsg.chatID = settingsNew.getAdminId();
+          editMsg.chatID = settings.getAdminId();
           editMsg.text = F("_portal closed_");
           editMsg.mode = fb::Message::Mode::MarkdownV2;
           editMsg.messageID = webPortalMsgId;

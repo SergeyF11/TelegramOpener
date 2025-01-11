@@ -31,7 +31,7 @@ static constexpr char youBot[] PROGMEM = "своего бота";
 static constexpr char youAdminAlready[] PROGMEM = "Вы уже являетесь администратором.";
 static constexpr char forHelp[] PROGMEM = "\nДля помощи отправь "; //`/help`";
 //extern SETTINGS::SettingsT settings;
-extern BotSettings::Settings settingsNew;
+extern BotSettings::Settings settings;
 
 //обработка команды /start
 void handleStart(fb::Update& u, fb::Message& message) {
@@ -42,7 +42,7 @@ void handleStart(fb::Update& u, fb::Message& message) {
   bot.setMyCommands(commands);
   
 
-  if ( u.message().from().id() == settingsNew.getAdminId() ){ //.admin) {
+  if ( u.message().from().id() == settings.getAdminId() ){ //.admin) {
     String user(u.message().from().username());
     debugPrintf("Admin '%s'[#%s] start command\n", user,
                   (String)(u.message().from().id()));
@@ -59,7 +59,7 @@ void handleStart(fb::Update& u, fb::Message& message) {
     // message.text = ((char *)0);
 
   } else {
-    if ( settingsNew.getAdminId() ){ //settings.admin) {
+    if ( settings.getAdminId() ){ //settings.admin) {
       String user(u.message().from().username());
       debugPrintf("Unknown user '%s'[#%s] start command\n",
                     user,

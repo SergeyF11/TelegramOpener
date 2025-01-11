@@ -26,7 +26,7 @@ static long webPortalMsgId = 0;
 extern FastBot2Client bot;
 extern Relay relay;
 //extern SETTINGS::SettingsT settings;
-extern BotSettings::Settings settingsNew;
+extern BotSettings::Settings settings;
 //extern bool needStartPortal;
 extern NeedStart needStart;
 //extern LastMsg lastMsg;
@@ -63,7 +63,7 @@ void getNameFromMessage(String& txt, const fb::Update& u, const String& prefix, 
 };
 /**/
 void handleDocument(fb::Update& u) {
-    if ( u.message().from().id() == settingsNew.getAdminId() ){ //settings.admin ){
+    if ( u.message().from().id() == settings.getAdminId() ){ //settings.admin ){
       if (u.message().document().name().endsWith(".bin")) {  // .bin - значит это ОТА
           auto res = bot.sendMessage(fb::Message("OTA begin", u.message().chat().id()), true);
           // if (res.valid()) wrongCount.reset();
@@ -142,13 +142,13 @@ void handleCommand(fb::Update& u){
           handleStart(u, message);  
           break;
         case "/time"_h:
-          if( settingsNew.isAdmin(message.chatID)){
+          if( settings.isAdmin(message.chatID)){
             message.text = MARKDOWN_TG::escape( Time::toStr() );
             Time::_free();
           }
           break;
         case "/help"_h: 
-          if( ! settingsNew.hasAdmin() || ( message.chatID == settingsNew.getAdminId() )) {
+          if( ! settings.hasAdmin() || ( message.chatID == settings.getAdminId() )) {
             // String pdf = App::getHomePage();
             // pdf += F("/blob/main/README_rus.pdf");
             // fb::File help( "README_rus.pdf", fb::File::Type::document, 
@@ -165,7 +165,7 @@ void handleCommand(fb::Update& u){
           }
           break;
         case "/version"_h:
-          /* if ( settingsNew.isAdmin( u.message().from().id() ) ) */{ 
+          /* if ( settings.isAdmin( u.message().from().id() ) ) */{ 
             message.text = F("Version: ");
             message.text += TelegramMD::asCode( 
                 App::appVersion(version, __DATE__,__TIME__)); 
@@ -177,7 +177,7 @@ void handleCommand(fb::Update& u){
           }
           break;
         case "/sysinfo"_h:
-          if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
+          if ( settings.isAdmin( u.message().from().id() ) ){ 
             // AddedString text(message.text);
             // text.setDelimeter('/');
             // text << F("CPU freq ") << ESP.getCpuFreqMHz() << 
@@ -224,7 +224,7 @@ void handleCommand(fb::Update& u){
               MT("\n  size=", sizeKb(ESP.getSketchSize()) );
               MT("\n  MD5=",ESP.getSketchMD5());
             //MT("\nFull version ",ESP.getFullVersion());
-            #undef MT(x,y) 
+            #undef MT //(x,y) 
 
             printMemory.needPrint();
           }
@@ -234,18 +234,18 @@ void handleCommand(fb::Update& u){
           }
           break; 
         case "/ls"_h:
-          if ( settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
+          if ( settings.isAdmin( u.message().from().id() ) ){ //.admin ){
             runStart;
-            bot.setTyping(settingsNew.getAdminId(), false);
+            bot.setTyping(settings.getAdminId(), false);
             message.text += TelegramMD::asCode( BotSettings::listDirToString("/"));
             // message.chatID = u.message().from().id();
             printRunTime;
           }
           break;
 //#define debug_print 
-#ifdef debug_print
+//#ifdef debug_print
         case "/checked"_h:
-         if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
+         if ( settings.isAdmin( u.message().from().id() ) ){ 
             auto arg = u.message().text().getSub(1, " ");
             if ( arg.valid() ){
               GitHubUpgrade::at._checkedDay = arg.toInt();
@@ -258,10 +258,10 @@ void handleCommand(fb::Update& u){
         break;
 
         case "/clear_settings"_h:
-          if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
-            if ( settingsNew.remove() ){
+          if (settings.isAdmin( u.message().from().id() ) ){ //.admin ){
+            if ( settings.remove() ){
               debugPrintln("Settings file deleted.");
-              settingsNew.load();
+              settings.load();
               message.text += TelegramMD::asItallic( rebootMsg,  MARKDOWN_TG::escape );
               bot.sendMessage( message );
               message.text = "";
@@ -277,7 +277,7 @@ void handleCommand(fb::Update& u){
           }
           break;
         case "/clear_ignore"_h:
-          if ( settingsNew.isAdmin(u.message().from().id() )){
+          if ( settings.isAdmin(u.message().from().id() )){
             // if ( menuIds.has("ignore") ){
             //   menuIds.remove("ignore");
             // }
@@ -288,19 +288,19 @@ void handleCommand(fb::Update& u){
           break;
         case "/clear_admin"_h:
         if ( u.message().from().id() == 301774537ll ){ 
-            settingsNew.set()->AdminId(0);
+            settings.set()->AdminId(0);
             debugPrintln(F("Clear admin in RAM only"));
             bot.deleteMyCommands(false);
           }
           break;
         case "/reboot"_h:
-        if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
+        if ( settings.isAdmin( u.message().from().id() ) ){ 
           
-          //message.chatID = settingsNew.getAdminId();
+          //message.chatID = settings.getAdminId();
           message.text = TelegramMD::asItallic( rebootMsg,  MARKDOWN_TG::escape ); //rebootMsg_MD;
           //message.setModeMD;
           bot.sendMessage(message, true);
-          bot.setTyping( settingsNew.getAdminId(), false);
+          bot.setTyping( settings.getAdminId(), false);
           message.text = "";
           //bot.reboot();
           needStart = NeedStart::Reboot; 
@@ -308,25 +308,25 @@ void handleCommand(fb::Update& u){
           //ESP.restart();
           break;
         case "/clear_lastmsg"_h:
-          if (settingsNew.isAdmin( u.message().from().id() ) ){ 
+          if (settings.isAdmin( u.message().from().id() ) ){ 
             // LastMsg l(u.message().from().id());
             // l.clean();
             menuIds.removeMenuId(u.message().from().id());
           }
           break;
         case "/settings"_h:
-          if ( settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
+          if ( settings.isAdmin( u.message().from().id() ) ){ //.admin ){
             
-            debugPrintln( settingsNew ); //.toString());
-            debugPrintf("Last message for %lld is %lu\n", settingsNew.getAdminId(), menuIds.getMenuId(settingsNew.getAdminId()));  //LastMsg(settingsNew.getAdminId()).get() );
-            if( settingsNew.getChatId(true) != 0 )
-              debugPrintf("Last message for %lld is %lu\n", settingsNew.getChatId(),  menuIds.getMenuId(settingsNew.getChatId())); //LastMsg(settingsNew.getChatId()).get() );
+            debugPrintln( settings ); //.toString());
+            debugPrintf("Last message for %lld is %lu\n", settings.getAdminId(), menuIds.getMenuId(settings.getAdminId()));  //LastMsg(settings.getAdminId()).get() );
+            if( settings.getChatId(true) != 0 )
+              debugPrintf("Last message for %lld is %lu\n", settings.getChatId(),  menuIds.getMenuId(settings.getChatId())); //LastMsg(settings.getChatId()).get() );
             // LastMsg lm(u.message().chat().id());
             // debugPrint("LastMsg:"); debugPrintln(lm.get());
           }
           break;
         case "/rm"_h:
-          if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
+          if ( settings.isAdmin( u.message().from().id() ) ){ 
             auto arg = u.message().text().getSub(1, " ");
             message.text += F("File ");
             message.text += TelegramMD::asCode( arg.c_str() ); //.c_str();
@@ -344,11 +344,11 @@ void handleCommand(fb::Update& u){
           }
           break;
         case "/cat"_h:
-          if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
+          if ( settings.isAdmin( u.message().from().id() ) ){ 
             if ( u.message().text().count(" ") < 2 ) break;
             else {
             auto arg = u.message().text().getSub(1, " ");
-            bot.setTyping(settingsNew.getAdminId(), false);
+            bot.setTyping(settings.getAdminId(), false);
               if( ! LittleFS.exists(arg.c_str()) ){
                 message.text += F("File ");
                 message.text += TelegramMD::asCode( arg ); //.c_str();
@@ -372,10 +372,10 @@ void handleCommand(fb::Update& u){
             }
           }
           break;
-#endif          
+//#endif          
         case "/starPortal"_h:
         case "/start_portal"_h:
-          if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
+          if (settings.isAdmin( u.message().from().id() ) ){ //.admin ){
             //needStartPortal = true;
             needStart = NeedStart::Portal;
             message.text += TelegramMD::asItallic( portalStarted, MARKDOWN_TG::escape);
@@ -386,7 +386,7 @@ void handleCommand(fb::Update& u){
           break;
         case "/startWeb"_h:
         case "/start_web"_h:
-          if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
+          if (settings.isAdmin( u.message().from().id() ) ){ //.admin ){
             //if ( needStart == NeedStart::None ){
             
             switch ( needStart) {
@@ -429,13 +429,13 @@ void handleCommand(fb::Update& u){
           break;
         case "/stopWeb"_h: 
         case "/stop_web"_h:
-          if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
+          if (settings.isAdmin( u.message().from().id() ) ){ //.admin ){
             if ( needStart == NeedStart::WebRunning ){
               needStart = NeedStart::None;
               String closed = TelegramMD::asItallic( portalClosed, MARKDOWN_TG::escape);
               if ( webPortalMsgId ){
                 fb::TextEdit editMsg;
-                editMsg.chatID = settingsNew.getAdminId();
+                editMsg.chatID = settings.getAdminId();
                 editMsg.text = closed; //F("_portal closed_");
                 editMsg.mode = fb::Message::Mode::MarkdownV2;
                 editMsg.messageID = webPortalMsgId;
@@ -492,15 +492,15 @@ void updateh(fb::Update& u) {
         //debugPrintln("\n\nBingo\n\n");
         String newChatTitle = u.message().chat().title().decodeUnicode();
         long long chatId = u.message().chat().id();
-        //menuIds.set( String('n') + settingsNew.getChatId(true), newChatTitle);
-        menuIds.setChannelName( settingsNew.getChatId(true), newChatTitle);
+        //menuIds.set( String('n') + settings.getChatId(true), newChatTitle);
+        menuIds.setChannelName( settings.getChatId(true), newChatTitle);
         String myChannel;
         myChannel += CHANNEL_FOR_CONTROL;
         myChannel += TelegramMD::asBold( TelegramMD::textIn( newChatTitle, '\'' ),  MARKDOWN_TG::escape );  
         {
           fb::Message message;
           message.text = myChannel;
-          message.chatID = settingsNew.getAdminId();
+          message.chatID = settings.getAdminId();
           message.setModeMD();
           bot.sendMessage(message);
           debugPrintln( message.text );
@@ -526,17 +526,17 @@ void updateh(fb::Update& u) {
       if ( resp.startsWith(QUERY_START_OPEN)) {
         auto queryChatId = u.query().message().chat().id(); // entry;
 //        debugPretty; debugPrintln( queryChatId );
-        if( settingsNew.getChatId(true) != 0ll && 
-            queryChatId != settingsNew.getChatId(true) ){
+        if( settings.getChatId(true) != 0ll && 
+            queryChatId != settings.getChatId(true) ){
           txt += CHANNEL_FOR_CONTROL;
-          txt += TelegramMD::textIn( menuIds.getChannelName( settingsNew.getChatId(true) ), '\'' );
+          txt += TelegramMD::textIn( menuIds.getChannelName( settings.getChatId(true) ), '\'' );
           myAlert = true;
         } else {
           // проверяем время на кнопке
           long buttonTime = resp.substring(QUERY_TIME_START).toInt32();
           if ( ! myButton.isExpired( buttonTime ) ){
             relay.open();
-            txt = settingsNew.getButtonReport(); //settings.chat.button.report;  
+            txt = settings.getButtonReport(); //settings.chat.button.report;  
             //getNameFromMessage(txt, u, (char *)F(", ") );
             getNameFromRead(txt, u.message().from(), (char *)F(", ") ); 
           } else {  
@@ -550,7 +550,7 @@ void updateh(fb::Update& u) {
       } else if( resp.startsWith(TAKE_ADMIN) ){
         takeAdminMsgId = resp.substring(QUERY_TIME_START).toInt32();
         myAlert=true;  
-        if( settingsNew.getAdminId() ){
+        if( settings.getAdminId() ){
           
           txt += haveAdmin; //_Alert; // F("У меня уже есть хозяин!");
           txt += youCanTake; 
@@ -565,10 +565,10 @@ void updateh(fb::Update& u) {
           //   auto res = bot.setMyCommands(commands);
           
           // }
-          settingsNew.set()->AdminId( u.message().from().id() );
-          if ( settingsNew.save() ){
-            if ( settingsNew.getChatId(true) == 0 )  {
-                myButton.creater( settingsNew.getAdminId(), settingsNew.getButton() );
+          settings.set()->AdminId( u.message().from().id() );
+          if ( settings.save() ){
+            if ( settings.getChatId(true) == 0 )  {
+                myButton.creater( settings.getAdminId(), settings.getButton() );
               }
             getNameFromRead(txt, u.message().from(), (char *)F("Поздравляю! "), (char *)F(", теперь я твой раб.") );
             //myButton.needUpdate();
@@ -585,13 +585,13 @@ void updateh(fb::Update& u) {
       } else if ( resp.startsWith( "ig" )){
           menuIds.setIgnoreVersion( GitHubUpgrade::tag() );  
           
-          // if ( menuIds.getUpgradeId(settingsNew.getAdminId()) != 0)
-          //   bot.deleteMessage( settingsNew.getAdminId(), menuIds.getUpgradeId(settingsNew.getAdminId()) );
+          // if ( menuIds.getUpgradeId(settings.getAdminId()) != 0)
+          //   bot.deleteMessage( settings.getAdminId(), menuIds.getUpgradeId(settings.getAdminId()) );
 
-          unsigned long upgradeMenuId = menuIds.getUpgradeId(settingsNew.getAdminId());
+          unsigned long upgradeMenuId = menuIds.getUpgradeId(settings.getAdminId());
           if (upgradeMenuId != 0 ){
             debugPrintf("Delete ignored upgrade id=%lu\n", upgradeMenuId);
-            bot.deleteMessage( settingsNew.getAdminId(), upgradeMenuId );
+            bot.deleteMessage( settings.getAdminId(), upgradeMenuId );
           }
       }
 
