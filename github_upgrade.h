@@ -62,6 +62,7 @@ namespace GitHubUpgrade {
         Ok,
         No_New_Version,
         Failed_Connection,
+        Failed_Host_Response,
         No_Valid_Binary,
         No_Tag_Name,
         Failed_JSON_Parse,
@@ -89,7 +90,10 @@ namespace GitHubUpgrade {
  
         bool checkedDay(const time_t* setDay=nullptr){ 
             const time_t now = time(nullptr);
-            if ( now < _likeRealTime ) return true;
+            if ( now < _likeRealTime ) {
+                debugPrintln("Wait sync time");
+                return true;
+            }
 
             const tm* nowTime =localtime(&now);
 
@@ -125,88 +129,76 @@ namespace GitHubUpgrade {
     };
     static At at; 
     
-    // enum SecureConnections {
-    //     insecureConnection = 0,
-    //     x509ListConnection,
-    //     certsStoreConnection, 
-    //     autoTypeConnection,
-    // };
- 
                    
     void checkAt(const int weekDay=5, const int hour=4, const int min=0 ){
         at.set(weekDay, hour, min); 
+    };
+
+    Errors getGitHubRelease(){
+        String url( F("/repos")); 
+        Url::slash( url, Author::gitHubAka);
+        Url::slash( url, App::name );
+        Url::slash( url, latest );
+        HTTPClient http;
+        if ( ! http.begin(client, apiHost, port, url, /*https=*/true )) {
+            _lastErrorCode = Errors::Failed_Connection;
+        } else {  
+            int httpCode = http.GET();
+            debugPretty;
+            debugPrintf("Get %s:%d %s\n\tResult: %d\n", apiHost, port, url.c_str(), httpCode);
+            
+            if ( httpCode != HTTP_CODE_OK ) { 
+                _lastErrorCode = Errors::Failed_Host_Response;    
+            } else {   
+                // 200 Ok => parsing response
+                gson::Parser doc;
+                if ( ! doc.parse( http.getString() ) ) {
+                    _lastErrorCode = Errors::Failed_JSON_Parse;
+                } else {
+                    if( ! doc.has("tag_name")){
+                        _lastErrorCode = Errors::No_Tag_Name;
+                    } else {
+                        doc["tag_name"].toStr(_releaseTag);  //toString();
+                        String release_name = doc["name"].toString();
+                        bool prerelease = doc["prerelease"].toBool();
+                        if ( prerelease ) {
+                            _lastErrorCode = Errors::PreRelease_Version;
+                        } else if ( doc.has("assets") && doc["assets"].isArray() ){ //&& doc["assets"].isArray() ){
+                            int i = 0;
+                            //bool valid_asset = false;
+                            //preset error code
+                            _lastErrorCode = Errors::No_Valid_Binary; 
+
+                            while(  doc["assets"][i].isObject() ){
+                            
+                                String asset_type = doc["assets"][i]["content_type"].toString();
+                                String asset_name = doc["assets"][i]["name"].toString();
+
+                                    
+                                if (strcmp(asset_type.c_str(), contentType) == 0 && 
+                                    strcmp(asset_name.c_str(), App::getBinFile().c_str() ) == 0) 
+                                {
+                                    _downloadURL = doc["assets"][i]["browser_download_url"].toString();
+                                    _releaseInfoURL = doc["html_url"].toString();
+                                    _lastErrorCode = Errors::Ok;
+                                    break;
+                                } 
+                                i++;
+                            }
+                            //doc.reset();
+                        }
+                    }
+                }
+            }
+        }
+        return _lastErrorCode;
     };
 
     bool check(){
         if( at.checkedDay() || ! at.isTime() ) return false;
         //if ( at.isTime() ) {   
         if ( ! has ) {
-            String url( F("/repos")); 
-            Url::slash( url, Author::gitHubAka);
-            Url::slash( url, App::name );
-            Url::slash( url, latest );
-            HTTPClient http;
-            if ( http.begin(client, apiHost, port, url, /*https=*/true )){
-                    
-                int httpCode = http.GET();
-                debugPretty;
-                debugPrintf("Get %s:%d %s\n\tResult: %d\n", apiHost, port, url.c_str(), httpCode);
-                
-                if ( httpCode == HTTP_CODE_OK ){
-                    
-                    //debugPrintf("getString: \'%s\'\n", http.getString().c_str() );
-                    gson::Parser doc;
-                    if ( doc.parse( http.getString() ) && doc.has("tag_name")){
-                        doc["tag_name"].toStr(_releaseTag);  //toString();
-                        String release_name = doc["name"].toString();
-                        bool prerelease = doc["prerelease"].toBool();
-                                                    
-                        if ( doc.has("assets") && doc["assets"].isArray() ){ //&& doc["assets"].isArray() ){
-                            int i = 0;
-                            bool valid_asset = false;
-                            
-                            while(  doc["assets"][i].isObject() ){
-                            
-                                String asset_type = doc["assets"][i]["content_type"].toString();
-                                String asset_name = doc["assets"][i]["name"].toString();
-                                //String asset_url =  doc["assets"][i]["browser_download_url"].toString();
-                                //releaseNote = doc["name"].toString();
-                                    
-                                if (strcmp(asset_type.c_str(), contentType) == 0 && strcmp(asset_name.c_str(), App::getBinFile().c_str() ) == 0) {
-                                    _downloadURL = doc["assets"][i]["browser_download_url"].toString();
-                                    _releaseInfoURL = doc["html_url"].toString();
-                                    valid_asset = true;
-                                    break;
-                                } else {
-                                    valid_asset = false;
-                                }
-                                i++;
-                            }
-                            //doc.reset();
-                            if (valid_asset) {
-                                _lastErrorCode = Errors::Ok;
-                                //result = true;
-                                //return true;
-                            } else {
-                                _lastErrorCode = Errors::No_Valid_Binary; //F("No valid binary found for latest release.");
-                                //return false;
-                            }
-                        } else {
-                            _lastErrorCode = Errors::No_Tag_Name;
-                        }
-                    } else {
-                    _lastErrorCode = Errors::Failed_JSON_Parse;
-                    }
-
-                } else {
-                    _lastErrorCode = Errors::Failed_Connection;
-                }
-            } else {
-                debugPrint("Prechecked version ");
-                debugPrintln( _releaseTag ); //gitHubUpgrade->getLatestTag() );
-            }
-
-            if ( _lastErrorCode == Errors::Ok ) {
+            if ( getGitHubRelease() == Errors::Ok ) {
                 has = true;
             } else {
                 debugPretty;
@@ -221,18 +213,18 @@ namespace GitHubUpgrade {
             App::Version gitHubV( _releaseTag ); //gitHubUpgrade->getLatestTag());
             debugPrintf("GitHub newest version is %s\n", gitHubV.toString().c_str());
 
-            if ( ! ( gitHubV > version ) ) { // version <=
+            if ( version >= gitHubV ) { // version <=
                 has = false;
-                debugPrintf("Current version %s is higher that GitHub version %s\n", 
+                debugPrintf("Current version %s is higher or equals the GitHub version %s\n", 
                     version.toString().c_str(), 
                     gitHubV.toString().c_str());
 
-            } else if ( menuIds.has("ignore") ){
-                App::Version ignoreVersion(menuIds.get("ignore"));
-                if ( ! ( ignoreVersion < gitHubV ) ){
+            } else if ( menuIds.hasIgnoreVersion() ){
+                App::Version ignoreVersion(menuIds.getIgnoreVersion());
+                if ( ignoreVersion >= gitHubV  ){ //>=
                     has = false;
                     debugPrintf("Ignore version up to %s\n", 
-                    ignoreVersion.toString().c_str());    
+                        ignoreVersion.toString().c_str());    
                 }
             }
 
@@ -248,13 +240,11 @@ namespace GitHubUpgrade {
                 debugPrint("Error:" );// gitHubUpgrade->getLastError());
                 debugPrintln( _lastErrorCode );
             }
+        } else {
+            auto now = time( nullptr);
+            at.checkedDay( &now );
         }
         return has;
-//    }
-
-    //     return has;
-    // } else 
-    //     return false;
     };
 
     String tag(){
@@ -300,12 +290,16 @@ namespace GitHubUpgrade {
 //void tick( FastBot2& bot,const BotSettings::Settings& settingsNew){
 void tick(){
     if ( check() &&  settingsNew.hasAdmin() ){
-     if ( menuIds.getUpgradeId(settingsNew.getAdminId()) != 0 ) {
-
-        debugPrintln("Delete old menu");
-        auto res = bot.deleteMessage(settingsNew.getAdminId(),  menuIds.getUpgradeId(settingsNew.getAdminId()));
-        debugBotResult(res, "Delete old menu");
-      }
+        unsigned long oldUpgradeMenuId = menuIds.getUpgradeId(settingsNew.getAdminId());
+        // нужно для успешного удаления
+        bot.tickManual();
+        if ( oldUpgradeMenuId != 0 ) {    
+            debugPrintf("Delete old menu id=%lu in admin chat %lld\n", oldUpgradeMenuId, settingsNew.getAdminId() );
+            auto res = bot.deleteMessage(settingsNew.getAdminId(),  oldUpgradeMenuId );
+            //if ( !res.valid() ) res = bot.deleteMessage(settingsNew.getAdminId(),  oldUpgradeMenuId, false);
+            //bot.tickManual();
+            debugBotResult(res, "Delete old menu");
+        }
 
       //fb::InlineMenu menu(F("Обновить;Пропустить"), F("up;ig"));
       fb::InlineMenu menu;
@@ -321,21 +315,17 @@ void tick(){
 
       {
         fb::Message msg(buf.c_str(), settingsNew.getAdminId());
-        msg.setModeMD();
-
-        debugPrintln(msg.chatID);
-        debugPrintMemory;
-        
+        msg.setModeMD();    
         msg.setInlineMenu(menu);
-        debugPrintMemory;
         //String tag = GitHubUpgrade::tag();
         
         auto res = bot.sendMessage( msg, true );
         menuIds.setUpgradeId( settingsNew.getAdminId(), bot.lastBotMessage());
-        debugPrintln( msg.text );
+        //bot.tickManual();
+        debugBotResult(res, msg.text );
       } 
       // bot.sendMessage(msg);
-      bot.tickManual();
+      
       //Serial.println( res.getRaw() );
     }
 
@@ -346,13 +336,15 @@ void tick(){
 
       String txt(F("Start upgrade..."));
       if ( settingsNew.hasAdmin() ) {
+        {
         fb::Message msg(txt, settingsNew.getAdminId() );
         bot.sendMessage( msg );
+        }
         unsigned long startUpMsgId = bot.lastBotMessage();
 
         // fb::TextEdit editMsg(txt, upgradeButton.get(), settingsNew.getAdminId());
         // bot.editText(editMsg);
-        bot.tickManual();
+        //bot.tickManual();
       
         GitHubUpgrade::needUpgrade = false;
         
@@ -363,14 +355,15 @@ void tick(){
             //String tag = GitHubUpgrade::tag();
             unsigned long upgradeButtonId = menuIds.getUpgradeId( settingsNew.getAdminId() ); 
             if ( upgradeButtonId != 0 ){
-                debugPrintf("Delete msg=%lu in chat=%llu\n", upgradeButtonId/* upgradeButton.get() */, settingsNew.getAdminId());
+                debugPrintf("Delete msg=%lu in admin chat=%lld\n", upgradeButtonId, settingsNew.getAdminId());
                 
                 //fb::Result delete(){ return bot.deleteMessage( settingsNew.getAdminId(), upgradeButton.get(), true); };
                 fb::Result res;
-                res = bot.deleteMessage( settingsNew.getAdminId(), upgradeButtonId, true);
+                res = bot.deleteMessage( settingsNew.getAdminId(), upgradeButtonId, false);
+                //bot.tickManual();
                 debugBotResult(res,"Delete upgrade menu");
 
-                menuIds.update();
+                //menuIds.update();
             }
             txt = F("Upgrade done. Reboot...");
             //bot.reboot();

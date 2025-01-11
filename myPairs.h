@@ -2,6 +2,9 @@
 #include <PairsFile.h>
 
 //PairsFile menuIds(&LittleFS, "/menu.dat", 3000);
+namespace MenuIdsNames {
+    static const char ignore[] PROGMEM = "ignore";
+};
 
 class MenuIds : public PairsFile {
     public:
@@ -61,15 +64,35 @@ class MenuIds : public PairsFile {
         // return remove( _key );
         return remove( strUpgrade( key) );
     };
-
+    Pair getIgnoreVersion(){
+        return get(MenuIdsNames::ignore);
+    };
+    bool hasIgnoreVersion(){
+        return has(MenuIdsNames::ignore);
+    };
+    bool removeIgnoreVersion(){
+        bool res = true;
+        if ( hasIgnoreVersion() ){
+            res = remove(MenuIdsNames::ignore);
+        }
+        return res;
+    };
+    bool setIgnoreVersion(const String& ver)
+    {   
+        if( ver.isEmpty() ){
+            return remove(MenuIdsNames::ignore);
+        }
+        return set(MenuIdsNames::ignore, ver);
+    };
     private:
-    String str(const long long key, const char prefix='\0' ) const {
+     
+    const String str(const long long key, const char prefix='\0' ) const {
         String out(prefix);
         out += Value(key).c_str();
         return out;
     };
-    inline String strUpgrade(const long long key) const { return str( key, 'u'); }
-    inline String strChannelName(const long long key) const { return str( key, 'n'); }
+    inline const String strUpgrade(const long long key) const { return str( key, 'u'); }
+    inline const String strChannelName(const long long key) const { return str( key, 'n'); }
 };
 
 MenuIds menuIds(&LittleFS, "/menu.dat", 3000);

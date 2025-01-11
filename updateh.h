@@ -242,6 +242,21 @@ void handleCommand(fb::Update& u){
             printRunTime;
           }
           break;
+//#define debug_print 
+#ifdef debug_print
+        case "/checked"_h:
+         if ( settingsNew.isAdmin( u.message().from().id() ) ){ 
+            auto arg = u.message().text().getSub(1, " ");
+            if ( arg.valid() ){
+              GitHubUpgrade::at._checkedDay = arg.toInt();
+            } 
+            message.mode = fb::Message::Mode::Text;
+            message.text = F("Checked day=");
+            message.text += GitHubUpgrade::at._checkedDay;
+            debugPrintln(message.text);
+         }
+        break;
+
         case "/clear_settings"_h:
           if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
             if ( settingsNew.remove() ){
@@ -263,8 +278,11 @@ void handleCommand(fb::Update& u){
           break;
         case "/clear_ignore"_h:
           if ( settingsNew.isAdmin(u.message().from().id() )){
-            if ( menuIds.has("ignore") ){
-              menuIds.remove("ignore");
+            // if ( menuIds.has("ignore") ){
+            //   menuIds.remove("ignore");
+            // }
+            if ( menuIds.removeIgnoreVersion() ){
+              debugPrintln("Ignore version cleaned");
             }
           }
           break;
@@ -354,6 +372,7 @@ void handleCommand(fb::Update& u){
             }
           }
           break;
+#endif          
         case "/starPortal"_h:
         case "/start_portal"_h:
           if (settingsNew.isAdmin( u.message().from().id() ) ){ //.admin ){
@@ -564,9 +583,16 @@ void updateh(fb::Update& u) {
         // do GitHub upgrade
         GitHubUpgrade::needUpgrade = true;  
       } else if ( resp.startsWith( "ig" )){
-          menuIds.set("ignore", GitHubUpgrade::tag() );
-          if ( menuIds.getUpgradeId(settingsNew.getAdminId()) != 0)
-            bot.deleteMessage( settingsNew.getAdminId(), menuIds.getUpgradeId(settingsNew.getAdminId()) );
+          menuIds.setIgnoreVersion( GitHubUpgrade::tag() );  
+          
+          // if ( menuIds.getUpgradeId(settingsNew.getAdminId()) != 0)
+          //   bot.deleteMessage( settingsNew.getAdminId(), menuIds.getUpgradeId(settingsNew.getAdminId()) );
+
+          unsigned long upgradeMenuId = menuIds.getUpgradeId(settingsNew.getAdminId());
+          if (upgradeMenuId != 0 ){
+            debugPrintf("Delete ignored upgrade id=%lu\n", upgradeMenuId);
+            bot.deleteMessage( settingsNew.getAdminId(), upgradeMenuId );
+          }
       }
 
 

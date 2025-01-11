@@ -57,6 +57,12 @@ class BuildInLed {
     this->changeStatusMs = currentMs;
     digitalWrite(this->pin, ! this->status());
   };
+  void flashOff(){
+    if ( this->status() != this->initStatus ){
+      this->off();
+      this->changeStatusMs = millis();
+    }
+  };
   // switch led status
   void toggle(int period=0) {
     unsigned long currentMs = millis(); 

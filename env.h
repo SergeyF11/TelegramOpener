@@ -179,7 +179,9 @@ namespace App {
             return res; //false; 
         };
         bool operator<(const Version& a) const { return a > (*this); };
-
+        bool operator<=(const Version& a) const { return ! ( (*this) > a ); };
+        bool operator>=(const Version& a) const { return ! ( a > (*this) ); };
+        bool operator!=(const Version& a) const { return ! ( (*this == a)); };
         bool isBetta() const {
             return betta != nullptr;
         };
