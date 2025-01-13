@@ -88,6 +88,7 @@ void handleDocument(fb::Update& u) {
                if (fetch.updateFlash()) {
                    debugPrintln("OTA done");
                    bot.sendMessage(fb::Message(F("OTA done"), u.message().chat().id()), true);
+                   bot.reboot();
                } else {
                    debugPrintln("OTA error");
                    bot.sendMessage(fb::Message(F("OTA error"), u.message().chat().id()), true);
@@ -204,15 +205,7 @@ void handleCommand(fb::Update& u){
               MT("CPU freq ", ESP.getCpuFreqMHz());
               MT("MHz\nFree heap=", ESP.getFreeHeap());
               MT("\nMax free block=", ESP.getMaxFreeBlockSize());
-              // {
-              //   auto id = String(ESP.getChipId(), HEX);
-              //   id.toUpperCase();
-              //   MT("\nChip Id: ",id) ;
-              //   id = String(ESP.getFlashChipId(),HEX);
-              //   id.toUpperCase();
-              //   MT("\nFlash chip Id: ", id);            
-              // }
-              
+
               MT("\nChip Id: ",String(ESP.getChipId(), HEX));
               MT("\nFlash Id: ",  String(ESP.getFlashChipId(),HEX));
               MT("\n  mode: ", _mode(ESP.getFlashChipMode()) );
@@ -223,6 +216,7 @@ void handleCommand(fb::Update& u){
               MT("\nSketch version: ", App::appVersion(version, __DATE__,__TIME__));
               MT("\n  size=", sizeKb(ESP.getSketchSize()) );
               MT("\n  MD5=",ESP.getSketchMD5());
+              MT("\n", TimeRus::uptime());
             //MT("\nFull version ",ESP.getFullVersion());
             #undef MT //(x,y) 
 
@@ -244,15 +238,31 @@ void handleCommand(fb::Update& u){
           break;
 //#define debug_print 
 //#ifdef debug_print
+        case "/uptime"_h:
+        {
+          TimeRus::uptimeTo(message.text); 
+          debugPrintln( message.text );
+        }
+
+        break;
+        case "/check_github"_h:
+         if ( settings.isAdmin( u.message().from().id() ) ){ 
+          GitHubUpgrade::check( /*now=*/true);
+            
+         }
+         break; 
         case "/checked"_h:
          if ( settings.isAdmin( u.message().from().id() ) ){ 
             auto arg = u.message().text().getSub(1, " ");
             if ( arg.valid() ){
-              GitHubUpgrade::at._checkedDay = arg.toInt();
+              //GitHubUpgrade::at._checkedDay = arg.toInt();
+              GitHubUpgrade::at.setCheckedDay(arg.toInt());
             } 
             message.mode = fb::Message::Mode::Text;
             message.text = F("Checked day=");
             message.text += GitHubUpgrade::at._checkedDay;
+            message.text += '\n';
+            message.text += GitHubUpgrade::at.toString();
             debugPrintln(message.text);
          }
         break;
@@ -593,6 +603,7 @@ void updateh(fb::Update& u) {
             debugPrintf("Delete ignored upgrade id=%lu\n", upgradeMenuId);
             bot.deleteMessage( settings.getAdminId(), upgradeMenuId );
           }
+          GitHubUpgrade::stringClean();
       }
 
 

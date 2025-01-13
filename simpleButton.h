@@ -8,7 +8,7 @@
 
 #ifdef BUTTON_NAME
 namespace ButtonInlimeMenu {
-  const char * bCmds PROGMEM = "~o~";
+  static const char * bCmds PROGMEM = "~o~";
 };
 #else
 #error BUTTON_NAME must be defined
@@ -178,7 +178,8 @@ const ReturnCode creater( const long long chat, const BotSettings::ButtonT& butt
 
     uint msgId = menuIds.getMenuId( chat );
     debugPrintf( "Chat id: %lld \tMsg id:%d\n", chat, msgId);
-    
+   
+
     String myMenuCmd = dynamicCmd(ButtonInlimeMenu::bCmds );
     // myMenuCmd += ButtonInlimeMenu::bCmds;
     // myMenuCmd += millis(); // time(nullptr); // добавляем время, чтобы отредактировать
@@ -198,7 +199,8 @@ debugPrint("fb::text.text="); debugPrintln(text.text);
 debugPrint("fb::text.chatID="); debugPrintln(text.chatID);
 debugPrint("fb::text.messageID="); debugPrintln(text.messageID);
       
-      if ( waitBotResponse ){
+      if ( waitBotResponse ){        
+        //builtInLed.flashOff();
         fb::Result res;
         res = botP->editText( text, waitBotResponse /*true*/ );
 
@@ -240,8 +242,9 @@ debugPrint("fb::text.messageID="); debugPrintln(text.messageID);
   void tick( BotSettings::Settings& sets ){
     //debugPretty;
     
-    if ( this->needUpdate() || millis() - this->lastUpdate >= _expiredPeriod) {//this->needUpdate( SimpleButton::NeedUpdate::setTrue );
-    debugPrintf("Button tick. Need:%d\tlastUpdate:%ld\tperiod:%ld\n", this->needUpdate(), this->lastUpdate, _expiredPeriod);
+    if ( this->needUpdate() || millis() - this->lastUpdate >= _expiredPeriod) {      
+      debugPrintf("Button tick. Need:%d\tlastUpdate:%ld\tperiod:%ld\n", this->needUpdate(), this->lastUpdate, _expiredPeriod);
+      
       this->updater( sets.getChatId(), sets.getButton());
     }
   };

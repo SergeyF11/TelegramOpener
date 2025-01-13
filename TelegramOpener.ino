@@ -15,7 +15,7 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,14
+#define VERSION 0,1,15
 #include "env.h"
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
@@ -50,7 +50,7 @@ SimpleButton myButton(bot, POLLING_TIME );
 
 #include "wifiManager.h"
 
-const char fileName[] PROGMEM = "/bot_opener.json";
+static const char fileName[] PROGMEM = "/bot_opener.json";
 BotSettings::Settings settings(fileName);
 
 //LastMsg lastMsg;
@@ -158,19 +158,34 @@ wm.addParameter(&button_report);
     //if you get here you have connected to the WiFi
      Serial.println("connected...yeey :)");
   }
+
+  //static esp8266::polledTimeout::periodicMs [](){ };
  // Sync time 
   #ifdef SYNC_TIME 
-      Serial.print(F("Sync time "));
+  // sntp_set_sync_interval(  60UL * 1000 );
+  // sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
+  
+      Serial.print(F("Wait sync time "));
+      // settimeofday_cb( [](){
+      //   timeSynced = true;
+      //   Serial.println(F(" done"));
+      //   debugPrintln( Time::toStr());
+      // } );
+      // while ( ! timeSynced ){
+      //     builtInLed.flash(200,1);
+      //     delay(10);
+      //     Serial.print("+");
+      // }
       while( ! Time::isSynced() ){        
           builtInLed.flash(200,1);
           delay(10);
           Serial.print("+");
       }
-      
-      debugPrintln( Time::toStr() ); //Time::printTo(Serial);
-      debugPrintln(F(" Done"));
-      //debugPrintln( Time );
-      //Serial.print()
+//      sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
+
+      Serial.println( Time::toStr() ); //Time::printTo(Serial);
+      debugPrintln(F(" Done" ));
+
   #endif
   certStore = botCertsStore(client, LittleFS);
   if ( certStore != nullptr) {
@@ -316,7 +331,7 @@ wm.addParameter(&button_report);
   GitHubUpgrade::checkAt( GitHubUpgrade::At::Any, GitHubUpgrade::At::Any, GitHubUpgrade::At::Any );
   //debugPrintln("Check upgrade done");
 #else
-  GitHubUpgrade::checkAt( );
+  GitHubUpgrade::checkAt( GitHubUpgrade::At::Random(7) );
 #endif
 
 //bool needStartPortal = false
@@ -344,7 +359,7 @@ void loop(){
     myButton.tick( settings );
     
   } else {
-    builtInLed.flashOff();
+    //builtInLed.flashOff();
     GitHubUpgrade::tick( );
   }
  

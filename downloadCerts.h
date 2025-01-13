@@ -11,10 +11,10 @@
 //#include <ESP8266HTTPClient.h>
 
 namespace CertStoreFiles {
-    const char dataCerts[] PROGMEM = "data/certs.ar";
+    static const char dataCerts[] PROGMEM = "data/certs.ar";
     ///"certs.ar"
-    const char * fileData = dataCerts+4; //"/certs.ar";
-    const char fileIdx[] PROGMEM = "/certs.idx";
+    static const char * fileData = dataCerts+4; //"/certs.ar";
+    static const char fileIdx[] PROGMEM = "/certs.idx";
 };
 namespace CertificateStore { 
     enum Errors {

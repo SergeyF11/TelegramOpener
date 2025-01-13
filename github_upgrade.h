@@ -20,36 +20,6 @@ extern App::Version version;
 extern MenuIds menuIds;
 extern WiFiClientSecure client;
 
-//static String gitVersion = version.toString();
-//static String gitBinFile = App::getBinFile();
-//const static char certs_ar[] PROGMEM ="certs.ar";
-
-// extern CertStore* certStore;
-// BearSSL::X509List *trustedGitHubRoot;
-// ESPOTAGitHub *gitHubUpgrade;
-
-// class Url : public String {
-//     public:
-//     Url(){};
-//     Url(String& s){
-//         this->_this = _preSlash( s.c_str() );
-//     };
-//     private:
-//     String _this;
-//     String _preSlash(const char * s){
-//         String out;
-//         if( s != nullptr && s[0] != '/' ){
-//             out += '/';
-//         }
-//         out += s;
-//         return out;
-//     };
-//     String operator +=(){
-
-//     };
-// };
-
-
 
 namespace GitHubUpgrade {
     static const char apiHost[] PROGMEM = "api.github.com";
@@ -74,24 +44,99 @@ namespace GitHubUpgrade {
     //static const String appBinFile = App::getBinFile();
     
 
-    static const time_t _likeRealTime =  2*24*60*60;
+    //static const time_t _likeRealTime =  2*24*60*60;
     static bool has = false;
     // static int checkedDay=0;
     //static String latestTag;
     static bool needUpgrade = false;
-    static String _downloadURL = (char *)nullptr;
-    static String _releaseInfoURL = (char *)nullptr;
-
-    struct At {
+    static String _downloadURL = NULL_STR;
+    static String _releaseInfoURL = NULL_STR;
+    void stringClean(){
+        _downloadURL= NULL_STR;
+        _releaseInfoURL = NULL_STR;
+        _downloadURL.reserve(0);
+        _releaseInfoURL.reserve(0);
+    };
+    static const char _sun[] PROGMEM ="Sun";
+    static const char _mon[] PROGMEM ="Mon";
+    static const char _tue[] PROGMEM ="Tue";
+    static const char _wed[] PROGMEM ="Wed";
+    static const char _thu[] PROGMEM ="Thu";
+    static const char _fri[] PROGMEM ="Fri";
+    static const char _sat[] PROGMEM ="Sat";
+    static const char _anyStr[] PROGMEM ="Any";
+    static const char * const _weekDays[] PROGMEM = { _sun, _mon, _tue, _wed, _thu,_fri, _sat};
+    const char * weekDayStr(uint day){ return _weekDays[day]; };
+        //"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+    struct At /*  : public Printable  */{
+        enum WeekDays {
+            Any = -1,
+            Sun,
+            Mon,
+            Tue,
+            Wed,
+            Thu,
+            Fri,
+            Sat,
+        };
+        
         int weekDay=5;
         int hour=4;
         int min=0;
-        int _checkedDay=0;
- 
+        int _checkedDay=WeekDays::Any;
+        bool setCheckedDay(int cd){
+            return _checkedDay = cd;
+        }; 
+        // bool setCheckedDay(int cd){ 
+        //     bool valid =( cd > WeekDays::Any && cd <= WeekDays::Sat );
+        //     if ( valid ) _checkedDay=cd;
+        //     return valid;
+        // };
+        // bool setCheckedDay(const char * cd){
+        //     bool valid = false;
+        //     for( int i=WeekDays::Sun; i<= WeekDays::Sat; i++ ){
+        //         if( strncmp( cd, _weekDays[i], 3) == 0 ){
+        //             _checkedDay = i;
+        //             valid = !valid;
+        //         }
+        //     }
+        //     if ( !valid ){
+        //         int val = atoi(cd);
+        //         if ( val != 0 || cd[0] == char('0'+val) )
+        //             valid = setCheckedDay( val );
+        //     }
+        //     return valid;
+        // };
+        bool isAny(const int val){
+            return val == WeekDays::Any;
+        };
+        bool addToString(String& s, const int val, const char * (*getStr)(uint)=nullptr){
+            bool res = isAny(val); 
+            if ( res ) s += _anyStr;
+            else if ( getStr == nullptr ) {
+                if ( val < 10 ) s += '0';
+                s += val;
+            } else {
+                s += getStr(val);
+            }
+            return res;
+        };
+        String toString(){
+            String out(F("At: "));
+            addToString( out, weekDay, weekDayStr);
+            out += ' ';
+            addToString(out, hour);
+            out += ':';
+            addToString(out, min);
+            return out;
+        };
+        size_t printTo( Print& s){
+            return s.print(toString());
+        };
         bool checkedDay(const time_t* setDay=nullptr){ 
             const time_t now = time(nullptr);
-            if ( now < _likeRealTime ) {
-                debugPrintln("Wait sync time");
+            if ( ! Time::isSynced() ) {
+                debugPrintln("No sync time");
                 return true;
             }
 
@@ -115,7 +160,9 @@ namespace GitHubUpgrade {
             min = _min;
             return this;
         };
-        static const int Any = -1;
+        //static const int Any = -1;
+        static uint8_t Random(uint8_t max){ 
+            return ( *(volatile uint8_t *)0x3ff20e44)%max; };
         bool isTime(  ) {
             const time_t now = time(nullptr);
             auto nowTime = localtime(&now);
@@ -193,23 +240,21 @@ namespace GitHubUpgrade {
         }
         return _lastErrorCode;
     };
-
-    bool check(){
-        if( /* at.checkedDay() || */ ! at.isTime() ) return false;
-        //if ( at.isTime() ) {   
-        if ( has && at.checkedDay() ) {
-            return ! has;
-        } else {
-            if ( getGitHubRelease() == Errors::Ok ) {
+    bool _check(){
+        has = false;
+        if ( getGitHubRelease() == Errors::Ok ) {
                 has = true;
-
+                
             } else {
                 debugPretty;
                 debugPrint("Error:");
                 debugPrintln( _lastErrorCode );    
-                return false;
-            }     
-            
+                
+            } 
+        return has;
+    };
+    bool checkVersion(){
+        if ( has) {
             App::Version gitHubV( _releaseTag ); //gitHubUpgrade->getLatestTag());
             debugPrintf("GitHub newest version is %s\n", gitHubV.toString().c_str());
 
@@ -227,8 +272,24 @@ namespace GitHubUpgrade {
                         ignoreVersion.toString().c_str());    
                 }
             }
+        }
+        return has;
+    };
+
+    bool check(bool now = false){
+        if( ! now &&/* at.checkedDay() || */ ! at.isTime() ) return false;
+        //if ( at.isTime() ) {   
+        if ( ! now && has &&  at.checkedDay() ) {
+            return ! has;
+        } else {
+    
+            if ( _check() ) {
+                auto now = time( nullptr);
+                at.checkedDay( &now );
+            };
+
             
-            if ( has ) {
+            if ( checkVersion() ) {
                 // latestTag = GitHubUpgrade.getLatestTag();
                 debugPretty; 
                 debugPrintln( _releaseTag ); //gitHubUpgrade->getLatestTag() );
@@ -241,8 +302,7 @@ namespace GitHubUpgrade {
                 debugPrintln( _lastErrorCode );
             }
         }
-        auto now = time( nullptr);
-        at.checkedDay( &now );
+
         return has;
     };
 
@@ -265,6 +325,7 @@ namespace GitHubUpgrade {
             t_httpUpdate_return ret = ESPhttpUpdate.update( client, _downloadURL) ;
             if ( ret == HTTP_UPDATE_OK ) {
                 has = ! has;
+                stringClean();
                 return ! has;
             } else {
                 debugPretty;
@@ -287,8 +348,8 @@ namespace GitHubUpgrade {
     };
 
 //void tick( FastBot2& bot,const BotSettings::Settings& settings){
-void tick(){
-    if ( check() &&  settings.hasAdmin() ){
+void tick(bool checkNow=false){
+    if ( check(checkNow) &&  settings.hasAdmin() ){
         unsigned long oldUpgradeMenuId = menuIds.getUpgradeId(settings.getAdminId());
         // нужно для успешного удаления
         bot.tickManual();

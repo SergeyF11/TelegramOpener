@@ -10,7 +10,7 @@
 #define DEFAULT_TZ_MSK  "MSK-3"
 
 #define _SAY_HI_MD_  "_Привет\\. Я снова тут\\.\\.\\._"
-static const char * SAY_HI_MD PROGMEM = _SAY_HI_MD_;
+static const char SAY_HI_MD[] PROGMEM = _SAY_HI_MD_;
 
 
 #define _SAY_HI_  "Привет. Я снова тут..."
@@ -19,16 +19,14 @@ static const char * SAY_HI_MD PROGMEM = _SAY_HI_MD_;
 #define _CHANNEL_FOR_CONTROL_ "Мой канал управления "
 #define NULL_STR (char*)nullptr
 
-static const char * CHANNEL_FOR_CONTROL PROGMEM = _CHANNEL_FOR_CONTROL_;
-static const char * SAY_HI PROGMEM = _SAY_HI_;
-static const char * TRY_LATTER PROGMEM = _TRY_LATTER_;
+static const char CHANNEL_FOR_CONTROL[] PROGMEM = _CHANNEL_FOR_CONTROL_;
+static const char SAY_HI[] PROGMEM = _SAY_HI_;
+static const char TRY_LATTER[] PROGMEM = _TRY_LATTER_;
 
 
 #include "TelegramMD.h"
 
-
-
-class AddedString : public String {
+class AddedString /* : public String */ {
     private:
         String * s;
         char _delimeter = '\0';
@@ -50,31 +48,87 @@ class AddedString : public String {
         return _concat(_s);
     };
     AddedString operator<<(const String& _s){
-        return _concat(_s.c_str());
-        
+        return _concat(_s.c_str());        
     };
     AddedString operator<<(const unsigned int _s){
         return _concat(String(_s).c_str());
-        //return *this;
     };
     AddedString operator<<(const int _s){
         return _concat(String(_s).c_str());
-        //return *this;
     };
 
-    // template <typename T>
-    // AddedString *operator<<(const T &rhs) {
-    //         concat(rhs);
-    //         return this;
-    //     };
+     operator String() const {
+        return *s;
+    };
 
-    //  operator String() const {
-    //     return *this;
-    // };
-    // AddedString * operator<<(const char * _s){
-    //     this->s += _s;
-    //     return this;
-    // };
+};
+namespace TimeRus {
+    enum T {
+        HOURS,
+        MINUTE,
+        SECONDS,
+    };
+    static const char _hours1[] PROGMEM = "час";
+    static const char _hours2[] PROGMEM = "часа";
+    static const char _hours3[] PROGMEM = "часов";
+    static const char _minutes1[] PROGMEM = "минута";
+    static const char _minutes2[] PROGMEM = "минуты";
+    static const char _minutes3[] PROGMEM = "минут";
+    static const char _seconds1[] PROGMEM = "секунда";
+    static const char _seconds2[] PROGMEM = "секунды";
+    static const char _seconds3[] PROGMEM = "секунд";
+
+    static const char * const _t[3][3] PROGMEM = { 
+    {_hours1,_hours2 ,_hours3},
+    { _minutes1, _minutes2,_minutes3},
+    { _seconds1,_seconds2,_seconds3 }
+    };
+    enum SUFFIX {
+        ONE,
+        TWO_FOUR,
+        OTHER,
+    };
+    // static const char * const _t[3][3] PROGMEM = {
+    //                 {"час", "часа", "часов"},
+    //                 {"минута", "минуты","минут"},
+    //                 {"секунда","секунды", "секунд"}};
+
+    auto _timeSuffix = [](T t, const unsigned int s){
+        switch(s<20 ? s : s%10){
+            case 1:
+            return _t[t][SUFFIX::ONE];
+            case 2:
+            case 3:
+            case 4:
+            return _t[t][SUFFIX::TWO_FOUR];
+        }
+        return _t[t][SUFFIX::OTHER];
+        };
+    void uptimeTo(String& up){
+        up = F("Uptime");
+        AddedString uptime(up);
+        uptime.setDelimeter(' ');
+        auto now = millis()/1000;
+        auto mins = now/60;
+        unsigned int hours = mins/60;
+        if ( hours > 0 ){
+        uptime << hours << _timeSuffix( TimeRus::HOURS, hours );
+        mins = mins - hours*60;
+        }
+        if ( mins > 0 ){
+        uptime << (unsigned int)mins << _timeSuffix( TimeRus::MINUTE, mins);
+        }
+        unsigned secs = now%60;
+        if ( secs > 0 || ( hours == 0 && mins == 0 )) {
+        uptime << secs << _timeSuffix( TimeRus::SECONDS, secs);
+        }
+    };
+    String uptime(){
+        String out;
+        uptimeTo(out);
+        return out;
+    };
+    
 };
 
 namespace Url {
@@ -97,9 +151,9 @@ namespace Url {
 };
 
 namespace Author {
-    static const char * firstName PROGMEM = "Sergey";
-    static const char * secondName PROGMEM = "Fedotov";
-    static const char * gitHubAka PROGMEM = "SergeyF11";
+    static const char firstName[] PROGMEM = "Sergey";
+    static const char secondName[] PROGMEM = "Fedotov";
+    static const char gitHubAka[] PROGMEM = "SergeyF11";
        
     String getName(){
         String name(firstName);
@@ -108,7 +162,7 @@ namespace Author {
         return name;
     };
     String getCopyright(){
-        static const char * _copyright PROGMEM = "Copyright (C) ";
+        static const char _copyright[] PROGMEM = "Copyright (C) ";
         String c = ( _copyright);
         c += getName();
         c += F(" aka ");
@@ -117,7 +171,7 @@ namespace Author {
     }
 };
 namespace App {
-    static const char * name PROGMEM = "TelegramOpener";
+    static const char name[] PROGMEM = "TelegramOpener";
 //    static const char dataCerts[] PROGMEM = "data/certs.ar";
     static const char GITHUB_IO_FINGERPRINT[] PROGMEM = "97:D8:C5:70:0F:12:24:6C:88:BC:FA:06:7E:8C:A7:4D:A8:62:67:28";
     const int gitHubPort = 443;
