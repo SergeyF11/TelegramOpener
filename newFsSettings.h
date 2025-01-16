@@ -48,22 +48,21 @@ namespace su {
 //      Serial.println(dest);
       return dest;
     };
-
+inline bool isDigit(const unsigned char c){
+  return (c-'0')<=9;
+};
+inline bool isSign(const unsigned char c){
+  return c=='-' || c =='+';
+};
+inline bool __isDS(const unsigned char c) { 
+  return isDigit(c) || isSign(c);
+};
 bool is_digits(const char *str)
 {
-  static const char digits[] PROGMEM = "+-0123456789";
+  //static const char digits[] PROGMEM = "+-0123456789";
   uint i=0;
   while ( str[i] !='\0' ){
-    uint j=0;
-    bool isDigit = false;
-    while ( digits[j] != '\0'){
-      if( str[i] == digits[j] ) {
-        isDigit = ! isDigit;
-        break;
-      }
-      j++;
-    }
-    if ( ! isDigit ) return false;
+    if ( ! __isDS(str[i])) return false;
     i++;
   }
   return true;

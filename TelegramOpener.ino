@@ -1,4 +1,4 @@
- //#define debug_print 1
+ // #define debug_print 1
  //#define GitHubUpgrade_ANY_TIME
 
 #define WIFI_POWER 5.0
@@ -15,7 +15,7 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,15
+#define VERSION 0,1,16
 #include "env.h"
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
@@ -67,6 +67,7 @@ void rawResponse(su::Text resp){
 };
 
 void setup(){
+
   Serial.begin(115200);
     while ( ! Serial ){
       delay(1);
@@ -143,6 +144,7 @@ wm.addParameter(&button_report);
   wm.setBreakAfterConfig(true); // needed to use saveWifiCallback
    wifiInfo();
 
+  //wm.setDebugOutput(true, WM_DEBUG_DEV);
 
   pinMode(RX_PIN, INPUT_PULLUP);
   builtInLed.on();
@@ -200,6 +202,7 @@ wm.addParameter(&button_report);
 
   bot.attachUpdate(updateh);   // подключить обработчик обновлений
   bot.setToken( settings.getToken() );   // установить токен
+  //bot.skipNextMessage();
   bot.skipUpdates();
   bot.attachRaw(rawResponse);
 
@@ -313,8 +316,8 @@ wm.addParameter(&button_report);
     }
   
 
-    //digitalWrite(BUILTIN_LED, HIGH);
-  builtInLed.off();
+  
+  //builtInLed.off();
   wifiInfo();
   Serial.println(settings);
 
@@ -359,7 +362,7 @@ void loop(){
     myButton.tick( settings );
     
   } else {
-    //builtInLed.flashOff();
+    builtInLed.flash(0);
     GitHubUpgrade::tick( );
   }
  
@@ -383,7 +386,9 @@ void loop(){
           ESP.restart();
         }
         //if( settings.chat.id == 0LL ) settings.chat.id = settings.admin;
-        builtInLed.toggle();
+        
+        // это не обязательно
+        //builtInLed.off();
         myButton.needUpdate( SimpleButton::NeedUpdate::setTrue );
 
         fb::Message message;
@@ -405,7 +410,7 @@ void loop(){
       needStart = NeedStart::None;
       break;
     case NeedStart::WebRunning:
-      builtInLed.flash(50);
+      builtInLed.flash(400, 200);
       wm.process();
       if ( ! wm.getWebPortalActive() ) {
         if ( webPortalMsgId ){
@@ -423,12 +428,13 @@ void loop(){
       break;
     case NeedStart::Reboot:
       if( bot.isPolling() ) {
+        bot.skipNextMessage();
         bot.skipUpdates();
-        //bot.tickManual();
+        bot.tickManual();
         debugPrintln("Reboot...");
         Serial.flush();
         delay(1);
-        ESP.reset();
+        ESP.restart();
       }
       break;
     }

@@ -22,7 +22,10 @@ static const char SAY_HI_MD[] PROGMEM = _SAY_HI_MD_;
 static const char CHANNEL_FOR_CONTROL[] PROGMEM = _CHANNEL_FOR_CONTROL_;
 static const char SAY_HI[] PROGMEM = _SAY_HI_;
 static const char TRY_LATTER[] PROGMEM = _TRY_LATTER_;
-
+static const char START_UPGRADE[] PROGMEM = "Start upgrade...";
+static const char DONE_UPGRADE[] PROGMEM = "Upgrade done. Reboot...";
+static const char ERROR_UPGRADE[] PROGMEM = "Upgrade failed.";
+//static const char REBOOT[] PROGMEM = "Reboot...";
 
 #include "TelegramMD.h"
 

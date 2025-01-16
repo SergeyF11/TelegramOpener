@@ -1,3 +1,4 @@
+#include "relay.h"
 #pragma once
 
 #include <WiFiClientSecure.h>
@@ -127,11 +128,11 @@ namespace CertificateStore {
         int length = len;
         /* if ( len == -1 ) */{ client.setTimeout(8000); }
  
-        auto ledTogle = [](void){
-            static uint8_t status = LOW;
-            digitalWrite( BUILTIN_LED, status );
-            status = ! status;
-        };
+        // auto ledTogle = [](void){
+        //     static uint8_t status = LOW;
+        //     digitalWrite( LED_BUILTIN, status );
+        //     status = ! status;
+        // };
 
         while (  len > 0 || ( len == -1 && client.connected() /* && ! timeOut() */ ) )
         {
@@ -150,13 +151,14 @@ namespace CertificateStore {
                 {
                     len -= c;
                 }
-
-                ledTogle();
+                builtInLed.toggle();
             } 
             delay(0);
         }
         delay(1);
         file.close();
+        builtInLed.flash(0);
+        
         if ( client.connected() )
             client.stop();
         debugPrintf("Writed %d bytes from %u\n", writed, length );

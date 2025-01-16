@@ -92,21 +92,16 @@ namespace GitHubUpgrade {
         //     if ( valid ) _checkedDay=cd;
         //     return valid;
         // };
-        // bool setCheckedDay(const char * cd){
-        //     bool valid = false;
-        //     for( int i=WeekDays::Sun; i<= WeekDays::Sat; i++ ){
-        //         if( strncmp( cd, _weekDays[i], 3) == 0 ){
-        //             _checkedDay = i;
-        //             valid = !valid;
-        //         }
-        //     }
-        //     if ( !valid ){
-        //         int val = atoi(cd);
-        //         if ( val != 0 || cd[0] == char('0'+val) )
-        //             valid = setCheckedDay( val );
-        //     }
-        //     return valid;
-        // };
+        bool setDay(const char * cd){
+            bool valid = false;
+            for( int i=WeekDays::Sun; i<= WeekDays::Sat; i++ ){
+                if( strncmp( cd, _weekDays[i], 3) == 0 ){
+                    weekDay = i;
+                    valid = !valid;
+                }
+            }
+            return valid;
+        };
         bool isAny(const int val){
             return val == WeekDays::Any;
         };
@@ -394,7 +389,7 @@ void tick(bool checkNow=false){
       //LastMsg upgradeButton(settings.getAdminId(),0, tag.c_str());
       //menuIds.( String("up")+ settings.getAdminId() );  
 
-      String txt(F("Start upgrade..."));
+      String txt(START_UPGRADE);
       if ( settings.hasAdmin() ) {
         {
         fb::Message msg(txt, settings.getAdminId() );
@@ -425,7 +420,8 @@ void tick(bool checkNow=false){
 
                 //menuIds.update();
             }
-            txt = F("Upgrade done. Reboot...");
+            txt = DONE_UPGRADE;
+            //txt += REBOOT; 
             //bot.reboot();
         }
         debugPrintf("Txt=%s, to msgId=%lu\n", txt.c_str(), startUpMsgId );

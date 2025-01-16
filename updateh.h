@@ -65,10 +65,9 @@ void getNameFromMessage(String& txt, const fb::Update& u, const String& prefix, 
 void handleDocument(fb::Update& u) {
     if ( u.message().from().id() == settings.getAdminId() ){ //settings.admin ){
       if (u.message().document().name().endsWith(".bin")) {  // .bin - значит это ОТА
-          auto res = bot.sendMessage(fb::Message("OTA begin", u.message().chat().id()), true);
-          // if (res.valid()) wrongCount.reset();
-          // else wrongCount++;
-
+          auto res = bot.sendMessage(fb::Message(START_UPGRADE, u.message().chat().id()), true);
+          uint32_t otaMsg = 0; 
+          if ( res.valid() ) otaMsg = bot.lastBotMessage();
           // не нужно для simpleButton
           //myButton.stopUpdate();
           
@@ -76,22 +75,37 @@ void handleDocument(fb::Update& u) {
           // OTA обновление тип 1
           //bot.updateFlash(u.message().document(), u.message().chat().id());
           
-          // gson::string settings = SETTINGS::addLastMessage(jsonSettings, );
-          // if ( SETTINGS::writeJson(settings) ){
-          //   jsonSettings = settings;
-          // }
-
-
           //OTA обновление тип 2
-           fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
+          fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
+          // auto progress =[](){ 
+          //   static uint8_t state=0;
+          //   digitalWrite(LED_BUILTIN, state);
+          //   state =!state;
+          // };
+
+           fetch.setProgressFn( [](){ builtInLed.toggle();} );
            if (fetch) {
-               if (fetch.updateFlash()) {
-                   debugPrintln("OTA done");
-                   bot.sendMessage(fb::Message(F("OTA done"), u.message().chat().id()), true);
-                   bot.reboot();
+                if (fetch.updateFlash()) {
+                  debugPrintln(START_UPGRADE);
+                  //bot.reboot();          
+                  //bot.skipUpdates(100);
+                  if ( otaMsg != 0 )
+                    bot.editText(fb::TextEdit(DONE_UPGRADE, otaMsg, u.message().chat().id()), true);
+                  else
+                    bot.sendMessage(fb::Message(DONE_UPGRADE, u.message().chat().id()), true);
+                  
+                  bot.reboot();
+                  //bot.skipNextMessage();
+                  //bot.sendMessage(fb::Message(REBOOT, u.message().chat().id()), false);
+                  //bot.tickManual();
+
+                  needStart = NeedStart::Reboot;
                } else {
-                   debugPrintln("OTA error");
-                   bot.sendMessage(fb::Message(F("OTA error"), u.message().chat().id()), true);
+                  debugPrintln(ERROR_UPGRADE);
+                  if ( otaMsg )
+                    bot.editText(fb::TextEdit(ERROR_UPGRADE, otaMsg, u.message().chat().id()), false);
+                  else
+                    bot.sendMessage(fb::Message(ERROR_UPGRADE, u.message().chat().id()), false);
                }
            }
 
@@ -256,7 +270,13 @@ void handleCommand(fb::Update& u){
             auto arg = u.message().text().getSub(1, " ");
             if ( arg.valid() ){
               //GitHubUpgrade::at._checkedDay = arg.toInt();
-              GitHubUpgrade::at.setCheckedDay(arg.toInt());
+              if ( is_digits( arg.toString().c_str() )) {
+                GitHubUpgrade::at.setCheckedDay(arg.toInt());
+              } else {
+              char day[4];
+              arg.toStr(day, 4);
+              GitHubUpgrade::at.setDay( day );
+              }
             } 
             message.mode = fb::Message::Mode::Text;
             message.text = F("Checked day=");
@@ -496,32 +516,32 @@ void updateh(fb::Update& u) {
     debugPretty;
     handleChatMember(u);
    }
-   else if ( u.isPost() ) {
-      debugPrintln("Channel post");
-      if ( u.message().has( SH("new_chat_title") )){
-        //debugPrintln("\n\nBingo\n\n");
-        String newChatTitle = u.message().chat().title().decodeUnicode();
-        long long chatId = u.message().chat().id();
-        //menuIds.set( String('n') + settings.getChatId(true), newChatTitle);
-        menuIds.setChannelName( settings.getChatId(true), newChatTitle);
-        String myChannel;
-        myChannel += CHANNEL_FOR_CONTROL;
-        myChannel += TelegramMD::asBold( TelegramMD::textIn( newChatTitle, '\'' ),  MARKDOWN_TG::escape );  
-        {
-          fb::Message message;
-          message.text = myChannel;
-          message.chatID = settings.getAdminId();
-          message.setModeMD();
-          bot.sendMessage(message);
-          debugPrintln( message.text );
-         }
+  else if ( u.isPost() ) {
+    debugPrintln("Channel post");
+    if ( u.message().has( SH("new_chat_title") )){
+      //debugPrintln("\n\nBingo\n\n");
+      String newChatTitle = u.message().chat().title().decodeUnicode();
+      long long chatId = u.message().chat().id();
+      //menuIds.set( String('n') + settings.getChatId(true), newChatTitle);
+      menuIds.setChannelName( settings.getChatId(true), newChatTitle);
+      String myChannel;
+      myChannel += CHANNEL_FOR_CONTROL;
+      myChannel += TelegramMD::asBold( TelegramMD::textIn( newChatTitle, '\'' ),  MARKDOWN_TG::escape );  
+      {
+        fb::Message message;
+        message.text = myChannel;
+        message.chatID = settings.getAdminId();
+        message.setModeMD();
+        bot.sendMessage(message);
+        debugPrintln( message.text );
+        }
 
-      } else {
-        debugPrintln( u.message().text());
+    } else {
+      debugPrintln( u.message().text());
 
-      }
+    }
 
-   }
+  }
   else if (u.isQuery()) {
   //  wrongCount.reset();
     bool myAlert = false;

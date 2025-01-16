@@ -1,5 +1,7 @@
 #include "utils/string.h"
 #pragma once
+#define WM_STRINGS_FILE "wm_strings_ru.h"
+//#define WIFI_MANAGER_OVERRIDE_STRINGS
 
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <time.h>
@@ -34,7 +36,7 @@ enum NeedStart {
 
 NeedStart needStart=None;
 
-WiFiManager wm;
+WiFiManager wm; //(Serial); 
 
 class IntParameter : public WiFiManagerParameter {
 public:

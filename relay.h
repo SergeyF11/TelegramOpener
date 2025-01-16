@@ -1,7 +1,11 @@
+#include <cstdint>
+#include "twi.h"
+#include <assert.h>
+
 // #include "core_esp8266_features.h"
 // #include "common.h"
 #pragma once
-#include <time.h>
+//#include <time.h>
 #ifdef TEST_WEMOS
 #define RELAY_PORT LED_BUILTIN
 #define RELAY_INIT_STATUS HIGH
@@ -16,68 +20,230 @@
 #warning Must be defined TEST_WEMOS or HW_622 for define RELAY_PORT
 #endif
 
-#define DEFAULT_CLOSED_SEC 1
+#define DEFAULT_OPEN_SEC 1
 //#define LOW 0
 //#define HIGH 1
 #define DEBUG_RELAY 0
 
-#define BULITIN_LED_MACRO(period, flash, init) { \
-  static int initStatus, status = init;     \
-  static unsigned long t = 0UL;     \
-  unsigned long now; now=millis();       \
-  uint p = (status!=initStatus) ? (uint)(period-flash) : (uint)(flash); \
-  if( now - t >= p ) { /*status==initStatus ? (unsigned long)(period) : (unsigned long)(flash) ) {   */     \
-    if( Serial ) Serial.printf("Change status %d for %ld\n",status,now); \
-    status = !status; \
-    digitalWrite(BUILTIN_LED, status);                     \
-    t = now;  }                \
-}
+// #define BULITIN_LED_MACRO(period, flash, init) { \
+//   static int initState, pinVal = init;     \
+//   static unsigned long t = 0UL;     \
+//   unsigned long now; now=millis();       \
+//   uint p = (pinVal!=initState) ? (uint)(period-flash) : (uint)(flash); \
+//   if( now - t >= p ) { /*pinVal==initState ? (unsigned long)(period) : (unsigned long)(flash) ) {   */     \
+//     if( Serial ) Serial.printf("Change pinVal %d for %ld\n",pinVal,now); \
+//     pinVal = !pinVal; \
+//     digitalWrite(BUILTIN_LED, pinVal);                     \
+//     t = now;  }                \
+// }
 
-class BuildInLed {
+
+class OutputPin {
   public:
-  // create led for pin
-  BuildInLed(int pin){
-    this->pin =pin;
-    this->initStatus=digitalRead(this->pin);
-    pinMode(this->pin,OUTPUT);
+  enum State {
+    OFF,
+    ON,
   };
-  //get current led status
-  inline int status(){ return digitalRead(this->pin); };
-  //switch led on
-  inline void on(){ digitalWrite(this->pin, !this->initStatus);};
-  //switch led off
-  inline void off() { digitalWrite(this->pin, this->initStatus);};
-  void flash(uint periodMs=1000, uint flashMs=1) {
-    unsigned long currentMs = millis(); 
-    if( this->status() == this->initStatus ){
-      if( currentMs - this->changeStatusMs < (periodMs-flashMs) ) return;
-    } else {
-      if( currentMs - this->changeStatusMs < flashMs ) return;
-    }
-    this->changeStatusMs = currentMs;
-    digitalWrite(this->pin, ! this->status());
-  };
-  void flashOff(){
-    if ( this->status() != this->initStatus ){
-      this->off();
-      this->changeStatusMs = millis();
-    }
-  };
-  // switch led status
-  void toggle(int period=0) {
-    unsigned long currentMs = millis(); 
-    if ( period ){
-      if ( currentMs - this->changeStatusMs < period ) return;
-    }
-    this->changeStatusMs = currentMs;
-    digitalWrite(this->pin, ! this->status());
-    };
-
   private:
-  int pin;
-  int initStatus;
-  unsigned long changeStatusMs=0;
-} builtInLed(LED_BUILTIN);
+  const uint8_t pin;
+  const uint8_t initState;
+  uint8_t pinValue;
+  public:
+  inline void invert(){
+    pinValue = !pinValue;
+    write();
+  }
+  inline void write() const {
+    digitalWrite(pin,pinValue);
+  };
+  inline void write(State val){
+    pinValue = ( val == State::OFF ) ? initState : !initState;
+    write();
+  };
+  inline void off(){ pinValue = initState; write(); };
+  inline void on(){ pinValue = !initState; write(); };
+  inline State state(bool real=false) const { 
+    return real ? 
+      (State)(digitalRead(pin) != initState ) : 
+      (State)(pinValue != initState); 
+  };
+  OutputPin(const uint8_t pin, const bool stateOn=HIGH) :
+    pin(pin), initState(State(!stateOn))
+  {
+    pinMode(pin,OUTPUT);
+    off();
+  }
+
+  // friend class Relay;
+  // friend class Led;
+};
+
+class Relay : OutputPin {
+  
+  private:
+  //OutputPin pin;
+  unsigned long openPeriodMs; 
+  unsigned long changeStateMs=0;
+
+  public:
+  // define relay instance 
+  // args: pin, init state, period for open state 
+  Relay(const uint port, const uint8_t initState=LOW, const uint openPeriod=DEFAULT_OPEN_SEC) :
+    OutputPin(port, !initState ), openPeriodMs(openPeriod*1000)
+    {};
+
+  // Call in loop for change state the relay
+  void tick(){
+    if ( state() == OutputPin::ON  ){
+      //time_t _now = time(nullptr);
+      if ( millis() - changeStateMs >= openPeriodMs ){
+        off();
+      }
+    }
+  };
+
+  // On relay for open device
+  void open(){
+    if ( state() == OutputPin::ON ) return;
+    changeStateMs = millis(); //period != 0 ? (_now + period ) : (_now + this->openPeriod); 
+    on();
+  };
+
+  // void on() new {
+  //   OutputPin::on();
+  // };
+};
+
+// defined led instatnce with on(), off(), toggle(), flash(period,flashMs) functions
+class Led : public OutputPin {  
+  private:
+//  OutputPin pin;
+  unsigned long changeStateMs=0;
+  bool flashed = true;
+  public:
+
+  //define led on pin and ON state value
+  Led(const uint8_t pin, const bool stateOn=HIGH) :
+    OutputPin(pin, stateOn)
+  { };
+
+  // Flash led on flashMs with periodMs. Call in loop
+  // periodMs must be =0 or greater flashMs
+  void flash(const uint periodMs=1000,const uint flashMs=1) {
+    #ifdef debug_print
+    assert( ( periodMs == 0 || periodMs > flashMs ) && "Error: periodMs must be = 0 or > flashMs" );
+    //assert((void("void helps to avoid 'unused value' warning"), periodMs > flashMs ));
+    #endif
+    if ( ! flashed ) return;
+    unsigned long currentMs = millis(); 
+    if ( periodMs ) 
+      if( state() == OutputPin::OFF ){
+        if( currentMs - changeStateMs < (periodMs-flashMs) ) return;
+        else on();
+      } else {
+        if( currentMs - changeStateMs < flashMs ) return;
+        else off();
+      }
+    else off();
+    changeStateMs = currentMs;
+  };
+
+  // turn off flashing in loop
+  void flashOff(){ flashed = false; };
+
+  //turn On flashing in loop
+  void flashOn(){ flashed = true; };
+  
+  // invert led state now
+  inline void toggle(){
+    changeStateMs = millis();
+    invert();
+  };
+
+  //invert led state after MS. Need call the func in loop
+  void toggle(int period) {
+    //unsigned long currentMs = millis(); 
+    if ( period ){
+      if ( millis() - changeStateMs < period ) return;
+    }
+    toggle();
+    };
+} builtInLed(LED_BUILTIN, LOW);
+
+// class BuildInLed {
+//   public:
+//   enum State {
+//     OFF,
+//     ON,
+//   };
+//   // create led for pin
+//   BuildInLed(uint8_t pin, bool stateOn=HIGH){
+//     this->pin =pin;
+//     this->initState=!stateOn;
+//     pinMode(this->pin,OUTPUT);
+//     off();
+//   };
+//   //get current led pinVal
+//   inline int pinVal(bool real=false){ 
+//     return real ? ( digitalRead(pin) != initState ) : pinValue; 
+//   };
+//   //switch led on
+//   inline void on(){ 
+//     write(State::ON);
+//   };
+//   //switch led off
+//   inline void off() { 
+//     write(State::OFF);
+//   };
+//   bool statusOff(){ return pinVal() == initState; };
+//   void flash(uint periodMs=1000, uint flashMs=1) {
+//     unsigned long currentMs = millis(); 
+//     if( statusOff() ){
+//       if( currentMs - this->changeStateMs < (periodMs-flashMs) ) return;
+//       else on();
+//     } else {
+//       if( currentMs - this->changeStateMs < flashMs ) return;
+//       else off();
+//     }
+//     this->changeStateMs = currentMs;
+//   };
+//   void flashOff(){
+//     if ( ! statusOff() ){
+//       off();
+//       this->changeStateMs = millis();
+//     }
+//   };
+//   // switch led pinVal
+//   inline void toggle(){
+//     pinValue = !pinValue;
+//     write();
+//   };
+//   void toggle(int period) {
+//     unsigned long currentMs = millis(); 
+//     if ( period ){
+//       if ( currentMs - this->changeStateMs < period ) return;
+//     }
+//     this->changeStateMs = currentMs;
+//     toggle();
+//     };
+
+//   private:
+//   uint8_t pin;
+//   bool initState;
+//   bool pinValue;
+//   unsigned long changeStateMs=0;
+//   inline void write(){
+//     digitalWrite(pin, pinValue );
+//   };
+//   inline void write(State s){
+//     // if( s == State::OFF )
+//     //   pinValue = initState;
+//     // else
+//     //   pinValue = !initState;
+//     pinValue = ( s == State::OFF ) ? initState : !initState;
+//     write();
+//   };
+// } builtInLed(LED_BUILTIN, LOW);
 
 //flasher for led
 inline void ledFlash(uint period){ builtInLed.flash(period); };
@@ -102,20 +268,20 @@ struct WrongCount {
   //  this->nextMs=millis()+periodMs;
   };
 
-  uint get(){return this->count; };
-  bool isWrong(){ return this->count != 0; };
-  bool isAccident() { return this->count >= this->accident; };
+  uint get(){return count; };
+  bool isWrong(){ return count != 0; };
+  bool isAccident() { return count >= accident; };
   void reset(){ 
     debugPretty;
     //debugPrintln(__TIME__); 
     //this->nextMs+=this->periodMs;
     changeMs=millis();  
-    this->count=0; };
+    count=0; };
   //void increase(){ this->count++; };
   uint operator++ (int) { 
     debugPretty;
     changeMs=millis(); 
-    return ++this->count; };
+    return ++count; };
 
   void tick(unsigned long incTimeoutMs=5*POLLING_TIME*3 ){
     if ( millis() - changeMs >= incTimeoutMs ){
@@ -125,78 +291,79 @@ struct WrongCount {
 
       // long unsigned nowMs=millis();
     //if ( this->nextMs== millis() ){ debugPretty; this->nextMs+=this->periodMs; ++this->count; }  
-    if( ! this->isWrong() ) this->func(1000);
+    if( ! isWrong() ) func(1010);
     else 
-      if ( ! this->isAccident() ) this->func(200); 
+      if ( ! isAccident() ) func(200); 
       else { 
         debugPretty; 
-        this->accidentFunc(); //ESP.restart();
+        accidentFunc(); //ESP.restart();
       }
   };
 
-} wrongCount(ledFlash, ESP.restart, 3 ) ;
+} wrongCount( [](uint p){ builtInLed.flash(p); }, ESP.restart, 3 ) ;
+//wrongCount(ledFlash, ESP.restart, 3 ) ;
 
 
-class Relay {
-public:
-  Relay(uint port, uint8_t initStatus=LOW, uint closedPeriod=DEFAULT_CLOSED_SEC) : initStatus(initStatus)
-  {
-    this->port=port;
-    this->closedPeriod=closedPeriod;
-    this->status=initStatus;
-    this->write();
-    pinMode(port, OUTPUT);
-    //digitalWrite(this->port, this->initStatus);
-  };
-  ~Relay(){};
-  void tick(){
-    if ( this->getStatus() ){
-      time_t _now = time(nullptr);
-      if ( changeStatusTime <= _now ){
-        this->invert();
-        // this->status = ! this->status;
-        // //digitalWrite(this->port, this->status);
-        // this->write();
-        #if DEBUG_RELAY
-        debugPrintf("Time for change %d\nRelay closed [%d].\n", _now,this->status);
-        #endif
-      }
-    }
-  };
-  void open(uint period=0){
-    if ( this->getStatus() ) return;
-    time_t _now = time(nullptr);
-    this->changeStatusTime = period != 0 ? (_now + period ) : (_now + this->closedPeriod); 
-    this->invert();
-    // this->status = ! this->initStatus;
-    // this->write();
-    #if DEBUG_RELAY
-    debugPrintf("Relay open [%d].\nNow: %ld. Change time %ld\n", this->status, (uint)_now, this->changeStatusTime);
-    #endif
-  };
+// class RelayOld {
+// public:
+//   RelayOld(uint port, uint8_t initState=LOW, uint openPeriod=DEFAULT_OPEN_SEC) : initState(initState)
+//   {
+//     this->port=port;
+//     this->openPeriod=openPeriod;
+//     this->pinVal=initState;
+//     this->write();
+//     pinMode(port, OUTPUT);
+//     //digitalWrite(this->port, this->initState);
+//   };
+//   ~RelayOld(){};
+//   void tick(){
+//     if ( this->status() ){
+//       time_t _now = time(nullptr);
+//       if ( changeStatusTime <= _now ){
+//         this->toggle();
+//         // this->pinVal = ! this->pinVal;
+//         // //digitalWrite(this->port, this->pinVal);
+//         // this->write();
+//         #if DEBUG_RELAY
+//         debugPrintf("Time for change %d\nRelay closed [%d].\n", _now,this->pinVal);
+//         #endif
+//       }
+//     }
+//   };
+//   void on(uint period=0){
+//     if ( this->status() ) return;
+//     time_t _now = time(nullptr);
+//     this->changeStatusTime = period != 0 ? (_now + period ) : (_now + this->openPeriod); 
+//     this->toggle();
+//     // this->pinVal = ! this->initState;
+//     // this->write();
+//     #if DEBUG_RELAY
+//     debugPrintf("Relay on [%d].\nNow: %ld. Change time %ld\n", this->pinVal, (uint)_now, this->changeStatusTime);
+//     #endif
+//   };
 
-  uint getClosedPeriod(){
-    return this->closedPeriod;
-  };
-  uint getStatus(){
-    return this->status != this->initStatus;
-  };
+//   uint getClosedPeriod(){
+//     return this->openPeriod;
+//   };
+//   uint status(){
+//     return this->pinVal != this->initState;
+//   };
 
-private:
-  uint port;
-  uint closedPeriod;
-  uint8_t  status;
-  const uint8_t initStatus;
-  time_t changeStatusTime;
-  void invert(){
-    this->status = ! this->status;
-    this->write();
-  //  digitalWrite(this->port, this->status);
-  };
-  inline void write(){
-     digitalWrite (this->port, this->status);
-   };
-};
+// private:
+//   uint port;
+//   uint openPeriod;
+//   uint8_t  pinVal;
+//   const uint8_t initState;
+//   time_t changeStatusTime;
+//   void toggle(){
+//     this->pinVal = ! this->pinVal;
+//     this->write();
+//   //  digitalWrite(this->port, this->pinVal);
+//   };
+//   inline void write(){
+//      digitalWrite (this->port, this->pinVal);
+//    };
+// };
 
 
 #ifdef HW_622
@@ -205,7 +372,7 @@ private:
     HW622Relay( const int port) : _port(port) {
       pinMode(this->_port,OUTPUT);  
     };
-    int status(){ return digitalRead(this->_port); };
+    int pinVal(){ return digitalRead(this->_port); };
     private:
     const int _port;
   }; // relay(RELAY_PORT);
@@ -217,7 +384,7 @@ class HW622 {
   };
   
   // inline int  relayStatus(){ return digitalRead(this->_relay);};
-  // inline void relaySet(int status){ digitalWrite(this->_relay, status); };
+  // inline void relaySet(int pinVal){ digitalWrite(this->_relay, pinVal); };
   // inline void relayTogle(){ this->relaySet( !this->relayStatus() ); };
   // inline void relayOn() { this->relaySet( ! RELAY_INIT_STATUS ); };
   // inline void relayOff(){ this->relaySet( RELAY_INIT_STATUS ); };
