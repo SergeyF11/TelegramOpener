@@ -39,24 +39,80 @@ namespace GitHubUpgrade {
         PreRelease_Version,
     };
     static Errors _lastErrorCode;
-    char _releaseTag[] = "0.0.0dbg";
-
-    //static const String appBinFile = App::getBinFile();
+    static struct Release {
+        char tag[9] = "0.0.0dbg";
+        enum Url {
+            Download,
+            Info,
+        };
+        char * _downloadUrl = nullptr;
+        char * _infoUrl = nullptr;
+        void clean(){
+            if ( _downloadUrl != nullptr ){
+                free(_downloadUrl);
+                _downloadUrl = nullptr;
+            }
+            if ( _infoUrl != nullptr  ){
+                free(_infoUrl);
+                _infoUrl = nullptr; 
+            }
+        };
+        //bool has = false;
+        String constructUrl( Url typeUrl){
+            String out( App::getHomePage() );
+            out += latest;
+            out = out.substring(0, out.length()-6);
+            if ( typeUrl == Url::Download ){
+                out += F("download/");
+                out += tag;
+                out += '/';
+                out += App::getBinFile();
+            } else {
+                out += F("tag/");
+                out += tag;
+            }
+            debugPretty;
+            debugPrintln(out);
+            return out;
+        };
+        bool canConstruct( const char * url, Url typeUrl ){
+            String constructed( constructUrl( typeUrl));
+            return constructed.equals( url ); 
+        };
+        bool constructed[2] = {false};
+        String getUrl(Url typeUrl){
+            if ( constructed[typeUrl] ) return constructUrl(typeUrl);
+            // else
+            return String( typeUrl == Url::Download ? _downloadUrl : _infoUrl );
+        };
+    } release;
+    static bool needUpgrade = false;
+    static bool has = false;
+    // char _releaseTag[] = "0.0.0dbg";
+    // //static const String appBinFile = App::getBinFile();
     
 
-    //static const time_t _likeRealTime =  2*24*60*60;
-    static bool has = false;
-    // static int checkedDay=0;
-    //static String latestTag;
-    static bool needUpgrade = false;
-    static String _downloadURL = NULL_STR;
-    static String _releaseInfoURL = NULL_STR;
-    void stringClean(){
-        _downloadURL= NULL_STR;
-        _releaseInfoURL = NULL_STR;
-        _downloadURL.reserve(0);
-        _releaseInfoURL.reserve(0);
-    };
+    // //static const time_t _likeRealTime =  2*24*60*60;
+    // 
+    // // static int checkedDay=0;
+    // //static String latestTag;
+    // static char * _downloadUrlPtr = nullptr;
+    // static char * _InfoUrlPtr = nullptr;
+
+    // // static String _downloadURL = NULL_STR;
+    // // static String _InfoURL = NULL_STR;
+    
+    // void stringClean(){
+    //     free(_downloadUrlPtr);
+    //     _downloadUrlPtr = nullptr;
+    //     free(_InfoUrlPtr);
+    //     _InfoUrlPtr = nullptr;
+
+    //     // _downloadURL= NULL_STR;
+    //     // _InfoURL = NULL_STR;
+    //     // _downloadURL.reserve(0);
+    //     // _InfoURL.reserve(0);
+    // };
     static const char _sun[] PROGMEM ="Sun";
     static const char _mon[] PROGMEM ="Mon";
     static const char _tue[] PROGMEM ="Tue";
@@ -142,7 +198,7 @@ namespace GitHubUpgrade {
                 _checkedDay = setTime->tm_yday;
             } 
             // else {
-            //     debugPrintf("Checked day = %d, now = %d\n", _checkedDay, nowTime->tm_yday);
+            debugPrintf("Checked day = %d, now = %d\n", _checkedDay, nowTime->tm_yday);
             // }
             return _checkedDay == nowTime->tm_yday;
         };        
@@ -200,7 +256,7 @@ namespace GitHubUpgrade {
                     if( ! doc.has("tag_name")){
                         _lastErrorCode = Errors::No_Tag_Name;
                     } else {
-                        doc["tag_name"].toStr(_releaseTag);  //toString();
+                        doc["tag_name"].toStr( (char *)release.tag ); //_releaseTag);  //toString();
                         String release_name = doc["name"].toString();
                         bool prerelease = doc["prerelease"].toBool();
                         if ( prerelease ) {
@@ -220,8 +276,45 @@ namespace GitHubUpgrade {
                                 if (strcmp(asset_type.c_str(), contentType) == 0 && 
                                     strcmp(asset_name.c_str(), App::getBinFile().c_str() ) == 0) 
                                 {
-                                    _downloadURL = doc["assets"][i]["browser_download_url"].toString();
-                                    _releaseInfoURL = doc["html_url"].toString();
+                                    auto copyUrl = [](char ** dest, const su::Text::Cstr src){ 
+                                        debugPretty;
+                                        debugPrint( "Dest adr=" ); 
+                                        Serial.println( (long long unsigned int)&(*dest), HEX );
+                                        debugPrintln( src );
+
+                                        if ( *dest != nullptr ) free( *dest );
+                                        //auto buf = src;
+                                        *dest = (char *)malloc( strlen( src ) );
+                                        strcpy( *dest, src );
+                                        debugPrintln( *dest );
+                                    };
+                                    auto str = doc["assets"][i]["browser_download_url"].c_str();
+                                    release.constructed[Release::Download] = release.canConstruct( str, GitHubUpgrade::Release::Download );
+                                    if ( ! release.constructed[Release::Download] ){
+                                        //copyUrl( &_downloadUrlPtr, doc["assets"][i]["browser_download_url"].c_str());
+                                        copyUrl( &release._downloadUrl, str);
+                                    }
+                                    str = doc["html_url"].c_str();
+                                    release.constructed[Release::Info] = release.canConstruct( str, GitHubUpgrade::Release::Info );
+
+                                    if ( ! release.constructed[Release::Info] ){
+                                        copyUrl( &release._infoUrl, str );
+                                        //copyUrl( &_InfoUrlPtr, doc["html_url"].c_str());
+                                    }
+                                    // {
+                                    //     auto dUrl = doc["assets"][i]["browser_download_url"].c_str();
+                                    //     if( _downloadUrlPtr != nullptr ) free(_downloadUrlPtr);
+                                    //     _downloadUrlPtr = (char)malloc( strlen( dUrl) );
+                                    //     strcpy(_downloadUrlPtr, dUrl);
+                                    // }
+                                    // {
+                                    //     auto riUrl = doc["html_url"].c_str();
+                                    //     _InfoUrlPtr = (char)malloc( strlen( riUrl ));
+                                    //     strcpy(_InfoURL, riUrl);
+
+                                    // }
+                                    // _downloadURL = doc["assets"][i]["browser_download_url"].toString();
+                                    // _InfoURL = doc["html_url"].toString();
                                     _lastErrorCode = Errors::Ok;
                                     break;
                                 } 
@@ -250,7 +343,7 @@ namespace GitHubUpgrade {
     };
     bool checkVersion(){
         if ( has) {
-            App::Version gitHubV( _releaseTag ); //gitHubUpgrade->getLatestTag());
+            App::Version gitHubV( release.tag ); //_releaseTag ); //gitHubUpgrade->getLatestTag());
             debugPrintf("GitHub newest version is %s\n", gitHubV.toString().c_str());
 
             if ( version >= gitHubV ) { // version <=
@@ -274,7 +367,7 @@ namespace GitHubUpgrade {
     bool check(bool now = false){
         if( ! now &&/* at.checkedDay() || */ ! at.isTime() ) return false;
         //if ( at.isTime() ) {   
-        if ( ! now && has &&  at.checkedDay() ) {
+        if ( ! now && has && at.checkedDay() ) {
             return ! has;
         } else {
     
@@ -287,7 +380,7 @@ namespace GitHubUpgrade {
             if ( checkVersion() ) {
                 // latestTag = GitHubUpgrade.getLatestTag();
                 debugPretty; 
-                debugPrintln( _releaseTag ); //gitHubUpgrade->getLatestTag() );
+                debugPrintln( release.tag ); //_releaseTag ); //gitHubUpgrade->getLatestTag() );
                 // downloadUrl =  GitHubUpgrade.getUpgradeURL();
                 
             } else {    
@@ -302,7 +395,7 @@ namespace GitHubUpgrade {
     };
 
     String tag(){
-        if ( has ) return String(_releaseTag ); //gitHubUpgrade->getLatestTag(); //latestTag;
+        if ( has ) return String( release.tag ); //_releaseTag ); //gitHubUpgrade->getLatestTag(); //latestTag;
         return NULL_STR;
     };
 
@@ -315,12 +408,16 @@ namespace GitHubUpgrade {
             ESPhttpUpdate.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
 
             debugPretty;
-            debugPrintf("Update %s\n", _downloadURL.c_str() );
+            //debugPrintf("Update %s\n", _downloadURL.c_str() );
+            debugPrintf("Update %s\n", release.getUrl( Release::Download ) ); //_downloadUrlPtr );
 
-            t_httpUpdate_return ret = ESPhttpUpdate.update( client, _downloadURL) ;
+            //t_httpUpdate_return ret = ESPhttpUpdate.update( client, _downloadURL) ;
+            //t_httpUpdate_return ret = ESPhttpUpdate.update( client, _downloadUrlPtr) ;
+            t_httpUpdate_return ret = ESPhttpUpdate.update( client, release.getUrl( Release::Download ));
             if ( ret == HTTP_UPDATE_OK ) {
                 has = ! has;
-                stringClean();
+                //stringClean();
+                release.clean();
                 return ! has;
             } else {
                 debugPretty;
@@ -344,7 +441,7 @@ namespace GitHubUpgrade {
 
 //void tick( FastBot2& bot,const BotSettings::Settings& settings){
 void tick(bool checkNow=false){
-    if ( check(checkNow) &&  settings.hasAdmin() ){
+    if ( check(checkNow) && settings.hasAdmin() ){
         unsigned long oldUpgradeMenuId = menuIds.getUpgradeId(settings.getAdminId());
         // нужно для успешного удаления
         bot.tickManual();
@@ -359,8 +456,10 @@ void tick(bool checkNow=false){
       //fb::InlineMenu menu(F("Обновить;Пропустить"), F("up;ig"));
       fb::InlineMenu menu;
       menu.addButton(F("Обновить"), F("up"));
-      if ( ! GitHubUpgrade::_releaseInfoURL.isEmpty() ) {
-        menu.addButton(F("Подробности"), GitHubUpgrade::_releaseInfoURL);
+      if ( ! GitHubUpgrade::release.getUrl( Release::Info ).isEmpty() ){ //_InfoURL.isEmpty() ) {
+        menu.addButton(F("Подробности"), GitHubUpgrade::release.getUrl( Release::Info )); // GitHubUpgrade::_InfoURL);
+    //   if ( _InfoUrlPtr != nullptr ){
+    //     menu.addButton(F("Подробности"), GitHubUpgrade::_InfoUrlPtr );
       }
       menu.addButton(F("Пропустить"), F("ig"));
 

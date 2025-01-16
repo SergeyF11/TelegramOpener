@@ -1,5 +1,6 @@
 #pragma once
 #include "debug.h"
+#include <time.h>
 
 
 #define DEFAULTS_ENV
@@ -107,30 +108,30 @@ namespace TimeRus {
         }
         return _t[t][SUFFIX::OTHER];
         };
-    void uptimeTo(String& up){
-        up = F("Uptime");
-        AddedString uptime(up);
-        uptime.setDelimeter(' ');
-        auto now = millis()/1000;
-        auto mins = now/60;
-        unsigned int hours = mins/60;
-        if ( hours > 0 ){
-        uptime << hours << _timeSuffix( TimeRus::HOURS, hours );
-        mins = mins - hours*60;
-        }
-        if ( mins > 0 ){
-        uptime << (unsigned int)mins << _timeSuffix( TimeRus::MINUTE, mins);
-        }
-        unsigned secs = now%60;
-        if ( secs > 0 || ( hours == 0 && mins == 0 )) {
-        uptime << secs << _timeSuffix( TimeRus::SECONDS, secs);
-        }
-    };
-    String uptime(){
-        String out;
-        uptimeTo(out);
-        return out;
-    };
+    // void uptimeTo(String& up){
+    //     up = F("Uptime");
+    //     AddedString uptime(up);
+    //     uptime.setDelimeter(' ');
+    //     auto now = millis()/1024;
+    //     auto mins = now/60;
+    //     unsigned int hours = mins/60;
+    //     if ( hours > 0 ){
+    //     uptime << hours << _timeSuffix( TimeRus::HOURS, hours );
+    //     mins = mins - hours*60;
+    //     }
+    //     if ( mins > 0 ){
+    //     uptime << (unsigned int)mins << _timeSuffix( TimeRus::MINUTE, mins);
+    //     }
+    //     unsigned secs = now%60;
+    //     if ( secs > 0 || ( hours == 0 && mins == 0 )) {
+    //     uptime << secs << _timeSuffix( TimeRus::SECONDS, secs);
+    //     }
+    // };
+    // String uptime(){
+    //     String out;
+    //     uptimeTo(out);
+    //     return out;
+    // };
     
 };
 
@@ -344,23 +345,47 @@ namespace App {
         return out;
         //SergeyF11/TelegramOpener/refs/heads/main/README_rus.pdf"))
     }
-}
+};
+
 namespace Time {
-    bool isSynced(){
-        return time(nullptr) > 3600*2*6;
-    };
+    static unsigned long secondsBeforeTimeSync;
+    static time_t timeSyncTime;
+
+    /// @brief internal buffer for print time
     static char * buf = nullptr;
-    void _free(){
+    void _free_buf(){
             if ( buf != nullptr ) { 
                 free(buf);
                 buf = nullptr;
             }
         };
+    char * toStr(const time_t&);
+
+    /// @brief check localtime is synced to NTP. Set vars for uptime
+    /// @return true if synced
+    bool isSynced(){
+        auto now = time(nullptr);
+        bool res = now > 3600*2*60;
+        if ( secondsBeforeTimeSync ==0 && timeSyncTime == 0 && res ){
+                secondsBeforeTimeSync = millis()/1000;
+                timeSyncTime = time(nullptr);
+                // debugPrintf("%lu sec before time synced\n", secondsBeforeTimeSync);
+                // debugPrintf("Synced time is %s\n", toStr(timeSyncTime));
+                _free_buf();
+        }
+        return res;
+        //return time(nullptr) > 3600*2*60;
+    };
+
+    /// @brief create char[] with time string.
+    /// @attention Call 'Time::_free_buf()' after using it !!!
+    /// @param  time_t; default: now  
+    /// @return  char * to time string
     char * toStr(const time_t& now = time(nullptr))  {
         static constexpr char tmpl[] PROGMEM = "%4d-%02d-%02d %02d:%02d:%02d";
         //auto now = time(nullptr);
         auto _tm = localtime( &now );
-        _free();
+        _free_buf();
         buf = (char *)malloc(20);
         sprintf(buf, tmpl, 
             _tm->tm_year+1900, _tm->tm_mon+1, _tm->tm_mday, 
@@ -369,8 +394,41 @@ namespace Time {
     }
     size_t printTo(Print& p){
         auto size =  p.print(toStr());
-        _free();
+        _free_buf();
         return size;
     };
+    unsigned long _getUptime(){
+        if ( ! isSynced() ) return millis()/1000;
+        //else 
+        return secondsBeforeTimeSync + ( time(nullptr) - timeSyncTime );
+    };
 
+    /// @brief output uptime to string 'up' in hours, mins, second. 
+    ///   Учитывает склонения на русском языке
+    /// @param up 
+    void uptimeTo(String& up){
+        up.reserve(50);
+        up = F("Uptime");
+        AddedString uptime(up);
+        uptime.setDelimeter(' ');
+        auto now = _getUptime();
+        auto mins = now/60;
+        unsigned int hours = mins/60;
+        if ( hours > 0 ){
+        uptime << hours << TimeRus::_timeSuffix( TimeRus::HOURS, hours );
+        mins = mins - hours*60;
+        }
+        if ( mins > 0 ){
+        uptime << (unsigned int)mins << TimeRus::_timeSuffix( TimeRus::MINUTE, mins);
+        }
+        unsigned secs = now%60;
+        if ( secs > 0 || ( hours == 0 && mins == 0 )) {
+        uptime << secs << TimeRus::_timeSuffix( TimeRus::SECONDS, secs);
+        }
+    };
+    String uptime(){
+        String out;
+        uptimeTo(out);
+        return out;
+    };
 }

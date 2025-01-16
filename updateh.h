@@ -159,7 +159,7 @@ void handleCommand(fb::Update& u){
         case "/time"_h:
           if( settings.isAdmin(message.chatID)){
             message.text = MARKDOWN_TG::escape( Time::toStr() );
-            Time::_free();
+            Time::_free_buf();
           }
           break;
         case "/help"_h: 
@@ -220,8 +220,8 @@ void handleCommand(fb::Update& u){
               MT("MHz\nFree heap=", ESP.getFreeHeap());
               MT("\nMax free block=", ESP.getMaxFreeBlockSize());
 
-              MT("\nChip Id: ",String(ESP.getChipId(), HEX));
-              MT("\nFlash Id: ",  String(ESP.getFlashChipId(),HEX));
+              MT("\nChip Id: 0x", String(ESP.getChipId(), HEX));
+              MT("\nFlash Id: 0x",  String(ESP.getFlashChipId(),HEX));
               MT("\n  mode: ", _mode(ESP.getFlashChipMode()) );
               MT("\n  size=", sizeKb(ESP.getFlashChipRealSize()) );
               MT("\nReset Resason: ",ESP.getResetReason());
@@ -230,7 +230,7 @@ void handleCommand(fb::Update& u){
               MT("\nSketch version: ", App::appVersion(version, __DATE__,__TIME__));
               MT("\n  size=", sizeKb(ESP.getSketchSize()) );
               MT("\n  MD5=",ESP.getSketchMD5());
-              MT("\n", TimeRus::uptime());
+              MT("\n", Time::uptime());
             //MT("\nFull version ",ESP.getFullVersion());
             #undef MT //(x,y) 
 
@@ -254,7 +254,7 @@ void handleCommand(fb::Update& u){
 //#ifdef debug_print
         case "/uptime"_h:
         {
-          TimeRus::uptimeTo(message.text); 
+          Time::uptimeTo(message.text); 
           debugPrintln( message.text );
         }
 
@@ -623,7 +623,8 @@ void updateh(fb::Update& u) {
             debugPrintf("Delete ignored upgrade id=%lu\n", upgradeMenuId);
             bot.deleteMessage( settings.getAdminId(), upgradeMenuId );
           }
-          GitHubUpgrade::stringClean();
+          //GitHubUpgrade::stringClean();
+          GitHubUpgrade::release.clean();
       }
 
 
