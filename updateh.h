@@ -273,9 +273,9 @@ void handleCommand(fb::Update& u){
               if ( is_digits( arg.toString().c_str() )) {
                 GitHubUpgrade::at.setCheckedDay(arg.toInt());
               } else {
-              char day[4];
-              arg.toStr(day, 4);
-              GitHubUpgrade::at.setDay( day );
+                char day[4];
+                arg.toStr(day, 4);
+                GitHubUpgrade::at.setDay( day );
               }
             } 
             message.mode = fb::Message::Mode::Text;

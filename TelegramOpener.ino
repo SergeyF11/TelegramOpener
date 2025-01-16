@@ -1,4 +1,4 @@
- //#define debug_print 1
+ #define debug_print 1
  //#define GitHubUpgrade_ANY_TIME
 
 #define WIFI_POWER 5.0
@@ -15,9 +15,9 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,1
+#define VERSION 0,1,7
 #include "env.h"
-//Time::isSynced();
+
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
 #else
@@ -238,33 +238,31 @@ wm.addParameter(&button_report);
 
     // channelName::load(settings.getChatId(true));
     //String myChnlName = channelName::addChannelName( settings.getChatId(true), '\n' );
-    //    String hi = TelegramMD::asItallic( SAY_HI, MARKDOWN_TG::escape);
+    String myChannel;
+
+    if ( settings.getChatId(true) != 0 ) {
+      myChannel += '\n';
+      myChannel +=  CHANNEL_FOR_CONTROL;
+
+      //String myChnlName; // = menuIds.getChannelName(settings.getChatId(true)); //menuIds.get( 'n', settings.getChatId(true));
+      if( menuIds.hasChannelName(settings.getChatId(true)) /*myChnlName.isEmpty()*/ ) {
+        myChannel += TelegramMD::asBold( 
+          TelegramMD::textIn( 
+            (String)menuIds.getChannelName(settings.getChatId(true)), '\'' ),
+          MARKDOWN_TG::escape);  
+      } else {
+        myChannel += TelegramMD::asBold( String('#') + (1000000000000ll + settings.getChatId(true)),   MARKDOWN_TG::escape);
+      }
+    }
+    String hi = TelegramMD::asItallic( SAY_HI, MARKDOWN_TG::escape);
     
     fb::Message message;
     message.setModeMD();
+
     message.chatID = settings.getAdminId();
-    message.text = TelegramMD::asItallic( SAY_HI, MARKDOWN_TG::escape);
-    {
-      String myChannel;
-
-      if ( settings.getChatId(true) != 0 ) {
-        myChannel += '\n';
-        myChannel +=  CHANNEL_FOR_CONTROL;
-
-        //String myChnlName; // = menuIds.getChannelName(settings.getChatId(true)); //menuIds.get( 'n', settings.getChatId(true));
-        if( menuIds.hasChannelName(settings.getChatId(true)) /*myChnlName.isEmpty()*/ ) {
-          myChannel += TelegramMD::asBold( 
-            TelegramMD::textIn( 
-              (String)menuIds.getChannelName(settings.getChatId(true)), '\'' ),
-            MARKDOWN_TG::escape);  
-        } else {
-          myChannel += TelegramMD::asBold( 
-            String('#') + (1000000000000ll + settings.getChatId(true)), 
-            MARKDOWN_TG::escape);
-        }
-        message.text += myChannel;
-      } 
-    }
+    message.text = hi;
+    //message.text += TelegramMD::asItallic( SAY_HI ); //*/ SAY_HI_MD;
+    message.text += myChannel;
 
     debugPrint("Say hi: ");
     debugPrintln( message.text );
@@ -334,10 +332,12 @@ wm.addParameter(&button_report);
 //GitHubUpgrade::initOtaUpgrade(LittleFS);
 
 #if defined debug_print or defined GitHubUpgrade_ANY_TIME
-  GitHubUpgrade::checkAt( GitHubUpgrade::At::Any, GitHubUpgrade::At::Any, GitHubUpgrade::At::Any );
+  //GitHubUpgrade::checkAt( GitHubUpgrade::At::Any, GitHubUpgrade::At::Any, GitHubUpgrade::At::Any );
+  GitHubUpgrade::at.set(  GitHubUpgrade::At::Any, GitHubUpgrade::At::Any, GitHubUpgrade::At::Any );
   //debugPrintln("Check upgrade done");
 #else
-  GitHubUpgrade::checkAt( GitHubUpgrade::At::Random(7) );
+  //GitHubUpgrade::checkAt( GitHubUpgrade::At::Random(7) );
+  GitHubUpgrade::at.set( GitHubUpgrade::At::Random(7) );
 #endif
 
 //bool needStartPortal = false
@@ -366,7 +366,7 @@ void loop(){
     
   } else {
     builtInLed.flash(0);
-    GitHubUpgrade::tick( );
+    GitHubUpgrade::tick();
   }
  
   switch ( needStart )

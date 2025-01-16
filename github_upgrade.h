@@ -57,7 +57,7 @@ namespace GitHubUpgrade {
                 _infoUrl = nullptr; 
             }
         };
-        //bool has = false;
+        //bool release.has = false;
         String constructUrl( Url typeUrl){
             String out( App::getHomePage() );
             out += latest;
@@ -85,9 +85,10 @@ namespace GitHubUpgrade {
             // else
             return String( typeUrl == Url::Download ? _downloadUrl : _infoUrl );
         };
+        bool has = false;
     } release;
     static bool needUpgrade = false;
-    static bool has = false;
+    // static bool has = false;
     // char _releaseTag[] = "0.0.0dbg";
     // //static const String appBinFile = App::getBinFile();
     
@@ -184,25 +185,37 @@ namespace GitHubUpgrade {
         size_t printTo( Print& s){
             return s.print(toString());
         };
-        bool checkedDay(const time_t* setDay=nullptr){ 
-            const time_t now = time(nullptr);
+        bool checkedDay(const time_t* setDay=nullptr){     
             if ( ! Time::isSynced() ) {
                 debugPrintln("No sync time");
                 return true;
             }
-
-            const tm* nowTime =localtime(&now);
-
             if ( setDay != nullptr){
                 auto setTime = localtime(setDay);
                 _checkedDay = setTime->tm_yday;
+                debugPrintf("Set checked day %d\n", _checkedDay);
             } 
-            // else {
-            debugPrintf("Checked day = %d, now = %d\n", _checkedDay, nowTime->tm_yday);
-            // }
-            return _checkedDay == nowTime->tm_yday;
-        };        
 
+            const time_t now = time(nullptr);
+            const tm* nowTime =localtime(&now);
+
+            bool res = _checkedDay == nowTime->tm_yday;
+            #ifdef debug_print
+            if ( res ) {
+                static bool printed = false;
+                if ( ! printed ) {
+                    printed = true;
+                    debugPrintln("Checked today already");
+                }
+            } else {
+                debugPrintln("Need check now");
+            }
+            #endif
+            return res;
+        };        
+        At(const int _weekDay=5, const int _hour=4, const int _min=0 ) :
+            weekDay(_weekDay), hour(_hour), min(_min)
+            {};
         At* set( const int _weekDay=5, const int _hour=4, const int _min=0 ) /*:
             weekDay(weekDay), hour(hour), min(min) */ {
         //at = At{weekDay, hour, min};
@@ -228,9 +241,9 @@ namespace GitHubUpgrade {
     static At at; 
     
                    
-    void checkAt(const int weekDay=5, const int hour=4, const int min=0 ){
-        at.set(weekDay, hour, min); 
-    };
+    // void checkAt(const int weekDay=5, const int hour=4, const int min=0 ){
+    //     at.set(weekDay, hour, min); 
+    // };
 
     Errors getGitHubRelease(){
         String url( F("/repos")); 
@@ -329,9 +342,9 @@ namespace GitHubUpgrade {
         return _lastErrorCode;
     };
     bool _check(){
-        has = false;
+        release.has = false;
         if ( getGitHubRelease() == Errors::Ok ) {
-                has = true;
+                release.has = true;
                 
             } else {
                 debugPretty;
@@ -339,15 +352,15 @@ namespace GitHubUpgrade {
                 debugPrintln( _lastErrorCode );    
                 
             } 
-        return has;
+        return release.has;
     };
     bool checkVersion(){
-        if ( has) {
+        if ( release.has) {
             App::Version gitHubV( release.tag ); //_releaseTag ); //gitHubUpgrade->getLatestTag());
             debugPrintf("GitHub newest version is %s\n", gitHubV.toString().c_str());
 
             if ( version >= gitHubV ) { // version <=
-                has = false;
+                release.has = false;
                 debugPrintf("Current version %s is higher or equals the GitHub version %s\n", 
                     version.toString().c_str(), 
                     gitHubV.toString().c_str());
@@ -355,22 +368,24 @@ namespace GitHubUpgrade {
             } else if ( menuIds.hasIgnoreVersion() ){
                 App::Version ignoreVersion(menuIds.getIgnoreVersion());
                 if ( ignoreVersion >= gitHubV  ){ //>=
-                    has = false;
+                    release.has = false;
                     debugPrintf("Ignore version up to %s\n", 
                         ignoreVersion.toString().c_str());    
                 }
             }
         }
-        return has;
+        return release.has;
     };
 
     bool check(bool now = false){
-        if( ! now &&/* at.checkedDay() || */ ! at.isTime() ) return false;
-        //if ( at.isTime() ) {   
-        if ( ! now && has && at.checkedDay() ) {
-            return ! has;
-        } else {
-    
+        if ( ! now  && ( at.checkedDay() || ! at.isTime() ) ) return false;
+        // }
+        // if( ! now &&/* at.checkedDay() || */ ! at.isTime() ) return false;
+        // //if ( at.isTime() ) {   
+        // if ( ! now && at.checkedDay() ) {
+        //     return false;
+        // } 
+        else {    
             if ( _check() ) {
                 auto now = time( nullptr);
                 at.checkedDay( &now );
@@ -383,7 +398,7 @@ namespace GitHubUpgrade {
                 debugPrintln( release.tag ); //_releaseTag ); //gitHubUpgrade->getLatestTag() );
                 // downloadUrl =  GitHubUpgrade.getUpgradeURL();
                 
-            } else {    
+            } else if ( _lastErrorCode != Errors::Ok ) {    
                 debugPretty;
                 // error = GitHubUpgrade.getLastError();
                 debugPrint("Error:" );// gitHubUpgrade->getLastError());
@@ -391,16 +406,16 @@ namespace GitHubUpgrade {
             }
         }
 
-        return has;
+        return release.has;
     };
 
     String tag(){
-        if ( has ) return String( release.tag ); //_releaseTag ); //gitHubUpgrade->getLatestTag(); //latestTag;
+        if ( release.has ) return String( release.tag ); //_releaseTag ); //gitHubUpgrade->getLatestTag(); //latestTag;
         return NULL_STR;
     };
 
     bool doIt(){
-        if ( has ){
+        if ( release.has ){
             
             ESPhttpUpdate.setClientTimeout(8000);
             ESPhttpUpdate.setLedPin(LED_BUILTIN, LOW);
@@ -415,16 +430,16 @@ namespace GitHubUpgrade {
             //t_httpUpdate_return ret = ESPhttpUpdate.update( client, _downloadUrlPtr) ;
             t_httpUpdate_return ret = ESPhttpUpdate.update( client, release.getUrl( Release::Download ));
             if ( ret == HTTP_UPDATE_OK ) {
-                has = ! has;
+                release.has = ! release.has;
                 //stringClean();
                 release.clean();
-                return ! has;
+                return ! release.has;
             } else {
                 debugPretty;
                 debugPrintf("Error: %d\n", ret );
             }
         }
-        return has;
+        return release.has;
     };
 
     String Error(){
@@ -440,8 +455,9 @@ namespace GitHubUpgrade {
     };
 
 //void tick( FastBot2& bot,const BotSettings::Settings& settings){
-void tick(bool checkNow=false){
-    if ( check(checkNow) && settings.hasAdmin() ){
+
+void tick(){
+    if ( settings.hasAdmin() && check() ){
         unsigned long oldUpgradeMenuId = menuIds.getUpgradeId(settings.getAdminId());
         // нужно для успешного удаления
         bot.tickManual();
@@ -483,7 +499,7 @@ void tick(bool checkNow=false){
       //Serial.println( res.getRaw() );
     }
 
-    if ( GitHubUpgrade::needUpgrade && GitHubUpgrade::has ) {
+    if ( GitHubUpgrade::needUpgrade && GitHubUpgrade::release.has ) {
       //String tag = GitHubUpgrade::tag();
       //LastMsg upgradeButton(settings.getAdminId(),0, tag.c_str());
       //menuIds.( String("up")+ settings.getAdminId() );  
