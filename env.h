@@ -189,7 +189,7 @@ namespace App {
         void addBetta(const char * b){
             debugPretty;
             if ( b != nullptr && *b != '\0' ){
-                betta = (char *)malloc( strlen(b));
+                betta = new char[ strlen(b) ]; //(char *)malloc( strlen(b));
                 strcpy(betta,b);
             }
         }
@@ -210,8 +210,9 @@ namespace App {
         };
         ~Version(){
             if ( betta != nullptr ) {
-                free(betta);
-            }
+                //free(betta);
+                delete[] betta;
+            };
         };
         bool operator==(const Version& a) const {
             return ( 
@@ -265,7 +266,7 @@ namespace App {
                 // low = 0;
                 return;
             }
-            char* buf = (char *)malloc(s.length()+1 );
+            char* buf = new char[ s.length()+1 ]; //(char *)malloc(s.length()+1 );
             strcpy( buf, s.c_str());
 
             char * v = strtok( buf, ".");
@@ -281,11 +282,15 @@ namespace App {
                 if ( bettaP < strlen(v) ) 
                     addBetta( (const char *)(v + bettaP) );
             } else low = 0;
-            free(buf);
-        };            
+            //free(buf);
+            delete[] buf;
+        };  
+        size_t toPrint(Print& p, const Version& v ) const {
+            return p.print( v.toString());
+        };
     };
 
-
+    
     String getBinFile(){
         String bin(name);
         bin += F(".ino.bin");
@@ -355,7 +360,8 @@ namespace Time {
     static char * buf = nullptr;
     void _free_buf(){
             if ( buf != nullptr ) { 
-                free(buf);
+                //free(buf);
+                delete[] buf;
                 buf = nullptr;
             }
         };
@@ -386,7 +392,7 @@ namespace Time {
         //auto now = time(nullptr);
         auto _tm = localtime( &now );
         _free_buf();
-        buf = (char *)malloc(20);
+        buf =  new char[20]; //(char *)malloc(20);
         sprintf(buf, tmpl, 
             _tm->tm_year+1900, _tm->tm_mon+1, _tm->tm_mday, 
             _tm->tm_hour, _tm->tm_min, _tm->tm_sec );
@@ -430,5 +436,30 @@ namespace Time {
         String out;
         uptimeTo(out);
         return out;
+    };
+}
+ 
+namespace ValueSize {
+    /// @brief return size in kBytes as string
+    /// @param _size size in bytes
+    /// @param preccision true if need floating value
+    /// @return String in format "%d(.%d)kB"
+    String inKb(const unsigned long long _size, bool preccision=false){ 
+        int rounder = ( preccision ? 10 : 100 ) * 5;
+        //Serial.printf("Rounder=%u\n", rounder);
+
+        unsigned long long size=_size+rounder;
+        String _out(size/1024);
+        if ( preccision ){
+            String out;
+            auto dec=((size%1024)*1000/1024)/100;
+            if ( dec > 0 ) { 
+                out += '.'; 
+                //if ( dec < 10 ) out += '0';
+                out += dec; 
+            }
+            if( !out.isEmpty() ) _out += out;
+        }
+        return _out + F("kB");
     };
 }

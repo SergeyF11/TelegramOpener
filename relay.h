@@ -9,6 +9,7 @@
 #ifdef TEST_WEMOS
 #define RELAY_PORT LED_BUILTIN
 #define RELAY_INIT_STATUS HIGH
+#pragma message("Using LED_BUILTIN for relay imitation. For test only")
 #endif
 #ifdef HW_622
 #define RELAY_PORT 4
@@ -17,7 +18,10 @@
 #endif
 
 #ifndef RELAY_PORT
-#warning Must be defined TEST_WEMOS or HW_622 for define RELAY_PORT
+#error Must be defined BOARD as TEST_WEMOS or HW_622 for define RELAY_PORT
+#else
+
+#pragma message("Using BOARD settings")
 #endif
 
 #define DEFAULT_OPEN_SEC 1
@@ -78,42 +82,6 @@ class OutputPin {
   // friend class Led;
 };
 
-class Relay : OutputPin {
-  
-  private:
-  //OutputPin pin;
-  unsigned long openPeriodMs; 
-  unsigned long changeStateMs=0;
-
-  public:
-  // define relay instance 
-  // args: pin, init state, period for open state 
-  Relay(const uint port, const uint8_t initState=LOW, const uint openPeriod=DEFAULT_OPEN_SEC) :
-    OutputPin(port, !initState ), openPeriodMs(openPeriod*1000)
-    {};
-
-  // Call in loop for change state the relay
-  void tick(){
-    if ( state() == OutputPin::ON  ){
-      //time_t _now = time(nullptr);
-      if ( millis() - changeStateMs >= openPeriodMs ){
-        off();
-      }
-    }
-  };
-
-  // On relay for open device
-  void open(){
-    if ( state() == OutputPin::ON ) return;
-    changeStateMs = millis(); //period != 0 ? (_now + period ) : (_now + this->openPeriod); 
-    on();
-  };
-
-  // void on() new {
-  //   OutputPin::on();
-  // };
-};
-
 // defined led instatnce with on(), off(), toggle(), flash(period,flashMs) functions
 class Led : public OutputPin {  
   private:
@@ -131,12 +99,12 @@ class Led : public OutputPin {
   // periodMs must be =0 or greater flashMs
   void flash(const uint periodMs=1000,const uint flashMs=1) {
     #ifdef debug_print
-    assert( ( periodMs == 0 || periodMs > flashMs ) && "Error: periodMs must be = 0 or > flashMs" );
+    assert( ( /*periodMs == 0 ||*/ periodMs > flashMs ) && "Error: periodMs must be = 0 or > flashMs" );
     //assert((void("void helps to avoid 'unused value' warning"), periodMs > flashMs ));
     #endif
     if ( ! flashed ) return;
     unsigned long currentMs = millis(); 
-    if ( periodMs ) 
+    //if ( periodMs ) 
       if( state() == OutputPin::OFF ){
         if( currentMs - changeStateMs < (periodMs-flashMs) ) return;
         else on();
@@ -144,12 +112,12 @@ class Led : public OutputPin {
         if( currentMs - changeStateMs < flashMs ) return;
         else off();
       }
-    else off();
+    //else off();
     changeStateMs = currentMs;
   };
 
   // turn off flashing in loop
-  void flashOff(){ flashed = false; };
+  void flashOff(){ off(); flashed = false; };
 
   //turn On flashing in loop
   void flashOn(){ flashed = true; };
@@ -169,6 +137,51 @@ class Led : public OutputPin {
     toggle();
     };
 } builtInLed(LED_BUILTIN, LOW);
+
+/// @brief Relay может срабатывать на определённое время openPeriod.
+///  Call Relay::tick() in loop for correct works
+class Relay : OutputPin {  
+  private:
+  //OutputPin pin;
+  unsigned long openPeriodMs; 
+  unsigned long changeStateMs=0;
+
+  public:
+  // define relay instance 
+  // args: pin, init state, period for open state 
+  Relay(const uint port, const uint8_t initState=LOW, const uint openPeriod=DEFAULT_OPEN_SEC) :
+    OutputPin(port, !initState ), openPeriodMs(openPeriod*1000)
+    {};
+
+  // Call in loop for change state the relay
+  void tick(){
+    if ( state() == OutputPin::ON  ){
+      //time_t _now = time(nullptr);
+      if ( millis() - changeStateMs >= openPeriodMs ){
+        off();
+        #ifdef TEST_WEMOS
+        builtInLed.flashOn();
+        #endif
+      }
+    }
+  };
+
+  // On relay for open device
+  void open(){
+    if ( state() == OutputPin::ON ) return;
+    changeStateMs = millis(); //period != 0 ? (_now + period ) : (_now + this->openPeriod); 
+    #ifdef TEST_WEMOS
+    builtInLed.flashOff();
+    #endif
+    
+    on();
+  };
+
+  // void on() new {
+  //   OutputPin::on();
+  // };
+};
+
 
 // class BuildInLed {
 //   public:
@@ -246,29 +259,30 @@ class Led : public OutputPin {
 // } builtInLed(LED_BUILTIN, LOW);
 
 //flasher for led
-inline void ledFlash(uint period){ builtInLed.flash(period); };
+//inline void ledFlash(uint period){ builtInLed.flash(period); };
 //inline void flash200() { builtInLed.flash(200);}
 
 
 struct WrongCount {
 //  uint periodMs=1000;
 //  long unsigned nextMs;
+  private:
   uint count=0;
   unsigned long changeMs =0; 
-  uint accident;
-  void (*func)(uint);
-  void (*accidentFunc)(void);
-
+  const uint accident;
+  const unsigned long wrongPeriod;
+  void (*okFunc)();
+  void (*wrongFunc)();
+  public:
+    void (*accidentFunc)(void);
   //WrongCount(){ };
-  WrongCount(void (*f)(uint), void (*af)(), const uint accident=3) { //}, const uint periodMs=10000 ) {
-    this->accident=accident;
-    this->func = f;
-    this->accidentFunc = af;
-  //  this->periodMs=periodMs;
-  //  this->nextMs=millis()+periodMs;
-  };
+  WrongCount(void (*okF)(), void (*wrongF)(), void (*accidentF)(), const uint accident=3, const uint wrongPeriod=60000 ) :
+    okFunc(okF), wrongFunc(wrongF), accidentFunc(accidentF), accident(accident), wrongPeriod(wrongPeriod)
+   { };
 
-  uint get(){return count; };
+  uint get() const {return count; };
+  operator uint() const { return count; };
+
   bool isWrong(){ return count != 0; };
   bool isAccident() { return count >= accident; };
   void reset(){ 
@@ -276,33 +290,44 @@ struct WrongCount {
     //debugPrintln(__TIME__); 
     //this->nextMs+=this->periodMs;
     changeMs=millis();  
-    count=0; };
+    count=0; 
+  };
   //void increase(){ this->count++; };
   uint operator++ (int) { 
     debugPretty;
     changeMs=millis(); 
-    return ++count; };
+    return ++count; 
+  };
 
-  void tick(unsigned long incTimeoutMs=5*POLLING_TIME*3 ){
-    if ( millis() - changeMs >= incTimeoutMs ){
+  void tick(/* unsigned long incTimeoutMs=5*POLLING_TIME*3 */ ){
+    if ( millis() - changeMs >= wrongPeriod ){
       //count++;
       (*this)++;
     }
-
-      // long unsigned nowMs=millis();
-    //if ( this->nextMs== millis() ){ debugPretty; this->nextMs+=this->periodMs; ++this->count; }  
-    if( ! isWrong() ) func(1010);
-    else 
-      if ( ! isAccident() ) func(200); 
+    if( ! isWrong() ) okFunc();
+    else if ( ! isAccident() ) wrongFunc(); 
       else { 
         debugPretty; 
-        accidentFunc(); //ESP.restart();
+        accidentFunc(); 
       }
   };
 
-} wrongCount( [](uint p){ builtInLed.flash(p); }, ESP.restart, 3 ) ;
-//wrongCount(ledFlash, ESP.restart, 3 ) ;
+} //  wrongCount( [](uint p){ builtInLed.flash(p); }, ESP.restart, 3, POLLING_TIME/1000*5 ) ;
+ wrongCount(
+  [](){ builtInLed.flash(1024); },
+  [](){ builtInLed.flash(300); },
+  ESP.restart, 
+  3, POLLING_TIME*15 ) ;
 
+/// @brief обработчик сырого ответа апдейтера Телеграма. Используетеся для сброса счетчика wrongCount
+/// @param resp 
+void rawResponse(const su::Text& resp){
+  //debugPrint(__TIME__ ); debugPrint(' ');
+  //debugPretty;   // debugPrintln(resp.c_str());
+  if ( resp.valid()) wrongCount.reset(); 
+  else 
+    wrongCount++;
+};
 
 // class RelayOld {
 // public:

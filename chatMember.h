@@ -76,7 +76,7 @@ void handleChatMember(fb::Update& u){
           
           debugPrintln("New settings saved. Try create new keyboard.");
 
-          auto res = myButton.creater( settings.getChatId(), settings.getButton() );  
+          auto res = myButton.creater( ); //settings.getChatId(), settings.getButton() );  
 
           if( res == SimpleButton::ReturnCode::ok ){
             debugPrintf("New keybord for %lld created\n", settings.getChatId());
@@ -124,7 +124,7 @@ void handleChatMember(fb::Update& u){
             }
             if ( settings.save() ){ 
               
-              auto res = myButton.creater( chatId, settings.getButton() );
+              auto res = myButton.creater( ); //settings.getChatId(), settings.getButton() );  
               unsigned long lastSendMs = millis();
 
               if ( res == SimpleButton::ReturnCode::ok ) {

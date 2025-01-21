@@ -157,7 +157,7 @@ namespace CertificateStore {
         }
         delay(1);
         file.close();
-        builtInLed.flash(0);
+        builtInLed.off();
         
         if ( client.connected() )
             client.stop();

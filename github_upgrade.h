@@ -155,6 +155,7 @@ namespace GitHubUpgrade {
                 if( strncmp( cd, _weekDays[i], 3) == 0 ){
                     weekDay = i;
                     valid = !valid;
+                    break;
                 }
             }
             return valid;
@@ -295,9 +296,9 @@ namespace GitHubUpgrade {
                                         Serial.println( (long long unsigned int)&(*dest), HEX );
                                         debugPrintln( src );
 
-                                        if ( *dest != nullptr ) free( *dest );
+                                        if ( *dest != nullptr ) delete[] dest;
                                         //auto buf = src;
-                                        *dest = (char *)malloc( strlen( src ) );
+                                        *dest = new char[ strlen( src ) ]; //(char *)malloc(  );
                                         strcpy( *dest, src );
                                         debugPrintln( *dest );
                                     };
@@ -341,19 +342,7 @@ namespace GitHubUpgrade {
         }
         return _lastErrorCode;
     };
-    bool _check(){
-        release.has = false;
-        if ( getGitHubRelease() == Errors::Ok ) {
-                release.has = true;
-                
-            } else {
-                debugPretty;
-                debugPrint("Error:");
-                debugPrintln( _lastErrorCode );    
-                
-            } 
-        return release.has;
-    };
+
     bool checkVersion(){
         if ( release.has) {
             App::Version gitHubV( release.tag ); //_releaseTag ); //gitHubUpgrade->getLatestTag());
@@ -376,37 +365,27 @@ namespace GitHubUpgrade {
         }
         return release.has;
     };
-
-    bool check(bool now = false){
-        if ( ! now  && ( at.checkedDay() || ! at.isTime() ) ) return false;
-        // }
-        // if( ! now &&/* at.checkedDay() || */ ! at.isTime() ) return false;
-        // //if ( at.isTime() ) {   
-        // if ( ! now && at.checkedDay() ) {
-        //     return false;
-        // } 
-        else {    
-            if ( _check() ) {
+    bool check(bool now){
+        if ( ! now ) return now;
+        release.has = false;
+        if ( getGitHubRelease() == Errors::Ok ) {
+                release.has = true;
                 auto now = time( nullptr);
                 at.checkedDay( &now );
-            };
-
-            
-            if ( checkVersion() ) {
-                // latestTag = GitHubUpgrade.getLatestTag();
-                debugPretty; 
-                debugPrintln( release.tag ); //_releaseTag ); //gitHubUpgrade->getLatestTag() );
-                // downloadUrl =  GitHubUpgrade.getUpgradeURL();
-                
-            } else if ( _lastErrorCode != Errors::Ok ) {    
+                if ( checkVersion() ) {
+                    debugPretty; 
+                    debugPrintln( release.tag ); 
+                }
+            } else {
                 debugPretty;
-                // error = GitHubUpgrade.getLastError();
-                debugPrint("Error:" );// gitHubUpgrade->getLastError());
-                debugPrintln( _lastErrorCode );
-            }
-        }
-
+                debugPrint("Error:");
+                debugPrintln( _lastErrorCode );                    
+            } 
         return release.has;
+    };
+    bool check(){
+        if ( at.checkedDay() || ! at.isTime() ) return false;
+        return check(true);
     };
 
     String tag(){

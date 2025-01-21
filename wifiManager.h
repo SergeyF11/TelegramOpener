@@ -22,7 +22,7 @@
 #define PortalWiFiPassword "12345678"
 #define PORTAL_TIMEOUT 90
 
-const char* modes[] = { "NULL", "STA", "AP", "STA+AP" };
+//const char* modes[] PROGMEM = { "NULL", "STA", "AP", "STA+AP" };
 
 unsigned long mtime = 0;
 enum NeedStart {
@@ -150,12 +150,12 @@ void saveParamCallback() {
       button_report.getValue()) 
       ) {
     debugPretty;    
-    myButton.needUpdate(SimpleButton::NeedUpdate::setTrue);
+    myButton.needUpdate(true);
   }
 
   debugPrintln( settings );
   if ( ! settings.save() ){
-    debugPrintln("Error write settings file");
+    debugPrintln(F("Error write settings file"));
   }
 
 };
@@ -166,7 +166,7 @@ void bindServerCallback(){
 }
 
 void handleRoute(){
-  debugPrintln("[HTTP] handle route");
+  debugPrintln(F("[HTTP] handle route"));
   wm.server->send(200, "text/plain", "hello from user code");
 }
 

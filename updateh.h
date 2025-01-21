@@ -142,7 +142,8 @@ static const char * pdfRu = "README_rus.pdf"; //rawContent +17;
 
 
 void handleCommand(fb::Update& u){
-    if(u.message().text().startsWith("/")){
+  //  if(u.message().text().startsWith("/")){
+    if(u.message().text().c_str()[0] == '/'){
       debugPrintln(u.message().from().username());
       debugPrintln(u.message().text());
       
@@ -200,41 +201,47 @@ void handleCommand(fb::Update& u){
             // debugPrintf("AddedString result: \'%s\'\n", message.text.c_str());
 
             message.mode = fb::Message::Mode::Text;
-           auto _mode = [](const int m){
+            const char * flashMode = PSTR("UNKNOWN"); 
+            //auto _mode = [](const int m){
+            const int m = ESP.getFlashChipMode(); 
               switch( m ){
                 case FM_QIO:
-                  return PSTR("QIO");
+                  flashMode = PSTR("QIO");
+                  break;
                 case FM_QOUT:
-                  return PSTR("QOUT");
+                  flashMode = PSTR("QOUT");
+                  break;
                 case FM_DIO:
-                  return PSTR("DIO");
+                  flashMode = PSTR("DIO");
+                  break;
                 case FM_DOUT:
-                  return PSTR("DOUT");
+                  flashMode = PSTR("DOUT");
+                  break;
               }
-              return PSTR("UNKNOWN");
-            };            
-            auto sizeKb = [](const unsigned int size){ return String(size/1024)+F("kB"); };
+            //  return PSTR("UNKNOWN");
+            //};            
 
             #define MT(x,y)  { message.text += F(x); message.text += (y); }
               MT("CPU freq ", ESP.getCpuFreqMHz());
               MT("MHz\nFree heap=", ESP.getFreeHeap());
               MT("\nMax free block=", ESP.getMaxFreeBlockSize());
 
-              MT("\nChip Id: 0x", String(ESP.getChipId(), HEX));
-              MT("\nFlash Id: 0x",  String(ESP.getFlashChipId(),HEX));
-              MT("\n  mode: ", _mode(ESP.getFlashChipMode()) );
-              MT("\n  size=", sizeKb(ESP.getFlashChipRealSize()) );
+              MT("\nChip Id: 0x", String(ESP.getChipId(), HEX) );
+              MT("\nFlash Id: 0x",  String(ESP.getFlashChipId(),HEX) );
+              MT("\n  mode: ", flashMode ); //_mode(ESP.getFlashChipMode()) );
+              MT("\n  size=", ValueSize::inKb(ESP.getFlashChipRealSize(), 1) );
               MT("\nReset Resason: ",ESP.getResetReason());
               MT("\nCore version: ", ESP.getCoreVersion());
               MT("\nSDK version: ",ESP.getSdkVersion ());
               MT("\nSketch version: ", App::appVersion(version, __DATE__,__TIME__));
-              MT("\n  size=", sizeKb(ESP.getSketchSize()) );
+              MT("\n  size=", ValueSize::inKb(ESP.getSketchSize(), 1) );
               MT("\n  MD5=",ESP.getSketchMD5());
               MT("\n", Time::uptime());
             //MT("\nFull version ",ESP.getFullVersion());
             #undef MT //(x,y) 
-
-            printMemory.needPrint();
+          #ifdef memory_print 
+            memory.needPrint(true);
+          #endif
           }
           break;
         case "/hi"_h:{
@@ -290,7 +297,7 @@ void handleCommand(fb::Update& u){
         case "/clear_settings"_h:
           if (settings.isAdmin( u.message().from().id() ) ){ //.admin ){
             if ( settings.remove() ){
-              debugPrintln("Settings file deleted.");
+              debugPrintln(F("Settings file deleted."));
               settings.load();
               message.text += TelegramMD::asItallic( rebootMsg,  MARKDOWN_TG::escape );
               bot.sendMessage( message );
@@ -302,7 +309,7 @@ void handleCommand(fb::Update& u){
               //bot.reboot();
               needStart = NeedStart::Reboot;  
             } else {
-              debugPrintln("Error file deleted.");
+              debugPrintln(F("Error file deleted."));
             }
           }
           break;
@@ -312,7 +319,7 @@ void handleCommand(fb::Update& u){
             //   menuIds.remove("ignore");
             // }
             if ( menuIds.removeIgnoreVersion() ){
-              debugPrintln("Ignore version cleaned");
+              debugPrintln(F("Ignore version cleaned"));
             }
           }
           break;
@@ -480,19 +487,7 @@ void handleCommand(fb::Update& u){
           break;
       } //switch
       if ( ! message.text.isEmpty() ) {
-#if DEBUG
-        runStart;
-        auto res = bot.sendMessage(message);
-        debugPrintln(message.text);
-
-        auto raw = res.getRaw();
-        raw.printTo(Serial);
-
-        //send message
-        printRunTime;
-#else
         bot.sendMessage(message, false);
-#endif
       }
     } //startsWith
 };
@@ -504,46 +499,59 @@ void handleCommand(fb::Update& u){
 
 
 void updateh(fb::Update& u) {   
-  if (u.isMessage() ) { 
-    //wrongCount.reset();
+  switch ( u.type() ){
+  // if (u.isMessage() ) { 
+  //   //wrongCount.reset();
+  //   if( u.message().hasDocument()) handleDocument(u);
+  //   else handleCommand(u);
+  // }
+  case fb::Update::Type::Message:
+  case fb::Update::Type::EditedMessage:
     if( u.message().hasDocument()) handleDocument(u);
     else handleCommand(u);
-  }
- 
-    // моё расширение для FasBot2 в chatMember.h 
-  else if( fb_adds::isMyChatMember(u) ){
-  //  wrongCount.reset();
-    debugPretty;
+    break;
+    //   // моё расширение для FasBot2 в chatMember.h 
+  // else if( fb_adds::isMyChatMember(u) ){
+  // //  wrongCount.reset();
+  //   debugPretty;
+  //   handleChatMember(u);
+  //  }
+  case fb::Update::Type::MyChatMember:
     handleChatMember(u);
-   }
-  else if ( u.isPost() ) {
-    debugPrintln("Channel post");
-    if ( u.message().has( SH("new_chat_title") )){
-      //debugPrintln("\n\nBingo\n\n");
-      String newChatTitle = u.message().chat().title().decodeUnicode();
-      long long chatId = u.message().chat().id();
-      //menuIds.set( String('n') + settings.getChatId(true), newChatTitle);
-      menuIds.setChannelName( settings.getChatId(true), newChatTitle);
-      String myChannel;
-      myChannel += CHANNEL_FOR_CONTROL;
-      myChannel += TelegramMD::asBold( TelegramMD::textIn( newChatTitle, '\'' ),  MARKDOWN_TG::escape );  
-      {
+    break;
+  // else 
+  //if ( u.isPost() ) {
+  case fb::Update::Type::ChannelPost:
+  case fb::Update::Type::EditedChannelPost:
+    {
+      debugPrintln("Channel post");
+      if ( u.message().has( SH("new_chat_title") )){
+        String newChatTitle = u.message().chat().title().decodeUnicode();
+        long long chatId = u.message().chat().id();
+        menuIds.setChannelName( settings.getChatId(true), newChatTitle);
+        // String myChannel;
+        // myChannel += CHANNEL_FOR_CONTROL;
+        // myChannel += TelegramMD::asBold( TelegramMD::textIn( newChatTitle, '\'' ),  MARKDOWN_TG::escape );  
+        
         fb::Message message;
-        message.text = myChannel;
+        //message.text = myChannel;
+        message.text = CHANNEL_FOR_CONTROL;
+        message.text += TelegramMD::asBold( 
+            TelegramMD::textIn( newChatTitle, '\'' ),
+          MARKDOWN_TG::escape );  
         message.chatID = settings.getAdminId();
         message.setModeMD();
         bot.sendMessage(message);
-        debugPrintln( message.text );
-        }
-
-    } else {
-      debugPrintln( u.message().text());
-
+        debugPrintln( message.text );   
+      } else {
+        debugPrintln( u.message().text());
+      }
     }
-
-  }
-  else if (u.isQuery()) {
+    break;
+  //else if (u.isQuery()) {
   //  wrongCount.reset();
+  case fb::Update::Type::CallbackQuery: 
+    {
     bool myAlert = false;
  
     debugPrintln("NEW QUERY");
@@ -598,8 +606,9 @@ void updateh(fb::Update& u) {
           settings.set()->AdminId( u.message().from().id() );
           if ( settings.save() ){
             if ( settings.getChatId(true) == 0 )  {
-                myButton.creater( settings.getAdminId(), settings.getButton() );
+                myButton.creater( ); // settings.getAdminId(), settings.getButton() );
               }
+            // myButton.creater();
             getNameFromRead(txt, u.message().from(), (char *)F("Поздравляю! "), (char *)F(", теперь я твой раб.") );
             //myButton.needUpdate();
             //
@@ -634,6 +643,15 @@ void updateh(fb::Update& u) {
     if( takeAdminMsgId ){ //} && u.message().from().id() == takeAdmin.userId ){
      /* fb::Result res = */ bot.deleteMessage(u.message().from().id(), takeAdminMsgId, false); //takeAdmin.userId, takeAdmin.msgId);
     }
-  } 
+  }
+  break;
+  default:
+    Serial.println( String(F("Unknown fb::update type "))+(uint)u.type() );
+    // bot.sendMessage( 
+    //   fb::Message( 
+    //     String(F("Unknown type "))+u.type(),
+    //     u.message().chat().id() )  
+    // );
+  }
 }
 

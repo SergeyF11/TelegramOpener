@@ -1,4 +1,15 @@
- #define debug_print 1
+//#define debug_print 1
+#define memory_print
+#define CHECK_MAXBLOCK_SIZE
+
+#ifdef CHECK_MAXBLOCK_SIZE
+  #define maxblock_size_checker static uint32_t __pre_free_block=0; \
+  if ( __pre_free_block - ESP.getMaxFreeBlockSize() > 1000 ){ \
+  Serial.printf( "%lu in %d of %s: Pre free block size=%lu now %lu\n", millis()/1000, __LINE__, __PRETTY_FUNCTION__, __pre_free_block, ESP.getMaxFreeBlockSize()); } \
+  __pre_free_block=ESP.getMaxFreeBlockSize(); 
+#else
+  #define maxblock_size_checker
+#endif
  //#define GitHubUpgrade_ANY_TIME
 
 #define WIFI_POWER 5.0
@@ -6,8 +17,11 @@
 #define MFLN_SIZE 1024
 #define SYNC_TIME
 
+#ifdef debug_print 
+#define TEST_WEMOS
+#else 
 #define HW_622
-//#define TEST_WEMOS
+#endif
 
 #define SEC *1000
 #define POLLING_TIME 20 SEC
@@ -15,8 +29,13 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,7
+#define VERSION 0,1,17
 #include "env.h"
+#include "debug.h"
+
+#ifdef memory_print
+  PrintMemory memory;
+#endif
 
 #if defined debug_print
   static App::Version version{VERSION,"dbg"};
@@ -26,8 +45,9 @@
 
 #include <Arduino.h>
 #include "my_credential.h"
-#include "debug.h"
-#include "github_upgrade.h"
+
+
+
 #include <time.h>
 #include "relay.h"
 #include "myFastBotClient.h"
@@ -37,7 +57,7 @@
 #include "newFsSettings.h" 
 #include "myPairs.h"
 //#include "myFileDb.h"
-
+#include "github_upgrade.h"
 //FastBot2 bot;
 Relay relay(RELAY_PORT, RELAY_INIT_STATUS, 3);
 
@@ -47,26 +67,14 @@ Relay relay(RELAY_PORT, RELAY_INIT_STATUS, 3);
 // ExpireButton myButton(BUTTON_ENABLE_SEC);
 
 #include "simpleButton.h"
-SimpleButton myButton(bot, POLLING_TIME );
+SimpleButton myButton(bot, settings, POLLING_TIME );
 
 #include "wifiManager.h"
 
 static const char fileName[] PROGMEM = "/bot_opener.json";
 BotSettings::Settings settings(fileName);
 
-//LastMsg lastMsg;
-
-
-
-//void * buttonUpdater;
-void rawResponse(su::Text resp){
-  //debugPrint(__TIME__ ); debugPrint(' ');
-  debugPretty;   // debugPrintln(resp.c_str());
-  if (resp.valid()) wrongCount.reset(); 
-  else 
-    wrongCount++;
-};
-
+/// @brief все настройки скетча
 void setup(){
 
   Serial.begin(115200);
@@ -74,7 +82,7 @@ void setup(){
       delay(1);
     }
   menuIds.begin();
-  myButton.setExpiredDelta(5000);
+  myButton.setExtraTime(6000);
 
     pinMode(RX_PIN,INPUT);
     WiFi.mode(WIFI_STA);
@@ -190,10 +198,12 @@ wm.addParameter(&button_report);
       debugPrintln(F(" Done" ));
 
   #endif
-  certStore = botCertsStore(client, LittleFS);
-  if ( certStore != nullptr) {
+  // certStore = botCertsStore(client, LittleFS);
+  // if ( certStore != nullptr) {
+  if ( botCertsStore( certStore, client, LittleFS) ){
     debugPrintf("Use certs store [%llu]\n", certStore );
   } else {
+    client.setFingerprint(Telegram::fingerprint );
     debugPrintln("Use Telegram fingerprint\n");
   }
   // } else {
@@ -235,48 +245,48 @@ wm.addParameter(&button_report);
   // если есть админ, поприветствуем его и обновим клавиатуру или создадим новую
   if ( settings.hasAdmin() ){
     myButton.needUpdate( true );
-
-    // channelName::load(settings.getChatId(true));
-    //String myChnlName = channelName::addChannelName( settings.getChatId(true), '\n' );
-    String myChannel;
-
+    fb::Message message;
+    message.setModeMD();
+    message.text = TelegramMD::asItallic( SAY_HI, MARKDOWN_TG::escape);
+    
     if ( settings.getChatId(true) != 0 ) {
-      myChannel += '\n';
-      myChannel +=  CHANNEL_FOR_CONTROL;
+      message.text += '\n';
+      message.text +=  CHANNEL_FOR_CONTROL;
 
-      //String myChnlName; // = menuIds.getChannelName(settings.getChatId(true)); //menuIds.get( 'n', settings.getChatId(true));
       if( menuIds.hasChannelName(settings.getChatId(true)) /*myChnlName.isEmpty()*/ ) {
-        myChannel += TelegramMD::asBold( 
+        message.text += TelegramMD::asBold( 
           TelegramMD::textIn( 
             (String)menuIds.getChannelName(settings.getChatId(true)), '\'' ),
           MARKDOWN_TG::escape);  
       } else {
-        myChannel += TelegramMD::asBold( String('#') + (1000000000000ll + settings.getChatId(true)),   MARKDOWN_TG::escape);
+        message.text += TelegramMD::asBold( 
+            String('#') + (1000000000000ll + settings.getChatId(true)), 
+          MARKDOWN_TG::escape);
       }
     }
-    String hi = TelegramMD::asItallic( SAY_HI, MARKDOWN_TG::escape);
-    
-    fb::Message message;
-    message.setModeMD();
 
     message.chatID = settings.getAdminId();
-    message.text = hi;
-    //message.text += TelegramMD::asItallic( SAY_HI ); //*/ SAY_HI_MD;
-    message.text += myChannel;
+    //message.text += myChannel;
 
-    debugPrint("Say hi: ");
+    debugPrint( F("Say hi: "));
     debugPrintln( message.text );
-    
-    bot.sendMessage(message, false);
+    debugPrint(F(" to ")); debugPrintln( settings.getAdminId());
+    debugPrintln( message.chatID );
 
-    debugPrintf("message.text = \"%s\"\n", message.text.c_str());
+    bot.sendMessage(message, false);
+    
+    //String chat= message.chatID;
+    debugPrintf("+++++++++\nchat=\'%s\' message.text = \"%s\"\n+++++++++\n", 
+      message.chatID.toString().c_str(), 
+      message.text.c_str());
+    debugPrintln(message.chatID);
 
     //channelName::freeMemory();
- }
-    while( ! goToLoop ){
+  }
+  while( ! goToLoop ){
   // check errors noChat, noMesgId, wrongResponse
 
-      switch( myButton.updater( settings.getChatId(), settings.getButton(), true ) ){
+      switch( myButton.updater( /* settings.getChatId(), settings.getButton(),  */true ) ){
         // сюда мы не должны попасть никогда
         case SimpleButton::ReturnCode::noChat: 
           debugPrintln("No update needed without admin and chat id");
@@ -290,20 +300,24 @@ wm.addParameter(&button_report);
           debugPrintln("Try to create new keyboard");
             // пробуем создать новою клавиатуру
             {
-            auto res = myButton.creater( settings.getChatId(), settings.getButton() );
-            debugPrintf("Result: %s\n", myButton.codeToString(res).c_str());
-            if ( res != SimpleButton::ReturnCode::wrongResponse ) goToLoop = true;
+              int trys=3;
+              while( trys-- ){  
+                delay(1500);
+                auto res = myButton.creater(); //settings.getChatId(), settings.getButton() );
+                if ( res != SimpleButton::ReturnCode::wrongResponse ) {
+                  goToLoop = true;
+                  break;
+                }  
+              }
+              // не получили корректного ответа
+              if( ! goToLoop ) {
+                debugPrintf("Wrong response 3 times for create button in chat '%lld'\n", 
+                  settings.getChatId());
+              }
             }
           //goToLoop = true;  
           break;
 
-        // не получили корректного ответа
-        // case SimpleButton::ReturnCode::wrongResponse:
-        //   debugPrintf("Wrong response for chat '%lld' msg=%ld\n", 
-        //     settings.getChatId(), 
-        //     LastMsg(settings.getChatId() ).get());
-        //   break;
-        
         // в остальных случаях погнали дальше
         default:
           goToLoop = true;
@@ -316,7 +330,6 @@ wm.addParameter(&button_report);
       } 
     }
   
-
   
   //builtInLed.off();
   wifiInfo();
@@ -346,13 +359,29 @@ wm.addParameter(&button_report);
 
 
 void loop(){
+#ifdef memory_print
+  if( memory.needPrint() ) { 
+    //memory.printTo(Serial); 
+    Serial.println( memory );
+    //memory.needPrint(false); 
+  }
+#endif
+  {
+    wrongCount.tick();
+    relay.tick();
+  }
+    bot.tick() ;
+  {
+    menuIds.tick();    
+  }
+  maxblock_size_checker;
+ 
 
-  printMemory.tick(Serial);
-  wrongCount.tick();
-
-  relay.tick();
-  bot.tick();
-  menuIds.tick();
+  if ( ! bot.isPolling() ) {
+    myButton.tick();
+  //} else {
+    GitHubUpgrade::tick();
+  }
 
   if ( bot.canReboot() ) {
     debugPrintln("Reboot esp...");
@@ -361,14 +390,6 @@ void loop(){
     ESP.restart(); 
   }
 
-  if ( bot.isPolling() ) {
-    myButton.tick( settings );
-    
-  } else {
-    builtInLed.flash(0);
-    GitHubUpgrade::tick();
-  }
- 
   switch ( needStart )
     {
     case NeedStart::Portal:
@@ -392,7 +413,7 @@ void loop(){
         
         // это не обязательно
         //builtInLed.off();
-        myButton.needUpdate( SimpleButton::NeedUpdate::setTrue );
+        myButton.needUpdate( true );
 
         fb::Message message;
         message.chatID = settings.getAdminId();
