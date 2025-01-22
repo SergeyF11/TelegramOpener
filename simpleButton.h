@@ -240,17 +240,17 @@ const ReturnCode cleaner( const bool waitBotResponse=false){
         menuIds.setMenuId( chatId(), botP->lastBotMessage());
         this->lastUpdate=millis();
         this->needUpdate(false);
-        debugPrintf("\tmsg=%lu\n", (unsigned long)menuIds.getMenuId( chatId() ) );
+        //debugPrintf("\tmsg=%lu\n", (unsigned long)menuIds.getMenuId( chatId() ) );
       }
     }
-    debugPrintln( codeToString(ret) );
+    debugPrintf(F("\tResp=%s\n"), codeToString(ret) );
     
     return ret;
   };
 
   const ReturnCode updater( const bool waitBotResponse=false ){
     debugPretty;
-    debugPrintf("chat=%lld, msg=%lu, Button header=%s, name=%s, cmd=%s, wait=%s\n\tResp=",
+    debugPrintf("chat=%lld, msg=%lu, Button header=%s, name=%s, cmd=%s, wait=%s\n",
         chatId(),  ( unsigned long )menuIds.getMenuId( chatId() ), buttonHeader(), buttonName(), dynamicCmd(ButtonInlimeMenu::bCmds).c_str(),
         waitBotResponse ? "true" : "false"
         );
@@ -273,13 +273,13 @@ const ReturnCode cleaner( const bool waitBotResponse=false){
         this->needUpdate(true);
         ret = ReturnCode::wrongResponse;      
       } else {     
-        debugPrintln( res.c_str() ); 
+        //debugPrintln( res.c_str() ); 
         this->lastUpdate = millis(); 
         this->needUpdate(false); 
         ret = ReturnCode::ok;
       }
     }
-    debugPrintln(codeToString(ret) );
+    debugPrintf(F("\tResp=%s\n"),codeToString(ret) );
     return ret;
   };
 

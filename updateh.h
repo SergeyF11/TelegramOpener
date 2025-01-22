@@ -230,7 +230,7 @@ void handleCommand(fb::Update& u){
               MT("\nFlash Id: 0x",  String(ESP.getFlashChipId(),HEX) );
               MT("\n  mode: ", flashMode ); //_mode(ESP.getFlashChipMode()) );
               MT("\n  size=", ValueSize::inKb(ESP.getFlashChipRealSize(), 1) );
-              MT("\nReset Resason: ",ESP.getResetReason());
+              MT("\nReset Reason: ",ESP.getResetReason());
               MT("\nCore version: ", ESP.getCoreVersion());
               MT("\nSDK version: ",ESP.getSdkVersion ());
               MT("\nSketch version: ", App::appVersion(version, __DATE__,__TIME__));

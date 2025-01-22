@@ -1,12 +1,12 @@
 //#define debug_print 1
-#define memory_print
-#define CHECK_MAXBLOCK_SIZE
+//#define memory_print
+//#define CHECK_MAXBLOCK_SIZE
 
 #ifdef CHECK_MAXBLOCK_SIZE
-  #define maxblock_size_checker static uint32_t __pre_free_block=0; \
+  #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
   if ( __pre_free_block - ESP.getMaxFreeBlockSize() > 1000 ){ \
   Serial.printf( "%lu in %d of %s: Pre free block size=%lu now %lu\n", millis()/1000, __LINE__, __PRETTY_FUNCTION__, __pre_free_block, ESP.getMaxFreeBlockSize()); } \
-  __pre_free_block=ESP.getMaxFreeBlockSize(); 
+  __pre_free_block=ESP.getMaxFreeBlockSize(); } 
 #else
   #define maxblock_size_checker
 #endif
@@ -381,6 +381,7 @@ void loop(){
     myButton.tick();
   //} else {
     GitHubUpgrade::tick();
+    myButton.tick();
   }
 
   if ( bot.canReboot() ) {

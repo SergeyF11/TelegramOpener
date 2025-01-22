@@ -14,7 +14,7 @@
 namespace CertStoreFiles {
     static const char dataCerts[] PROGMEM = "data/certs.ar";
     ///"certs.ar"
-    static const char * fileData = dataCerts+4; //"/certs.ar";
+    static const char * fileData PROGMEM = dataCerts+4; //"/certs.ar";
     static const char fileIdx[] PROGMEM = "/certs.idx";
 };
 namespace CertificateStore { 
@@ -25,6 +25,17 @@ namespace CertificateStore {
         errorFile,
         notFound,
         noContent,
+    };
+    bool getHeader(const char * header, String& s){
+        int headerLen = strlen(header);
+        if ( s.substring(0,headerLen).equalsIgnoreCase( header) ){
+            s = s.substring(headerLen+1);
+            s.trim();
+            s.toLowerCase();
+            debugPrintf("Header: %s , value: \'%s\'\n", header, s.c_str());
+            return true;
+        }
+        return false;
     };
 
     Errors download(FS& fs, const char * fileName = CertStoreFiles::fileData ){
@@ -43,9 +54,9 @@ namespace CertificateStore {
         client.setFingerprint(App::GITHUB_IO_FINGERPRINT);
         //client.setInsecure();
 #endif
-        bool mfln = client.probeMaxFragmentLength( App::gitHubUserContentHost, App::gitHubPort, 1024);
+        bool mfln = client.probeMaxFragmentLength( App::gitHubUserContentHost, App::gitHubPort, MFLN_SIZE);
         if (mfln) {
-            client.setBufferSizes(1024, 1024);
+            client.setBufferSizes(MFLN_SIZE, MFLN_SIZE);
         }
         client.setTimeout(1500);
 
@@ -62,37 +73,26 @@ namespace CertificateStore {
         auto file = fs.open(tmpFile, "w+"); 
         if( ! file ) return Errors::errorFile;
 
-    debugPrintMemory;
-    runStart;
+        debugPrintMemory;
+        runStart;
 
-    client.println( String(F("GET ")) + App::getRawContent( CertStoreFiles::dataCerts, /*host=*/false) +F(" HTTP/1.1\r\n"
-                    "Host: ") + App::gitHubUserContentHost + F("\r\n"
-                    "User-Agent: ESP8266\r\n"
-                    "Connection: close\r\n"));
-    // client.println( String(F("GET "
-    //                 "/")) + Author::gitHubAka + "/" + App::name + myLink::path +F(" HTTP/1.1\r\n"
-    //                 "Host: ") + myLink::host + F("\r\n"
-    //                 "User-Agent: ESP8266\r\n"
-    //                 "Connection: close\r\n"));
-    printRunTime;
-    debugPrintMemory;
+        client.println( String(F("GET ")) + App::getRawContent( CertStoreFiles::dataCerts, /*host=*/false) +F(" HTTP/1.1\r\n"
+                        "Host: ") + App::gitHubUserContentHost + F("\r\n"
+                        "User-Agent: ESP8266\r\n"
+                        "Connection: close\r\n"));
+        // client.println( String(F("GET "
+        //                 "/")) + Author::gitHubAka + "/" + App::name + myLink::path +F(" HTTP/1.1\r\n"
+        //                 "Host: ") + myLink::host + F("\r\n"
+        //                 "User-Agent: ESP8266\r\n"
+        //                 "Connection: close\r\n"));
+        printRunTime;
+        debugPrintMemory;
 
         int len = -1;
         int httpCode;
-        String httpError;
         bool contentOctetStream = false;
-
-        auto getHeader = [](const char * header, String& s){
-            int headerLen = strlen(header);
-            if ( s.substring(0,headerLen).equalsIgnoreCase( header) ){
-                s = s.substring(headerLen+1);
-                s.trim();
-                s.toLowerCase();
-                debugPrintf("Header: %s , value: \'%s\'\n", header, s.c_str());
-                return true;
-            }
-            return false;
-        };
+        
+        String httpError;
 
         while (client.connected()) {
             String response = client.readStringUntil('\n');
@@ -102,16 +102,16 @@ namespace CertificateStore {
                     contentOctetStream = true;
             }
             if ( getHeader( PSTR("content-length"), response )) {
-	          	len = response.toInt();
-	        }
+                len = response.toInt();
+            }
             if ( response.startsWith(F("HTTP/1.1")) ){
                 
                 httpCode = response.substring(9).toInt();
                 httpError += response.substring(13);
             }
-	        if (response == "\r") {
-	        	break;
-	  		}
+            if (response == "\r") {
+                break;
+            }
         }
         if ( httpCode != 200) {
             debugPrintf("Error: %d %s\n", httpCode, httpError);
@@ -126,14 +126,10 @@ namespace CertificateStore {
         uint8_t buff[512] = { 0 };
         size_t writed = 0;
         int length = len;
-        /* if ( len == -1 ) */{ client.setTimeout(8000); }
- 
-        // auto ledTogle = [](void){
-        //     static uint8_t status = LOW;
-        //     digitalWrite( LED_BUILTIN, status );
-        //     status = ! status;
-        // };
-
+        if ( len == -1) {
+            client.setTimeout(8000);
+        }
+        
         while (  len > 0 || ( len == -1 && client.connected() /* && ! timeOut() */ ) )
         {
             // get available data size
@@ -165,15 +161,8 @@ namespace CertificateStore {
         if ( writed == length || ( length == -1 && writed ) ) {
 
             fs.rename( tmpFile, fileName );
-        
             return Errors::ok;
         }
         return Errors::errorFile;
-    //};
-        //         } else {
-        //             return Errors::noConnect;
-        //         }
-        // return Errors::errorFile;
     };
-
 }

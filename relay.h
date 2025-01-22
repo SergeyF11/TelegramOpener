@@ -1,5 +1,5 @@
 #include <cstdint>
-#include "twi.h"
+//#include "twi.h"
 #include <assert.h>
 
 // #include "core_esp8266_features.h"
@@ -78,8 +78,6 @@ class OutputPin {
     off();
   }
 
-  // friend class Relay;
-  // friend class Led;
 };
 
 // defined led instatnce with on(), off(), toggle(), flash(period,flashMs) functions
@@ -177,95 +175,13 @@ class Relay : OutputPin {
     on();
   };
 
-  // void on() new {
-  //   OutputPin::on();
-  // };
 };
 
 
-// class BuildInLed {
-//   public:
-//   enum State {
-//     OFF,
-//     ON,
-//   };
-//   // create led for pin
-//   BuildInLed(uint8_t pin, bool stateOn=HIGH){
-//     this->pin =pin;
-//     this->initState=!stateOn;
-//     pinMode(this->pin,OUTPUT);
-//     off();
-//   };
-//   //get current led pinVal
-//   inline int pinVal(bool real=false){ 
-//     return real ? ( digitalRead(pin) != initState ) : pinValue; 
-//   };
-//   //switch led on
-//   inline void on(){ 
-//     write(State::ON);
-//   };
-//   //switch led off
-//   inline void off() { 
-//     write(State::OFF);
-//   };
-//   bool statusOff(){ return pinVal() == initState; };
-//   void flash(uint periodMs=1000, uint flashMs=1) {
-//     unsigned long currentMs = millis(); 
-//     if( statusOff() ){
-//       if( currentMs - this->changeStateMs < (periodMs-flashMs) ) return;
-//       else on();
-//     } else {
-//       if( currentMs - this->changeStateMs < flashMs ) return;
-//       else off();
-//     }
-//     this->changeStateMs = currentMs;
-//   };
-//   void flashOff(){
-//     if ( ! statusOff() ){
-//       off();
-//       this->changeStateMs = millis();
-//     }
-//   };
-//   // switch led pinVal
-//   inline void toggle(){
-//     pinValue = !pinValue;
-//     write();
-//   };
-//   void toggle(int period) {
-//     unsigned long currentMs = millis(); 
-//     if ( period ){
-//       if ( currentMs - this->changeStateMs < period ) return;
-//     }
-//     this->changeStateMs = currentMs;
-//     toggle();
-//     };
-
-//   private:
-//   uint8_t pin;
-//   bool initState;
-//   bool pinValue;
-//   unsigned long changeStateMs=0;
-//   inline void write(){
-//     digitalWrite(pin, pinValue );
-//   };
-//   inline void write(State s){
-//     // if( s == State::OFF )
-//     //   pinValue = initState;
-//     // else
-//     //   pinValue = !initState;
-//     pinValue = ( s == State::OFF ) ? initState : !initState;
-//     write();
-//   };
-// } builtInLed(LED_BUILTIN, LOW);
-
-//flasher for led
-//inline void ledFlash(uint period){ builtInLed.flash(period); };
-//inline void flash200() { builtInLed.flash(200);}
 
 
 struct WrongCount {
-//  uint periodMs=1000;
-//  long unsigned nextMs;
+
   private:
   uint count=0;
   unsigned long changeMs =0; 

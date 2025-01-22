@@ -3,6 +3,7 @@
 
 //PairsFile menuIds(&LittleFS, "/menu.dat", 3000);
 namespace MenuIdsNames {
+    static const char menu_dat[] PROGMEM = "/menu.dat";
     static const char ignore[] PROGMEM = "ignore";
 };
 
@@ -95,6 +96,6 @@ class MenuIds : public PairsFile {
     inline const String strChannelName(const long long key) const { return str( key, 'n'); }
 };
 
-MenuIds menuIds(&LittleFS, "/menu.dat", 3000);
+MenuIds menuIds(&LittleFS, MenuIdsNames::menu_dat, 3000);
 // PairsFile pairsFile;
 // pairsFile.set()

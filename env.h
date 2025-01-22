@@ -11,7 +11,7 @@
 #define DEFAULT_TZ_MSK  "MSK-3"
 
 #define _SAY_HI_MD_  "_Привет\\. Я снова тут\\.\\.\\._"
-static const char SAY_HI_MD[] PROGMEM = _SAY_HI_MD_;
+//static const char SAY_HI_MD[] PROGMEM = _SAY_HI_MD_;
 
 
 #define _SAY_HI_  "Привет. Я снова тут..."
@@ -32,7 +32,7 @@ static const char ERROR_UPGRADE[] PROGMEM = "Upgrade failed.";
 
 class AddedString /* : public String */ {
     private:
-        String * s;
+        String * const s;
         char _delimeter = '\0';
         AddedString _concat(const char * _s){
             if ( _delimeter != '\0' && _s != nullptr && _s[0] != _delimeter ) {
@@ -44,6 +44,10 @@ class AddedString /* : public String */ {
     public:
     //AddedString(){};
     AddedString(String& _s) : s(&_s) {};
+    AddedString(String& _s, const char delimeter) 
+        : s(&_s), _delimeter(delimeter)
+        {};
+    
     void setDelimeter(const char d){
         _delimeter = d;
     };
@@ -61,8 +65,11 @@ class AddedString /* : public String */ {
         return _concat(String(_s).c_str());
     };
 
-     operator String() const {
+    operator String() const {
         return *s;
+    };
+    operator const char *() const {
+        return (*s).c_str();
     };
 
 };
@@ -81,12 +88,12 @@ namespace TimeRus {
     static const char _seconds1[] PROGMEM = "секунда";
     static const char _seconds2[] PROGMEM = "секунды";
     static const char _seconds3[] PROGMEM = "секунд";
-
-    static const char * const _t[3][3] PROGMEM = { 
-    {_hours1,_hours2 ,_hours3},
-    { _minutes1, _minutes2,_minutes3},
-    { _seconds1,_seconds2,_seconds3 }
-    };
+    
+    static const char * const _hours[] PROGMEM = {_hours1,_hours2 ,_hours3};
+    static const char * const _minutes[] PROGMEM = { _minutes1, _minutes2,_minutes3};
+    static const char * const _seconds[] PROGMEM = { _seconds1,_seconds2,_seconds3 };
+    
+    static const char * const * const _t[3] PROGMEM = {_hours, _minutes,_seconds };
     enum SUFFIX {
         ONE,
         TWO_FOUR,
