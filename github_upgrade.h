@@ -287,8 +287,8 @@ namespace GitHubUpgrade {
         if ( ! http.begin(client, apiHost, port, url, /*https=*/true )) {
             _lastErrorCode = Errors::Failed_Connection;
         } else {  
-            
-            http.setTimeout(8000);
+            delay(0);
+            http.setTimeout(1500);
             int httpCode = http.GET();
             debugPretty;
             debugPrintf("Get %s:%d %s\n\tResult: %d\n", apiHost, port, url.c_str(), httpCode);
@@ -346,7 +346,7 @@ namespace GitHubUpgrade {
                                         copyUrl( &release._infoUrl, url );
                                         //copyUrl( &_InfoUrlPtr, doc["html_url"].c_str());
                                     } else {
-                                        debugPrintln("Info url can be constructed");
+                                        debugPrintln(F("Info url can be constructed"));
                                     }    
 
                                     _lastErrorCode = Errors::Ok;
@@ -360,6 +360,7 @@ namespace GitHubUpgrade {
                 doc.reset();
             }
         }
+        http.end();
         return _lastErrorCode;
     };
 
@@ -411,11 +412,14 @@ namespace GitHubUpgrade {
     //     if ( at.checkedDay() || ! at.isTime() ) return false;
     //     return check(true);
     // };
-
-    String tag(){
-        if ( release.has ) return String( release.tag ); //_releaseTag ); //gitHubUpgrade->getLatestTag(); //latestTag;
-        return NULL_STR;
+    const char * tag(){
+        if ( release.has ) return release.tag;
+        return PSTR("");
     };
+    // String tag(){
+    //     if ( release.has ) return String( release.tag ); //_releaseTag ); //gitHubUpgrade->getLatestTag(); //latestTag;
+    //     return NULL_STR;
+    // };
 
     bool doIt(){
         if ( release.has ){
@@ -485,7 +489,7 @@ void tick(){
 
       String buf(F("Текущая версия `"));
       buf += version.toString(); buf += F("`\n");
-      buf +=  F("Новая версия `"); buf +=  GitHubUpgrade::tag(); buf += F("` доступна"); 
+      buf +=  F("Новая версия `"); buf += GitHubUpgrade::tag(); buf += F("` доступна"); 
 
       {
         fb::Message msg(buf.c_str(), settings.getAdminId());

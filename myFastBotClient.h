@@ -28,7 +28,7 @@ bool botCertsStore(CertStore* cs, WiFiClientSecure& cl, FS& fs, const char * fil
                 delete[](cs);
                 cs = nullptr;
             }
-        }
+        } 
     }
     return numCerts;
 };

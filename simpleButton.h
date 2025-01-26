@@ -243,7 +243,7 @@ const ReturnCode cleaner( const bool waitBotResponse=false){
         //debugPrintf("\tmsg=%lu\n", (unsigned long)menuIds.getMenuId( chatId() ) );
       }
     }
-    debugPrintf(F("\tResp=%s\n"), codeToString(ret) );
+    debugPrintf("\tResp=%s\n", codeToString(ret) );
     
     return ret;
   };
@@ -279,7 +279,7 @@ const ReturnCode cleaner( const bool waitBotResponse=false){
         ret = ReturnCode::ok;
       }
     }
-    debugPrintf(F("\tResp=%s\n"),codeToString(ret) );
+    debugPrintf("\tResp=%s\n",codeToString(ret) );
     return ret;
   };
 

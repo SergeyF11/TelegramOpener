@@ -183,9 +183,8 @@ namespace BotSettings{
     out += Time::toStr( cr);
     out.concat(F(" M:"));
     out += Time::toStr( lw);
-
     out.concat(F("\r\n"));
-
+    Time::_free_buf();
   }
   if ( ! subDir ){
     out.concat(F("FS uses "));

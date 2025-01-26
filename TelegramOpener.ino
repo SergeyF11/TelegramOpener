@@ -2,6 +2,8 @@
 //#define memory_print
 //#define CHECK_MAXBLOCK_SIZE
 
+#define VERSION 0,1,17
+
 #ifdef CHECK_MAXBLOCK_SIZE
   #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
   if ( __pre_free_block - ESP.getMaxFreeBlockSize() > 1000 ){ \
@@ -29,18 +31,18 @@
 //#define POLLING_TIME (BUTTON_ENABLE_SEC-1)*500
 #define RX_PIN 3
 
-#define VERSION 0,1,17
+
 #include "env.h"
 #include "debug.h"
 
-#ifdef memory_print
-  PrintMemory memory;
-#endif
-
 #if defined debug_print
+  PrintMemory memory;
   static App::Version version{VERSION,"dbg"};
 #else
   static App::Version version{VERSION};
+ #ifdef memory_print 
+  PrintMemory memory;
+  #endif  
 #endif
 
 #include <Arduino.h>
@@ -195,6 +197,7 @@ wm.addParameter(&button_report);
 //      sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
 
       Serial.println( Time::toStr() ); //Time::printTo(Serial);
+      //Time::_free_buf();
       debugPrintln(F(" Done" ));
 
   #endif
@@ -203,8 +206,9 @@ wm.addParameter(&button_report);
   if ( botCertsStore( certStore, client, LittleFS) ){
     debugPrintf("Use certs store [%llu]\n", certStore );
   } else {
+    Serial.println("No certificate store loaded!! Used fingerprint connection.");    
     client.setFingerprint(Telegram::fingerprint );
-    debugPrintln("Use Telegram fingerprint\n");
+    //debugPrintln("Use Telegram fingerprint\n");
   }
   // } else {
   //   client.setInsecure();

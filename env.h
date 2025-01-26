@@ -104,7 +104,7 @@ namespace TimeRus {
     //                 {"минута", "минуты","минут"},
     //                 {"секунда","секунды", "секунд"}};
 
-    auto _timeSuffix = [](T t, const unsigned int s){
+    const char * _timeSuffix(T t, const unsigned int s){
         switch(s<20 ? s : s%10){
             case 1:
             return _t[t][SUFFIX::ONE];
@@ -114,50 +114,21 @@ namespace TimeRus {
             return _t[t][SUFFIX::TWO_FOUR];
         }
         return _t[t][SUFFIX::OTHER];
-        };
-    // void uptimeTo(String& up){
-    //     up = F("Uptime");
-    //     AddedString uptime(up);
-    //     uptime.setDelimeter(' ');
-    //     auto now = millis()/1024;
-    //     auto mins = now/60;
-    //     unsigned int hours = mins/60;
-    //     if ( hours > 0 ){
-    //     uptime << hours << _timeSuffix( TimeRus::HOURS, hours );
-    //     mins = mins - hours*60;
-    //     }
-    //     if ( mins > 0 ){
-    //     uptime << (unsigned int)mins << _timeSuffix( TimeRus::MINUTE, mins);
-    //     }
-    //     unsigned secs = now%60;
-    //     if ( secs > 0 || ( hours == 0 && mins == 0 )) {
-    //     uptime << secs << _timeSuffix( TimeRus::SECONDS, secs);
-    //     }
-    // };
-    // String uptime(){
-    //     String out;
-    //     uptimeTo(out);
-    //     return out;
-    // };
-    
+    };    
 };
 
 namespace Url {
-    //String& slah(const char * s){};
-    String& slash(String& s, const char * add){
-        if( add != nullptr && add[0] != '/' ){
-            s += '/';
-        }
-        s += add;
+    String& slash(String&s, const char * add){
+        AddedString as(s, '/');
+        as<<add;
         return s;
     };
-    // String _preSlash(const char * s){
-    //     String out;
-    //     if( s != nullptr && s[0] != '/' ){
-    //         out += '/';
+    // String& slash(String& s, const char * add){
+    //     if( add != nullptr && add[0] != '/' ){
+    //         s += '/';
     //     }
-    //     out += s;
-    //     return out;
+    //     s += add;
+    //     return s;
     // };
 };
 
@@ -187,17 +158,18 @@ namespace App {
     static const char GITHUB_IO_FINGERPRINT[] PROGMEM = "97:D8:C5:70:0F:12:24:6C:88:BC:FA:06:7E:8C:A7:4D:A8:62:67:28";
     const int gitHubPort = 443;
 
-    struct Version {
+    struct Version : public Printable {
         //private:
         uint8_t high = 0;
         uint8_t middle = 0;
         uint8_t low = 0;
-        char * betta = nullptr;
+        //char * betta = nullptr;
+        char betta[4] = {0};
         void addBetta(const char * b){
             debugPretty;
             if ( b != nullptr && *b != '\0' ){
-                betta = new char[ strlen(b) ]; //(char *)malloc( strlen(b));
-                strcpy(betta,b);
+                //betta = new char[ strlen(b) ]; //(char *)malloc( strlen(b));
+                strncpy(betta,b, 3);
             }
         }
         //public:
@@ -216,10 +188,10 @@ namespace App {
             fromString(s);
         };
         ~Version(){
-            if ( betta != nullptr ) {
-                //free(betta);
-                delete[] betta;
-            };
+            // if ( betta != nullptr ) {
+            //     //free(betta);
+            //     delete[] betta;
+            // };
         };
         bool operator==(const Version& a) const {
             return ( 
@@ -249,7 +221,7 @@ namespace App {
         bool operator>=(const Version& a) const { return ! ( a > (*this) ); };
         bool operator!=(const Version& a) const { return ! ( (*this == a)); };
         bool isBetta() const {
-            return betta != nullptr;
+            return betta[0] != 0;
         };
         String toString() const {
             String v(high);
@@ -273,10 +245,11 @@ namespace App {
                 // low = 0;
                 return;
             }
-            char* buf = new char[ s.length()+1 ]; //(char *)malloc(s.length()+1 );
+            char * v;
+            char * buf = new char[ s.length()+1 ]; //(char *)malloc(s.length()+1 );
             strcpy( buf, s.c_str());
 
-            char * v = strtok( buf, ".");
+            v = strtok( buf, ".");
             high = atoi(v); 
             v = strtok( NULL, ".");
             middle = atoi(v);
@@ -292,11 +265,13 @@ namespace App {
             //free(buf);
             delete[] buf;
         };  
-        size_t toPrint(Print& p, const Version& v ) const {
-            return p.print( v.toString());
+        size_t printTo(Print& p) const {
+            return p.print( toString());
         };
     };
-
+    // size_t Printable::printTo(Print& p, const Version& v) const {
+    //     return Version::printTo(p,v);
+    // };
     
     String getBinFile(){
         String bin(name);
@@ -360,18 +335,19 @@ namespace App {
 };
 
 namespace Time {
-    static unsigned long secondsBeforeTimeSync;
-    static time_t timeSyncTime;
+    
+    static time_t startTime;
 
     /// @brief internal buffer for print time
-    static char * buf = nullptr;
-    void _free_buf(){
-            if ( buf != nullptr ) { 
-                //free(buf);
-                delete[] buf;
-                buf = nullptr;
-            }
-        };
+    static char buf[20];
+    // static char * buf = nullptr;
+     void _free_buf(){
+        // if ( buf != nullptr ) { 
+        //     delete[] buf;
+        //     buf = nullptr;
+        // }
+    };
+   
     char * toStr(const time_t&);
 
     /// @brief check localtime is synced to NTP. Set vars for uptime
@@ -379,41 +355,42 @@ namespace Time {
     bool isSynced(){
         auto now = time(nullptr);
         bool res = now > 3600*2*60;
-        if ( secondsBeforeTimeSync ==0 && timeSyncTime == 0 && res ){
-                secondsBeforeTimeSync = millis()/1000;
-                timeSyncTime = time(nullptr);
+        if ( startTime == 0 && res ){
+                
+                startTime = time(nullptr)- millis()/1000;
                 // debugPrintf("%lu sec before time synced\n", secondsBeforeTimeSync);
-                // debugPrintf("Synced time is %s\n", toStr(timeSyncTime));
-                _free_buf();
+                // debugPrintf("Synced time is %s\n", toStr(startTime));
+                //_free_buf();
         }
         return res;
         //return time(nullptr) > 3600*2*60;
     };
 
     /// @brief create char[] with time string.
-    /// @attention Call 'Time::_free_buf()' after using it !!!
+    /// @attention 
     /// @param  time_t; default: now  
     /// @return  char * to time string
     char * toStr(const time_t& now = time(nullptr))  {
+        //_free_buf();
+        // if ( buf == nullptr )
+        //     buf =  new char[20]; //(char *)malloc(20);
         static constexpr char tmpl[] PROGMEM = "%4d-%02d-%02d %02d:%02d:%02d";
         //auto now = time(nullptr);
         auto _tm = localtime( &now );
-        _free_buf();
-        buf =  new char[20]; //(char *)malloc(20);
-        sprintf(buf, tmpl, 
+        sprintf( buf, tmpl, 
             _tm->tm_year+1900, _tm->tm_mon+1, _tm->tm_mday, 
             _tm->tm_hour, _tm->tm_min, _tm->tm_sec );
         return buf;
     }
-    size_t printTo(Print& p){
-        auto size =  p.print(toStr());
-        _free_buf();
-        return size;
-    };
+    // size_t printTo(Print& p){
+    //     auto size =  p.print(toStr());
+    //     //_free_buf();
+    //     return size;
+    // };
     unsigned long _getUptime(){
         if ( ! isSynced() ) return millis()/1000;
         //else 
-        return secondsBeforeTimeSync + ( time(nullptr) - timeSyncTime );
+        return ( time(nullptr) - startTime );
     };
 
     /// @brief output uptime to string 'up' in hours, mins, second. 
