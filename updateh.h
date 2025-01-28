@@ -434,7 +434,8 @@ void handleCommand(fb::Update& u){
                 //String("Settings ") + 
                 TelegramMD::linkTo(
                   webPortal, //"web portal", 
-                  WiFi.localIP().toString().c_str(),
+                  //WiFi.localIP().toString().c_str(),
+                  App::getHostname().c_str(),
                   MARKDOWN_TG::escape ) + 
                 MARKDOWN_TG::escape( _started ) //" started...")
               );

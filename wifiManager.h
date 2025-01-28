@@ -24,7 +24,7 @@
 
 //const char* modes[] PROGMEM = { "NULL", "STA", "AP", "STA+AP" };
 
-unsigned long mtime = 0;
+//unsigned long mtime = 0;
 enum NeedStart {
   None = 0,
   Portal = 1,
@@ -75,7 +75,7 @@ public:
 // int  ONDDEMANDPIN    = 3; // RX
 
 
-WiFiManagerParameter custom_html("<p>TG opener settings</p>"); // only custom html
+WiFiManagerParameter custom_html( "<h1>TelegramOpener</h1>" ); // only custom html
 WiFiManagerParameter custom_tgToken; //("token", "bot token", settings.token, 50,"placeholder=\"your BOT token\"");
 Int64Parameter custom_botAdmin; //("adminId", "admin id", settings.admin, 21,"placeholder=\"bot administrator\"");
 Int64Parameter custom_controlChatId; //("chatId", "control chat", settings.chatId, 21,"placeholder=\"token to access the HTTP API\"");

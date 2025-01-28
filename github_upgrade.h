@@ -113,32 +113,7 @@ namespace GitHubUpgrade {
     }/* ;
     static Release */ release;
     static bool needUpgrade = false;
-    // static bool has = false;
-    // char _releaseTag[] = "0.0.0dbg";
-    // //static const String appBinFile = App::getBinFile();
-    
 
-    // //static const time_t _likeRealTime =  2*24*60*60;
-    // 
-    // // static int checkedDay=0;
-    // //static String latestTag;
-    // static char * _downloadUrlPtr = nullptr;
-    // static char * _InfoUrlPtr = nullptr;
-
-    // // static String _downloadURL = NULL_STR;
-    // // static String _InfoURL = NULL_STR;
-    
-    // void stringClean(){
-    //     free(_downloadUrlPtr);
-    //     _downloadUrlPtr = nullptr;
-    //     free(_InfoUrlPtr);
-    //     _InfoUrlPtr = nullptr;
-
-    //     // _downloadURL= NULL_STR;
-    //     // _InfoURL = NULL_STR;
-    //     // _downloadURL.reserve(0);
-    //     // _InfoURL.reserve(0);
-    // };
     static const char _sun[] PROGMEM ="Sun";
     static const char _mon[] PROGMEM ="Mon";
     static const char _tue[] PROGMEM ="Tue";
@@ -479,12 +454,14 @@ void tick(){
 
       //fb::InlineMenu menu(F("Обновить;Пропустить"), F("up;ig"));
       fb::InlineMenu menu;
-      menu.addButton(F("Обновить"), F("up"));
+     
       if ( ! GitHubUpgrade::release.getUrl( Release::Info ).isEmpty() ){ //_InfoURL.isEmpty() ) {
         menu.addButton(F("Подробности"), GitHubUpgrade::release.getUrl( Release::Info )); // GitHubUpgrade::_InfoURL);
+        menu.newRow();
     //   if ( _InfoUrlPtr != nullptr ){
     //     menu.addButton(F("Подробности"), GitHubUpgrade::_InfoUrlPtr );
-      }
+      } 
+      menu.addButton(F("Обновить"), F("up"));
       menu.addButton(F("Пропустить"), F("ig"));
 
       String buf(F("Текущая версия `"));

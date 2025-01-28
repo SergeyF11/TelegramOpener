@@ -2,7 +2,7 @@
 //#define memory_print
 //#define CHECK_MAXBLOCK_SIZE
 
-#define VERSION 0,1,17
+#define VERSION 0,1,18
 
 #ifdef CHECK_MAXBLOCK_SIZE
   #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
@@ -111,10 +111,11 @@ void setup(){
 
 
 // setup some parameters
-  new (&custom_tgToken ) WiFiManagerParameter ("token", "bot token", settings.getToken(), 50,"placeholder=\"your BOT token from @BotFather\"");
-   new (&custom_botAdmin ) Int64Parameter ("adminId", "admin id", settings.getAdminId(), 21,"placeholder=\"bot administrator id\"");
-  new (&custom_controlChatId ) Int64Parameter ("chatId", "control chat id", settings.getChatId(true), 21,"placeholder=\"control chat id\"");
-  new (&custom_timeZone) WiFiManagerParameter ("tz", "time zone", settings.getTz(), 10, "placeholder=\"time zone (example:'MSK-3') or shift in hours (-3)\"");
+
+  new (&custom_tgToken ) WiFiManagerParameter ("token", "Bot token", settings.getToken(), 50,"placeholder=\"your BOT token from @BotFather\"");
+  new (&custom_botAdmin ) Int64Parameter ("adminId", "Admin ID", settings.getAdminId(), 21,"placeholder=\"bot administrator id\"");
+  new (&custom_controlChatId ) Int64Parameter ("chatId", "Control chat ID", settings.getChatId(true), 21,"placeholder=\"control chat id\"");
+  new (&custom_timeZone) WiFiManagerParameter ("tz", "Time zone", settings.getTz(), 10, "placeholder=\"time zone (example:'MSK-3') or shift in hours (-3)\"");
 
   new (&button_header) WiFiManagerParameter ("button_header","Button header", settings.getButtonHeader(), 150, "placeholder=\"Button message header\"");
   new (&button_name) WiFiManagerParameter ("button_name","Button name", settings.getButtonName(), 50, "placeholder=\"Button name\"");
@@ -139,17 +140,16 @@ wm.addParameter(&button_report);
   wm.setSaveConfigCallback(saveWifiCallback);
   wm.setSaveParamsCallback(saveParamCallback);
  
-  
+  wm.setDebugOutput( false); //true, WM_DEBUG_DEV );
   // invert theme, dark
   wm.setDarkMode(true);
    std::vector<const char *> menu = {"wifi","info","sep","param","sep","update","restart","exit"};
   wm.setMenu(menu); // custom menu, pass vector
  
   // set Hostname
-  wm.setHostname(App::name);
-  //useful to make it all retry or go to sleep in seconds
-  //wm.setConfigPortalTimeout(120);
+  wm.setHostname( App::name );
 
+  // useful to make it all retry or go to sleep in seconds
   wm.setConfigPortalTimeout(PORTAL_TIMEOUT);
   wm.setSaveConnect(true); // false = ( do not connect, only save )
   wm.setBreakAfterConfig(true); // needed to use saveWifiCallback
@@ -382,7 +382,7 @@ void loop(){
  
 
   if ( ! bot.isPolling() ) {
-    myButton.tick();
+  //  myButton.tick();
   //} else {
     GitHubUpgrade::tick();
     myButton.tick();

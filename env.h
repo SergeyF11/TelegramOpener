@@ -154,6 +154,7 @@ namespace Author {
 };
 namespace App {
     static const char name[] PROGMEM = "TelegramOpener";
+    //static const char hostSuffix[] PROGMEM = ".local";
 //    static const char dataCerts[] PROGMEM = "data/certs.ar";
     static const char GITHUB_IO_FINGERPRINT[] PROGMEM = "97:D8:C5:70:0F:12:24:6C:88:BC:FA:06:7E:8C:A7:4D:A8:62:67:28";
     const int gitHubPort = 443;
@@ -278,22 +279,13 @@ namespace App {
         bin += F(".ino.bin");
         return bin;
     };
-    // bool isBetta(Version& version){
-    //     return  version.betta != nullptr;
-    // };
-    // String getString(Version& version){
-    //     String v;
-    //     v += version.high;
-    //     v += '.';
-    //     v += version.middle;
+    String getHostname(){
+        String hostname(name);
+        hostname.toLowerCase();
+        hostname += F(".local");
+        return hostname;
+    };
 
-    //     if ( isBetta(version) ){
-    //         v += '.';
-    //         v += version.low;
-    //         v += version.betta;
-    //     }
-    //     return v;
-    // };
     String getApp(){
         return String(name);
     };
