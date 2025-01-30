@@ -42,12 +42,17 @@ if sys.version_info[0] > 2:
 csvFile = StringIO(csvData)
 csvReader = csv.reader(csvFile)
 for row in csvReader:
-    names.append(row[0]+":"+row[1]+":"+row[2])
+    name = row[0]+":"+row[1]+":"+row[2]
+    print("Append name", name)
+    names.append(name)
     for item in row:
         if item.startswith("'-----BEGIN CERTIFICATE-----"):
             pems.append(item)
+print("Remove header", names[0])            
 del names[0] # Remove headers
-del pems[0] # Remove headers
+if len(pems) - len(names) == 1:
+    print("Del header", pems[0])
+    del pems[0] # Remove headers
 
 # Try and make ./data, skip if present
 try:

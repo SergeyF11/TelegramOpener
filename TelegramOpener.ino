@@ -1,8 +1,8 @@
-//#define debug_print 1
+#define debug_print 1
 //#define memory_print
 //#define CHECK_MAXBLOCK_SIZE
 
-#define VERSION 0,1,18
+#define VERSION 0,1,19
 
 #ifdef CHECK_MAXBLOCK_SIZE
   #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
@@ -170,6 +170,7 @@ wm.addParameter(&button_report);
   else {
     //if you get here you have connected to the WiFi
      Serial.println("connected...yeey :)");
+
   }
 
   //static esp8266::polledTimeout::periodicMs [](){ };

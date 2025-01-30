@@ -17,10 +17,16 @@ bool botCertsStore(CertStore* cs, WiFiClientSecure& cl, FS& fs, const char * fil
     if ( cs != nullptr ) delete[](cs);
     int numCerts = 0;
     if ( fs.begin() ) {
-        if ( fs.exists(fileData) ||
-        CertificateStore::download(LittleFS) == CertificateStore::Errors::ok ) 
-        {
-            cs = new CertStore();
+        if ( fs.exists(fileData) || 
+             CertificateStore::download(LittleFS) == CertificateStore::Errors::ok ) {
+        //     auto err = CertificateStore::download(LittleFS);
+        //     if ( err != CertificateStore::Errors::ok &&
+        //          err != CertificateStore::Errors::noNewStore ) return 0;
+        
+        // }
+            if ( cs == nullptr ){
+                cs = new CertStore();
+            }
             numCerts = cs->initCertStore(fs, CertStoreFiles::fileIdx, fileData);
             if ( numCerts > 0 ) {
                 cl.setCertStore(cs);    
@@ -28,7 +34,7 @@ bool botCertsStore(CertStore* cs, WiFiClientSecure& cl, FS& fs, const char * fil
                 delete[](cs);
                 cs = nullptr;
             }
-        } 
+        }
     }
     return numCerts;
 };

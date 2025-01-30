@@ -6,5 +6,9 @@ NewFsSettings/*
 .vscode/*
 *.crt
 
+certs/venv/*
+certs/__pycache__/*
+certs/Pipfile
+
 my_credential.h
 
