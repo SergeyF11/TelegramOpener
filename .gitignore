@@ -10,5 +10,4 @@ certs/venv/*
 certs/__pycache__/*
 certs/Pipfile
 
-my_credential.h
 

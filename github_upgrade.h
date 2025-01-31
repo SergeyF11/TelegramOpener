@@ -11,7 +11,7 @@
 //#include "myFileDb.h"
 #include "myPairs.h"
 #include <CertStoreBearSSL.h>
-
+#include <TimeLib.h>
 
 extern BotSettings::Settings settings;
 extern CertStore * certStore;
@@ -20,12 +20,56 @@ extern App::Version version;
 extern MenuIds menuIds;
 extern WiFiClientSecure client;
 
+namespace CertStoreFiles {
+    static const char dataCerts[] PROGMEM = "data/certs.ar";
+    static constexpr const char * fileData PROGMEM = dataCerts+4; //"/certs.ar";
+    static const char fileIdx[] PROGMEM = "/certs.idx";
+
+    time_t fileDate(FS& fs, const char * fileName = fileData );
+    bool hasNewestCertsStore();
+    
+    time_t getDate(const char * dateString){
+        static const char format[] PROGMEM = "%4d-%02d-%02dT%2d:%02d:%02dZ";
+        time_t out = 0;
+        if ( dateString == nullptr || dateString[0] == '\0' ) return out;
+
+        struct tm timeinfo;
+        auto args = sscanf(dateString, format, 
+                &timeinfo.tm_year, &timeinfo.tm_mon, &timeinfo.tm_mday, 
+                &timeinfo.tm_hour, &timeinfo.tm_min, &timeinfo.tm_sec );
+        debugPrint(args);
+
+        if ( args == 6 ){
+            
+        debugPrintf(" ==> Date: %2u-%02u-%4u Time: %2u:%02u:%02u\n",
+            timeinfo.tm_mday, timeinfo.tm_mon, timeinfo.tm_year,
+            timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec );
+
+            tmElements_t tmSet;
+            tmSet.Year = timeinfo.tm_year-1970;
+            tmSet.Month = timeinfo.tm_mon;
+            tmSet.Day = timeinfo.tm_mday;
+            tmSet.Hour = timeinfo.tm_hour;
+            tmSet.Minute = timeinfo.tm_min;
+            tmSet.Second = timeinfo.tm_sec;
+            
+            out = makeTime(tmSet);
+            debugPrintln( out );
+        } else {
+            debugPrintln(F(" Error"));
+        }
+        return out;
+    };
+
+   
+};
 
 namespace GitHubUpgrade {
     static const char apiHost[] PROGMEM = "api.github.com";
     static const char latest[] PROGMEM = "/releases/latest";
     static const int port = 443;
     static const char contentType[] PROGMEM = "application/octet-stream";
+    static const char archiveType[] PROGMEM = "application/x-archive";
 
 
     enum Errors {
@@ -59,26 +103,51 @@ namespace GitHubUpgrade {
         enum Url {
             Download,
             Info,
+            CertStore,
         };
         char * _downloadUrl = nullptr;
+        char * _newCertsStore = nullptr;
         char * _infoUrl = nullptr;
+        time_t _newCertStoreDate = 0;
+        time_t getNewCertStoreDate(){
+            if ( ! constructed[ Url::CertStore ] ) return 0;
+            return _newCertStoreDate;
+        };
+        void resetCertStoreDate(){
+            _newCertStoreDate=0;
+        };
+        // bool  hasCertStore(){
+        //     return constructed[ Url::CertStore ] && 
+        //      _newCertStoreDate != 0;
+        // };
+
+
         bool has = false;
-        bool constructed[2] = {false};
-        
+        bool constructed[3] = {false};
+        void _clean( char ** ptr){
+            if ( *ptr != nullptr ){
+                delete[] *ptr;
+                *ptr = nullptr;
+            }
+        };
         void clean(){
             debugPretty;
             debugPrintf("%s download=%s, info=%s\n", has ? "has" : "none", 
                 _downloadUrl == nullptr ? "nullptr" : _downloadUrl,
                 _infoUrl == nullptr ? "nullptr" : _infoUrl);
             has = false;
-            if ( _downloadUrl != nullptr ){
-                delete[](_downloadUrl);
-                _downloadUrl = nullptr;
-            }
-            if ( _infoUrl != nullptr  ){
-                delete[](_infoUrl);
-                _infoUrl = nullptr; 
-            }
+            _clean( &_downloadUrl);
+            _clean( &_infoUrl );
+            _clean( &_newCertsStore );
+
+            // if ( _downloadUrl != nullptr ){
+            //     delete[](_downloadUrl);
+            //     _downloadUrl = nullptr;
+            // }
+            // if ( _infoUrl != nullptr  ){
+            //     delete[](_infoUrl);
+            //     _infoUrl = nullptr; 
+            // }
         };
 
 
@@ -86,15 +155,19 @@ namespace GitHubUpgrade {
             String out = App::getHomePage();
             out += latest;
             out = out.substring(0, out.length()-6);
-            if ( typeUrl == Url::Download ){
+            if ( typeUrl == Url::Info ) {
+                    out += F("tag/");
+                    out += tag;
+            } else {
                 out += F("download/");
                 out += tag;
-                out += '/';
-                out += App::getBinFile();
-            } else {
-                out += F("tag/");
-                out += tag;
-            }
+                if ( typeUrl == Url::Download ) {
+                    out += '/';
+                    out += App::getBinFile();
+                } else {
+                    out += CertStoreFiles::fileData;
+                }
+            }            
             debugPretty;
             debugPrintln(out);
             return out;
@@ -107,7 +180,19 @@ namespace GitHubUpgrade {
         String getUrl(Url typeUrl){
             if ( constructed[typeUrl] ) return constructUrl(typeUrl);
             // else
-            return String( typeUrl == Url::Download ? _downloadUrl : _infoUrl );
+            String out;
+            switch (typeUrl){
+                case Url::Download: 
+                    out = String(_downloadUrl);
+                    break;
+                case Url::CertStore:
+                    out = _newCertsStore;
+                    break;
+                case Url::Info:
+                    out = _infoUrl;
+                    break;    
+            }
+            return out; //String( typeUrl == Url::Download ? _downloadUrl : _infoUrl );
         };
        
     }/* ;
@@ -293,15 +378,38 @@ namespace GitHubUpgrade {
                             //preset error code
                             _lastErrorCode = Errors::No_Valid_Binary; 
                             int i = 0;
+                            {
+                                auto url = doc[su::SH("html_url")].c_str();
+                                release.constructed[Release::Info] = release.canConstruct( url, Release::Info );
+
+                                if ( ! release.constructed[Release::Info] ){
+                                    copyUrl( &release._infoUrl, url );
+                                    //copyUrl( &_InfoUrlPtr, doc["html_url"].c_str());
+                                } else {
+                                    debugPrintln(F("Info url can be constructed"));
+                                }  
+                            }
                             while( true ){
                                 auto asset = doc[su::SH("assets")][i];
                                 if ( ! asset.isObject() ) break;
-                                // String asset_type = asset[su::SH("content_type")].toString();
-                                // String asset_name = asset[su::SH("name")].toString();
 
-                                    
-                                // if (strcmp(asset_type.c_str(), contentType) == 0 && 
-                                //     strcmp(asset_name.c_str(), App::getBinFile().c_str() ) == 0) 
+                                if( asset[su::SH("content_type")].toString().equals( archiveType ) &&
+                                    asset[su::SH("name")].toString().equals( CertStoreFiles::fileData+1 ) )
+                                {
+                                    auto created = asset[su::SH("created_at")].c_str();
+                                    release._newCertStoreDate = CertStoreFiles::getDate( created );
+                                    debugPrintln( Time::toStr( release._newCertStoreDate ));
+
+                                    auto url = asset[su::SH("browser_download_url")].c_str();
+                                    release.constructed[Release::CertStore] = release.canConstruct( url, Release::CertStore );
+                                    if ( ! release.constructed[Release::CertStore] ){
+                                        //copyUrl( &_downloadUrlPtr, doc["assets"][i]["browser_download_url"].c_str());
+                                        copyUrl( &release._newCertsStore, url);
+                                    } else {
+                                        debugPrintln("Download url can be constructed");
+                                    }
+                                }
+ 
                                 
                                 if( asset[su::SH("content_type")].toString().equals( contentType) &&
                                     asset[su::SH("name")].toString().equals( App::getBinFile() ) )
@@ -314,18 +422,9 @@ namespace GitHubUpgrade {
                                     } else {
                                         debugPrintln("Download url can be constructed");
                                     }
-                                    url = doc[su::SH("html_url")].c_str();
-                                    release.constructed[Release::Info] = release.canConstruct( url, Release::Info );
-
-                                    if ( ! release.constructed[Release::Info] ){
-                                        copyUrl( &release._infoUrl, url );
-                                        //copyUrl( &_InfoUrlPtr, doc["html_url"].c_str());
-                                    } else {
-                                        debugPrintln(F("Info url can be constructed"));
-                                    }    
-
+                                    
                                     _lastErrorCode = Errors::Ok;
-                                    break;
+                                    //break;
                                 } 
                                 i++;
                             }
@@ -554,4 +653,19 @@ void tick(){
 // String GitHunUpgrade.getUpgradeURL();
 // String GitHunUpgrade.getLastError();
 
+time_t CertStoreFiles::fileDate(FS& fs, const char * fileName ){
+    time_t res = 0;
+    auto f = fs.open(fileName, "r"); 
+    if ( f ) {
+        res = f.getLastWrite();
+        f.close();
+    }
+    return res;
+};
 
+bool CertStoreFiles::hasNewestCertsStore()    {
+    auto newDate = GitHubUpgrade::release.getNewCertStoreDate();
+    if ( newDate == 0 ) return false;
+    auto myCertsDate = CertStoreFiles::fileDate(LittleFS );
+    return ( newDate > myCertsDate );  
+};

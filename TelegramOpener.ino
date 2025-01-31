@@ -48,8 +48,6 @@
 #include <Arduino.h>
 #include "my_credential.h"
 
-
-
 #include <time.h>
 #include "relay.h"
 #include "myFastBotClient.h"
@@ -358,8 +356,7 @@ wm.addParameter(&button_report);
   GitHubUpgrade::at.set( GitHubUpgrade::At::Random(7) );
 #endif
 
-//bool needStartPortal = false
-//bool needPrintMemory = false;
+
 } // end setup()
 
 
@@ -387,6 +384,13 @@ void loop(){
   //} else {
     GitHubUpgrade::tick();
     myButton.tick();
+    if( CertStoreFiles::hasNewestCertsStore() ){
+      bot.tickManual();
+      if ( CertificateStore::update( GitHubUpgrade::release ) ){
+        debugPrintf("Certs store update to date %s\n", Time::toStr( GitHubUpgrade::release._newCertStoreDate ));
+        GitHubUpgrade::release.resetCertStoreDate();
+      } 
+    }
   }
 
   if ( bot.canReboot() ) {
@@ -467,6 +471,8 @@ void loop(){
         ESP.restart();
       }
       break;
+    // case NeedStart::CertsDownloading:
+    //   CertificateStore::Updater certsUpdater();
     }
    
 }

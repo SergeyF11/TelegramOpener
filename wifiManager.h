@@ -32,6 +32,7 @@ enum NeedStart {
   WebRunning = 3,
   WebStop = 4,
   Reboot,
+  CertsDownloading,
 };
 
 NeedStart needStart=None;
