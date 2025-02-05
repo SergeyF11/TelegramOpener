@@ -22,7 +22,7 @@ bool botCertsStore(CertStore* cs, WiFiClientSecure& cl, FS& fs, const char * fil
     if ( fs.begin() ) {
         if ( fs.exists( CertificateStore::TmpFile::fileName )){
             auto f = fs.open( CertificateStore::TmpFile::fileName, "r");
-            bool needRename = ( f.size() != 0 );
+            bool needRename = ( f.size() != 0 && CertStoreFiles::hasNewestCertsStore() );
             f.close();
             if ( needRename ){
                 fs.rename( CertificateStore::TmpFile::fileName, fileData );

@@ -15,9 +15,9 @@ extern SimpleButton myButton;
 #include "chatMember.h"
 //#include "channelName.h"
 
-namespace TG_ATTR {
-  static const char code[] PROGMEM = "`";
-};
+// namespace TG_ATTR {
+//   static const char code[] PROGMEM = "`";
+// };
 
 static long webPortalMsgId = 0;
 //extern TakeAdminT takeAdmin;
@@ -134,6 +134,8 @@ static const char  portalStarted[] PROGMEM = "Captive портал запуще�
 //static const char * _portalStarted = portalStarted +7;
 static const char * _started = portalStarted +20;
 static const char  portalClosed[] PROGMEM = "Портал закрыт";
+static const char  waitRecord[] PROGMEM = "Параметр будет сохранён через 10 сек";
+static const char  wifiPowerWrited[] PROGMEM = "Мощность wifi сохранена";
 
 static const char  rebootMsg[] PROGMEM = "Reboot...";
 //static const char rawContent[] PROGMEM = "/refs/heads/main/README_rus.pdf";
@@ -255,6 +257,27 @@ void handleCommand(fb::Update& u){
             message.text += TelegramMD::asCode( BotSettings::listDirToString("/"));
             // message.chatID = u.message().from().id();
             printRunTime;
+          }
+          break;
+        case "/wifi_power"_h:
+          if ( settings.isAdmin( u.message().from().id() ) ){ //.admin ){
+            uint8_t percent = WiFiPower::wifiPower.getPower();
+            bool willWrited = false;
+            if ( u.message().text().count(" ") >= 2 ) {
+              auto arg = u.message().text().getSub(1, " ");
+              if ( arg.valid() && is_digits( arg.toString().c_str() )) {
+                  auto _arg = arg.toInt();
+                  if ( _arg <= 100 ){
+                    percent = WiFiPower::wifiPower.setPower( (uint8_t)_arg );
+                    willWrited = !willWrited;
+                  }
+              }
+            }
+            message.text = F("Power: ");
+            message.text += percent;
+            message.text += "%\n";
+            if ( willWrited)  message.text += TelegramMD::asItallic( waitRecord,  MARKDOWN_TG::escape );
+            debugPrintln( message.text );
           }
           break;
 //#define debug_print 

@@ -7,7 +7,7 @@
 #include "newFsSettings.h"
 
 #ifdef BUTTON_NAME
-namespace ButtonInlimeMenu {
+namespace ButtonInlineMenu {
   static const char * bCmds PROGMEM = "~o~";
 };
 #else
@@ -178,7 +178,7 @@ const ReturnCode cleaner( const bool waitBotResponse=false){
   //   debugPretty;
   //   if ( chat == 0ll ) return ReturnCode::noChat;
 
-  //   fb::InlineMenu menu( (const char *)button.name, dynamicCmd(ButtonInlimeMenu::bCmds).c_str() ); 
+  //   fb::InlineMenu menu( (const char *)button.name, dynamicCmd(ButtonInlineMenu::bCmds).c_str() ); 
 
   //   fb::Message message;
     
@@ -215,7 +215,7 @@ const ReturnCode cleaner( const bool waitBotResponse=false){
   const ReturnCode creater( ){ 
     debugPretty;
     debugPrintf("chat=%lld, Button header=%s, name=%s, cmd=%s, wait\n",
-        chatId(), buttonHeader(), buttonName(), dynamicCmd(ButtonInlimeMenu::bCmds).c_str()
+        chatId(), buttonHeader(), buttonName(), dynamicCmd(ButtonInlineMenu::bCmds).c_str()
         );
     ReturnCode ret;
     if ( chatId() == 0 ) ret = ReturnCode::noChat;
@@ -223,7 +223,7 @@ const ReturnCode cleaner( const bool waitBotResponse=false){
       
       fb::Message message;
 
-      fb::InlineMenu menu( buttonName(), dynamicCmd(ButtonInlimeMenu::bCmds).c_str() ); 
+      fb::InlineMenu menu( buttonName(), dynamicCmd(ButtonInlineMenu::bCmds).c_str() ); 
       message.chatID = chatId(); //sets->getChatId();
       message.protect = true;
       message.text = buttonHeader();
@@ -251,7 +251,7 @@ const ReturnCode cleaner( const bool waitBotResponse=false){
   const ReturnCode updater( const bool waitBotResponse=false ){
     debugPretty;
     debugPrintf("chat=%lld, msg=%lu, Button header=%s, name=%s, cmd=%s, wait=%s\n",
-        chatId(),  ( unsigned long )menuIds.getMenuId( chatId() ), buttonHeader(), buttonName(), dynamicCmd(ButtonInlimeMenu::bCmds).c_str(),
+        chatId(),  ( unsigned long )menuIds.getMenuId( chatId() ), buttonHeader(), buttonName(), dynamicCmd(ButtonInlineMenu::bCmds).c_str(),
         waitBotResponse ? "true" : "false"
         );
     ReturnCode ret;
@@ -259,7 +259,7 @@ const ReturnCode cleaner( const bool waitBotResponse=false){
     else if ( ! menuIds.hasMenuId( chatId() ) ) ret = ReturnCode::noMesgId;
     else {
       // fb::Result res;
-      String cmd = dynamicCmd(ButtonInlimeMenu::bCmds );
+      String cmd = dynamicCmd(ButtonInlineMenu::bCmds );
       fb::TextEdit text;
       text.text = buttonHeader(); //sets->getButtonHeader();
       text.chatID = chatId();     
@@ -295,7 +295,7 @@ const ReturnCode cleaner( const bool waitBotResponse=false){
   //   debugPrintf( "Chat id: %lld \tMsg id:%d\n", chat, msgId);
   //   fb::TextEdit text;
   //   fb::InlineMenu menu;
-  //   String myMenuCmd = dynamicCmd(ButtonInlimeMenu::bCmds );
+  //   String myMenuCmd = dynamicCmd(ButtonInlineMenu::bCmds );
 
   //   menu.addButton( (const char *)button.name, myMenuCmd.c_str() );  
   //     debugPrint("Menu="); debugPrint( button.name ); debugPrint("|");debugPrintln(myMenuCmd.c_str());

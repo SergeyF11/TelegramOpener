@@ -1,4 +1,4 @@
-#define debug_print 1
+//#define debug_print 1
 //#define memory_print
 //#define CHECK_MAXBLOCK_SIZE
 
@@ -14,7 +14,7 @@
 #endif
  //#define GitHubUpgrade_ANY_TIME
 
-#define WIFI_POWER 5.0
+#define WIFI_POWER 10.0
 
 #define MFLN_SIZE 1024
 #define SYNC_TIME
@@ -88,7 +88,16 @@ void setup(){
     WiFi.mode(WIFI_STA);
     if (WiFi.getPersistent() == true) WiFi.persistent(false); 
 #if defined WIFI_POWER
-    WiFi.setOutputPower( WIFI_POWER );
+    //
+    if ( ! WiFiPower::wifiPower.read() ) {
+      debugPrintln("Saved wifi power date not found");
+    }
+    {
+    auto power = WiFiPower::wifiPower.setPower();
+    debugPrintf("Power set to %u%\n", power );
+    }
+    // else 
+    //   WiFi.setOutputPower( WIFI_POWER );
 #endif
 
 
@@ -178,16 +187,7 @@ wm.addParameter(&button_report);
   // sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
   
       Serial.print(F("Wait sync time "));
-      // settimeofday_cb( [](){
-      //   timeSynced = true;
-      //   Serial.println(F(" done"));
-      //   debugPrintln( Time::toStr());
-      // } );
-      // while ( ! timeSynced ){
-      //     builtInLed.flash(200,1);
-      //     delay(10);
-      //     Serial.print("+");
-      // }
+
       while( ! Time::isSynced() ){        
           builtInLed.flash(200,1);
           delay(10);
@@ -374,8 +374,19 @@ void loop(){
   }
     bot.tick() ;
   {
-    menuIds.tick();    
+    menuIds.tick();
   }
+  {
+    if ( WiFiPower::wifiPower.isWrited() ){
+      fb::Message message;
+      //message.text = myChannel;
+      message.text = TelegramMD::asBold( wifiPowerWrited, MARKDOWN_TG::escape );  
+      message.chatID = settings.getAdminId();
+      message.setModeMD();
+      bot.sendMessage(message);
+    }
+  }
+
   maxblock_size_checker;
  
 

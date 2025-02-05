@@ -1,6 +1,74 @@
 #pragma once
 #include <PairsFile.h>
 
+namespace WiFiPower {
+    
+    static const char powerFile[] PROGMEM = "/power.dat";
+    static const char* data = powerFile+7;
+    class WiFiPower : PairsFile {
+        private:
+            const float test = ( 20.5 * 100 ) /20.5;
+            
+            uint8_t toPercent(float p) const {
+                return (uint8_t)(( p * 100 )/ 20.5);
+            };
+            float toDb(uint8_t percent) const {
+                return ( 20.5 * percent ) / 100;
+            };
+        public:
+        bool read(){ return begin(); };
+        bool isWrited(){
+            return tick();
+        };
+        // String writer(){ 
+        //     String msg;
+        //     if ( tick() ){
+        //        msg = F("Wifi power writed");
+        //     } 
+        //     return msg;
+        // };
+        WiFiPower(fs::FS* fs ) :
+            PairsFile(fs, powerFile ){};
+        /**
+         * set the output power of WiFi
+         * @param percent 0-100% 
+         * @note max: +20.5dBm  min: 0dBm
+         */             
+        uint8_t setPower(uint8_t percent=0){
+            uint8_t out;
+            float power;
+            if( percent == 0 ){
+                if( has(data)){
+                    power = get( data );
+                } else {
+                    power = WIFI_POWER;
+                }
+                out = toPercent( power );
+                WiFi.setOutputPower( power );
+            } else {
+                power = toDb(percent);
+                debugPrint("Set db=");
+                debugPrintln(power);
+                if ( set( data, power )){
+                    WiFi.setOutputPower( power );
+                    out = percent;
+                } else
+                    debugPrintln( F("No power setted"));
+            }
+            return out;
+        };
+        uint8_t getPower(){
+            float power;
+            if( has(data)){
+                power = get( data );
+            } else {
+                power = WIFI_POWER;
+            }
+            return toPercent( power );
+        };
+    };
+    WiFiPower wifiPower( &LittleFS );
+};
 //PairsFile menuIds(&LittleFS, "/menu.dat", 3000);
 namespace MenuIdsNames {
     static const char menu_dat[] PROGMEM = "/menu.dat";
