@@ -19,7 +19,7 @@
 //#include "quotesReplace.h"
 #include "simpleButton.h"
 
-#define PortalWiFiPassword "12345678"
+static const char PortalWiFiPassword[] PROGMEM = "12345678";
 #define PORTAL_TIMEOUT 90
 
 //const char* modes[] PROGMEM = { "NULL", "STA", "AP", "STA+AP" };

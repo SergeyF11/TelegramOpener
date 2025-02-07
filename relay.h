@@ -186,13 +186,13 @@ struct WrongCount {
   uint count=0;
   unsigned long changeMs =0; 
   const uint accident;
-  const unsigned long wrongPeriod;
+  unsigned long wrongPeriod;
   void (*okFunc)();
   void (*wrongFunc)();
   public:
     void (*accidentFunc)(void);
   //WrongCount(){ };
-  WrongCount(void (*okF)(), void (*wrongF)(), void (*accidentF)(), const uint accident=3, const uint wrongPeriod=60000 ) :
+  WrongCount(void (*okF)(), void (*wrongF)(), void (*accidentF)(), const uint accident=3, const uint wrongPeriod=1000 ) :
     okFunc(okF), wrongFunc(wrongF), accidentFunc(accidentF), accident(accident), wrongPeriod(wrongPeriod)
    { };
 
@@ -214,7 +214,7 @@ struct WrongCount {
     changeMs=millis(); 
     return ++count; 
   };
-
+  void setWrongPeriod(unsigned long ms){ wrongPeriod = ms; }; 
   void tick(/* unsigned long incTimeoutMs=5*POLLING_TIME*3 */ ){
     if ( millis() - changeMs >= wrongPeriod ){
       //count++;
@@ -233,7 +233,7 @@ struct WrongCount {
   [](){ builtInLed.flash(1024); },
   [](){ builtInLed.flash(300); },
   ESP.restart, 
-  3, POLLING_TIME*15 ) ;
+  3, 1000 ) ;
 
 /// @brief обработчик сырого ответа апдейтера Телеграма. Используетеся для сброса счетчика wrongCount
 /// @param resp 
