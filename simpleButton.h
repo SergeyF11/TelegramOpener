@@ -8,7 +8,8 @@
 
 #ifdef BUTTON_NAME
 namespace ButtonInlineMenu {
-  static const char * bCmds PROGMEM = "~o~";
+  //static const char * bCmds PROGMEM = "~o~";
+  static const char * bCmds = strdup( String(ESP.getChipId(), HEX).c_str());
 };
 #else
 #error BUTTON_NAME must be defined

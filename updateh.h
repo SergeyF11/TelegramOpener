@@ -516,35 +516,26 @@ void handleCommand(fb::Update& u){
     } //startsWith
 };
 
-#define QUERY_START_OPEN "~o~"
-#define QUERY_TIME_START 3
+//#define QUERY_START_OPEN "~o~"
+//#define QUERY_TIME_START 3
 #define TAKE_ADMIN "ta~"
-#define DELETE_CHAT_MENU "~d~"
+//#define DELETE_CHAT_MENU "~d~"
 
+#define  constLength(array) (((sizeof(array))/(sizeof(array[0])))-1)
 
 void updateh(fb::Update& u) {   
   switch ( u.type() ){
-  // if (u.isMessage() ) { 
-  //   //wrongCount.reset();
-  //   if( u.message().hasDocument()) handleDocument(u);
-  //   else handleCommand(u);
-  // }
+
   case fb::Update::Type::Message:
   case fb::Update::Type::EditedMessage:
     if( u.message().hasDocument()) handleDocument(u);
     else handleCommand(u);
     break;
-    //   // моё расширение для FasBot2 в chatMember.h 
-  // else if( fb_adds::isMyChatMember(u) ){
-  // //  wrongCount.reset();
-  //   debugPretty;
-  //   handleChatMember(u);
-  //  }
+
   case fb::Update::Type::MyChatMember:
     handleChatMember(u);
     break;
-  // else 
-  //if ( u.isPost() ) {
+
   case fb::Update::Type::ChannelPost:
   case fb::Update::Type::EditedChannelPost:
     {
@@ -553,9 +544,6 @@ void updateh(fb::Update& u) {
         String newChatTitle = u.message().chat().title().decodeUnicode();
         long long chatId = u.message().chat().id();
         menuIds.setChannelName( settings.getChatId(true), newChatTitle);
-        // String myChannel;
-        // myChannel += CHANNEL_FOR_CONTROL;
-        // myChannel += TelegramMD::asBold( TelegramMD::textIn( newChatTitle, '\'' ),  MARKDOWN_TG::escape );  
         
         fb::Message message;
         //message.text = myChannel;
@@ -572,8 +560,7 @@ void updateh(fb::Update& u) {
       }
     }
     break;
-  //else if (u.isQuery()) {
-  //  wrongCount.reset();
+
   case fb::Update::Type::CallbackQuery: 
     {
     bool myAlert = false;
@@ -584,10 +571,10 @@ void updateh(fb::Update& u) {
     long takeAdminMsgId=0;
       auto resp = u.query().data();
       debugPrint("Response '"); debugPrint(resp); debugPrintln("'");
-      
-      if ( resp.startsWith(QUERY_START_OPEN)) {
+      //auto startOpen = String(ESP.getChipId(), HEX);
+      if ( resp.startsWith(ButtonInlineMenu::bCmds)){ //QUERY_START_OPEN)) {
         auto queryChatId = u.query().message().chat().id(); // entry;
-//        debugPretty; debugPrintln( queryChatId );
+
         if( settings.getChatId(true) != 0ll && 
             queryChatId != settings.getChatId(true) ){
           txt += CHANNEL_FOR_CONTROL;
@@ -595,7 +582,7 @@ void updateh(fb::Update& u) {
           myAlert = true;
         } else {
           // проверяем время на кнопке
-          long buttonTime = resp.substring(QUERY_TIME_START).toInt32();
+          long buttonTime = resp.substring(strlen(ButtonInlineMenu::bCmds) );//constLength(QUERY_START_OPEN)).toInt32();
           if ( ! myButton.isExpired( buttonTime ) ){
             relay.open();
             txt = settings.getButtonReport(); //settings.chat.button.report;  
@@ -610,7 +597,7 @@ void updateh(fb::Update& u) {
 
 // стать администратором          
       } else if( resp.startsWith(TAKE_ADMIN) ){
-        takeAdminMsgId = resp.substring(QUERY_TIME_START).toInt32();
+        takeAdminMsgId = resp.substring(constLength(TAKE_ADMIN)).toInt32();
         myAlert=true;  
         if( settings.getAdminId() ){
           
