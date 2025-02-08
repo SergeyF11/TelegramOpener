@@ -445,8 +445,9 @@ namespace GitHubUpgrade {
 
             if ( version >= gitHubV ) { // version <=
                 //release.has = false;
-                debugPrintf("Current version %s is higher or equals the GitHub version %s\n", 
+                debugPrintf("Current version %s is %s the GitHub version %s\n", 
                     version.toString().c_str(), 
+                    (version == gitHubV) ? "equals" : "higher",
                     gitHubV.toString().c_str());
                 release.clean();
 
