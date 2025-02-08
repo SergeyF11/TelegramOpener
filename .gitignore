@@ -10,4 +10,4 @@ certs/venv/*
 certs/__pycache__/*
 certs/Pipfile
 
-
+bins/*

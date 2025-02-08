@@ -1,8 +1,8 @@
-//#define debug_print 1
+#define debug_print 1
 //#define memory_print
 //#define CHECK_MAXBLOCK_SIZE
 
-#define VERSION 0,1,20
+#define VERSION 0,1,21
 
 #ifdef CHECK_MAXBLOCK_SIZE
   #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
