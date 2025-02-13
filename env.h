@@ -23,10 +23,10 @@
 static const char CHANNEL_FOR_CONTROL[] PROGMEM = _CHANNEL_FOR_CONTROL_;
 static const char SAY_HI[] PROGMEM = _SAY_HI_;
 static const char TRY_LATTER[] PROGMEM = _TRY_LATTER_;
-static const char START_UPGRADE[] PROGMEM = "Start upgrade...";
-static const char DONE_UPGRADE[] PROGMEM = "Upgrade done. Reboot...";
-static const char ERROR_UPGRADE[] PROGMEM = "Upgrade failed.";
-//static const char REBOOT[] PROGMEM = "Reboot...";
+static const char START_UPGRADE[] PROGMEM = "Начато обновление...";
+static const char DONE_UPGRADE[] PROGMEM = "Обновление завершено. "; //Reboot...";
+static const char ERROR_UPGRADE[] PROGMEM = "Ошибка при обновлении.";
+static const char REBOOT[] PROGMEM = "Перезапускаюсь...";
 
 #include "TelegramMD.h"
 
@@ -340,7 +340,7 @@ namespace Time {
         // }
     };
    
-    char * toStr(const time_t&);
+    char * toStr(const time_t&, char *);
 
     /// @brief check localtime is synced to NTP. Set vars for uptime
     /// @return true if synced
@@ -360,19 +360,17 @@ namespace Time {
 
     /// @brief create char[] with time string.
     /// @attention 
-    /// @param  time_t; default: now  
+    /// @param time_t; default: now  
+    /// @param char[20] ; buffer for print, default: internal buf
     /// @return  char * to time string
-    char * toStr(const time_t& now = time(nullptr))  {
-        //_free_buf();
-        // if ( buf == nullptr )
-        //     buf =  new char[20]; //(char *)malloc(20);
+    char * toStr(const time_t& _time = time(nullptr), char * _buf=buf )  {
         static constexpr char tmpl[] PROGMEM = "%4d-%02d-%02d %02d:%02d:%02d";
         //auto now = time(nullptr);
-        auto _tm = localtime( &now );
-        sprintf( buf, tmpl, 
+        auto _tm = localtime( &_time );
+        sprintf( _buf, tmpl, 
             _tm->tm_year+1900, _tm->tm_mon+1, _tm->tm_mday, 
             _tm->tm_hour, _tm->tm_min, _tm->tm_sec );
-        return buf;
+        return _buf;
     }
     // size_t printTo(Print& p){
     //     auto size =  p.print(toStr());

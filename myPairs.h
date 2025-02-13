@@ -2,7 +2,7 @@
 #include <PairsFile.h>
 
 namespace WiFiPower {
-    
+     
     static const char powerFile[] PROGMEM = "/power.dat";
     static const char* data = powerFile+7;
     class WiFiPower : PairsFile {

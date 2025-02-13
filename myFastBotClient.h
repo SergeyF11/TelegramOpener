@@ -26,17 +26,16 @@ bool botCertsStore(CertStore* cs, WiFiClientSecure& cl, FS& fs, const char * fil
             f.close();
             if ( needRename ){
                 fs.rename( CertificateStore::TmpFile::fileName, fileData );
+                debugPrintln("CertStore Upgraded");
             } else {
                 fs.remove( CertificateStore::TmpFile::fileName );
+                debugPrintf("Tmp file %s deleted\n", CertificateStore::TmpFile::fileName);
             }
         }
         if ( fs.exists(fileData) || 
+        //  надо  будет заменить на update
              CertificateStore::download(LittleFS) == CertificateStore::Errors::ok ) {
-        //     auto err = CertificateStore::download(LittleFS);
-        //     if ( err != CertificateStore::Errors::ok &&
-        //          err != CertificateStore::Errors::noNewStore ) return 0;
-        
-        // }
+            
             if ( cs == nullptr ){
                 cs = new CertStore();
             }

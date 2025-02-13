@@ -37,14 +37,14 @@ namespace CertStoreFiles {
         auto args = sscanf(dateString, format, 
                 &timeinfo.tm_year, &timeinfo.tm_mon, &timeinfo.tm_mday, 
                 &timeinfo.tm_hour, &timeinfo.tm_min, &timeinfo.tm_sec );
-        debugPrint(args);
+//        debugPrint(args);
 
         if ( args == 6 ){
             
-        debugPrintf(" ==> Date: %2u-%02u-%4u Time: %2u:%02u:%02u\n",
+/*         debugPrintf(" ==> Date: %2u-%02u-%4u Time: %2u:%02u:%02u\n",
             timeinfo.tm_mday, timeinfo.tm_mon, timeinfo.tm_year,
             timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec );
-
+ */
             tmElements_t tmSet;
             tmSet.Year = timeinfo.tm_year-1970;
             tmSet.Month = timeinfo.tm_mon;
@@ -54,14 +54,14 @@ namespace CertStoreFiles {
             tmSet.Second = timeinfo.tm_sec;
             
             out = makeTime(tmSet);
-            debugPrintln( out );
+            debugPrintf( "Time: %lu\n", out );
         } else {
-            debugPrintln(F(" Error"));
+            debugPrintf(" Error\n");
         }
         return out;
     };
-
-   
+    bool updatedMsg(FastBot2Client& b, const long long, bool wait = false);
+    bool downloadMsg(FastBot2Client& bot, const long long toId, bool wait = true );
 };
 
 namespace GitHubUpgrade {
@@ -109,13 +109,14 @@ namespace GitHubUpgrade {
         char * _newCertsStore = nullptr;
         char * _infoUrl = nullptr;
         time_t _newCertStoreDate = 0;
-        time_t getNewCertStoreDate(){
-            if ( ! constructed[ Url::CertStore ] ) return 0;
-            return _newCertStoreDate;
-        };
         void resetCertStoreDate(){
             _newCertStoreDate=0;
         };
+        time_t getNewCertStoreDate(){
+            if ( ! constructed[ Url::CertStore ] ) resetCertStoreDate();
+            return _newCertStoreDate;
+        };
+
         // bool  hasCertStore(){
         //     return constructed[ Url::CertStore ] && 
         //      _newCertStoreDate != 0;
@@ -168,8 +169,8 @@ namespace GitHubUpgrade {
                     out += CertStoreFiles::fileData;
                 }
             }            
-            debugPretty;
-            debugPrintln(out);
+            // debugPretty;
+            // debugPrintln(out);
             return out;
         };
         bool canConstruct( const char * url, Url typeUrl ){
@@ -398,7 +399,7 @@ namespace GitHubUpgrade {
                                 {
                                     auto created = asset[su::SH("created_at")].c_str();
                                     release._newCertStoreDate = CertStoreFiles::getDate( created );
-                                    debugPrintln( Time::toStr( release._newCertStoreDate ));
+                                    debugPrintf("Certstore date=%s\n", Time::toStr( release._newCertStoreDate ));
 
                                     auto url = asset[su::SH("browser_download_url")].c_str();
                                     release.constructed[Release::CertStore] = release.canConstruct( url, Release::CertStore );
@@ -621,7 +622,7 @@ void tick(){
                 //menuIds.update();
             }
             txt = DONE_UPGRADE;
-            //txt += REBOOT; 
+            txt += REBOOT; 
             //bot.reboot();
         }
         debugPrintf("Txt=%s, to msgId=%lu\n", txt.c_str(), startUpMsgId );
@@ -664,9 +665,41 @@ time_t CertStoreFiles::fileDate(FS& fs, const char * fileName ){
     return res;
 };
 
-bool CertStoreFiles::hasNewestCertsStore()    {
+bool CertStoreFiles::hasNewestCertsStore( )    {
+    static time_t myCertsDate = CertStoreFiles::fileDate(LittleFS );
     auto newDate = GitHubUpgrade::release.getNewCertStoreDate();
-    if ( newDate == 0 ) return false;
-    auto myCertsDate = CertStoreFiles::fileDate(LittleFS );
+    if ( newDate == 0 ) { 
+        //debugPrintln("No GitHub release checked");
+        return false;
+    }
     return ( newDate > myCertsDate );  
 };
+bool CertStoreFiles::downloadMsg(FastBot2Client& bot, const long long toId, bool wait ){
+    if ( ! toId ) return false;
+    bot.tickManual();
+    fb::Message certsDownload( TelegramMD::asItallic( F("Обновляю сертификаты..."), MARKDOWN_TG::escape),  toId);
+    certsDownload.setModeMD();
+    auto res = bot.sendMessage( certsDownload, wait );
+    return res.valid(); //bot.lastBotMessage();
+};
+bool CertStoreFiles::updatedMsg(FastBot2Client& bot, const long long toId, bool wait){
+    if ( ! toId ) return false;
+    bot.tickManual();
+    //GitHubUpgrade::release.resetCertStoreDate();
+    fb::TextEdit setNewCerts;
+    setNewCerts.messageID = bot.lastBotMessage();
+    setNewCerts.mode = fb::Message::Mode::MarkdownV2;
+       
+    setNewCerts.text = TelegramMD::asBold( F("Сертификаты обновлены."), MARKDOWN_TG::escape );
+    setNewCerts.text += TelegramMD::newLine();
+    setNewCerts.text += TelegramMD::asItallic(F("Требуется перезагрузка!"), MARKDOWN_TG::escape );
+    setNewCerts.text += TelegramMD::asItallic( REBOOT, MARKDOWN_TG::escape );
+
+    setNewCerts.chatID  = toId;
+
+    auto res = bot.editText(setNewCerts, wait );
+    bot.tickManual();
+
+    debugPrintf("Send msg to %lld: %s\n", toId, setNewCerts.text.c_str() );
+    return res.valid();
+}

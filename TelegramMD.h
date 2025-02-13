@@ -27,13 +27,14 @@ namespace MARKDOWN_TG{
     };
 }
 namespace TelegramMD {
-
+    const char newLine(){ return '\n'; };
     String textIn(const char * txt, const char Q, const char Q2='\0' ){
         //String _txt(txt);
         String out(Q);
         out.reserve( 3+strlen(txt));
         out += txt;
         out += Q2 ? Q2 : Q;
+        out += ' ';
         return out;
     };
     String textIn(const String& txt, const char Q, const char Q2='\0'  ){ 

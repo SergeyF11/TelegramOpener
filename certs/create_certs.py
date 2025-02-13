@@ -73,6 +73,8 @@ if os.path.exists(archive_path):
 #        with open(der_file, "rb") as df: 
 #            shutil.copyfileobj(df, archive) 
 
+## ar = arlib.Archive(format=arlib.GNU)
+
 ar = arlib.Archive(format=arlib.BSD)
 for der_file in derFiles:
      ar.add(der_file)

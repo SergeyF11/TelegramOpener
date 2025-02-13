@@ -88,7 +88,7 @@ class PrintMemory : public Printable {
    #define debugPrint(x)         Serial.print(x)
    #define debugPrintln(x)       Serial.println(x)
    //#define debugPrintf(s,...)   { Serial.printf((s), __VA_ARGS__); }
-   #define debugPrintf(fmt, ...) { Serial.printf_P( (PGM_P)PSTR(fmt), ## __VA_ARGS__ ); }
+   #define debugPrintf(fmt, ...) {  Serial.printf("%d %s # ", __LINE__, __PRETTY_FUNCTION__); Serial.printf_P( (PGM_P)PSTR(fmt), ## __VA_ARGS__ ); }
    #define debugPretty          Serial.print(__LINE__); Serial.print(" "); Serial.println(__PRETTY_FUNCTION__)
    #define runStart             Serial.print(__PRETTY_FUNCTION__); Serial.println(F(": Start loop ms"));RunTimeMs _finish
    #define printRunTime         auto stop=_finish.time();Serial.print(F("Loop timeMs="));Serial.println(stop)

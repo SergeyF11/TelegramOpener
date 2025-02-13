@@ -13,6 +13,8 @@ extern SimpleButton myButton;
 
 #include "commandStart.h"
 #include "chatMember.h"
+#include "rssi.h"
+
 //#include "channelName.h"
 
 // namespace TG_ATTR {
@@ -89,11 +91,21 @@ void handleDocument(fb::Update& u) {
                   debugPrintln(START_UPGRADE);
                   //bot.reboot();          
                   //bot.skipUpdates(100);
-                  if ( otaMsg != 0 )
-                    bot.editText(fb::TextEdit(DONE_UPGRADE, otaMsg, u.message().chat().id()), true);
-                  else
-                    bot.sendMessage(fb::Message(DONE_UPGRADE, u.message().chat().id()), true);
-                  
+                  // if ( otaMsg != 0 ){
+                  //   bot.editText(fb::TextEdit(DONE_UPGRADE, otaMsg, u.message().chat().id()), true);
+                  // } else {
+                  //   bot.sendMessage(fb::Message(DONE_UPGRADE, u.message().chat().id()), true);
+                  // }
+                  if ( otaMsg != 0 ){
+                    fb::TextEdit done(DONE_UPGRADE, otaMsg, u.message().chat().id());
+                    done.text += REBOOT;
+                    bot.editText(done, true);
+                  } else {
+                    fb::Message done(DONE_UPGRADE, u.message().chat().id());
+                    done.text += REBOOT;
+                    bot.sendMessage(done, true);
+                  }
+
                   bot.reboot();
                   //bot.skipNextMessage();
                   //bot.sendMessage(fb::Message(REBOOT, u.message().chat().id()), false);
@@ -259,6 +271,19 @@ void handleCommand(fb::Update& u){
             printRunTime;
           }
           break;
+        case "/open_time"_h:
+          if ( settings.isAdmin( u.message().from().id() ) ){  
+            if ( u.message().text().count(" ") >= 2 ) {
+              auto seconds = u.message().text().getSub(1, " ").toInt32();
+              relay.setOpenPeriod( seconds );
+            }
+            //message.mode = fb::Message::Mode::Text;
+            message.text = F("Open period: ");
+            message.text += relay.getOpenPeriod();
+            message.text += "sec";
+            debugPrintln( message.text );
+          }
+        break;
         case "/wifi_power"_h:
           if ( settings.isAdmin( u.message().from().id() ) ){ //.admin ){
             uint8_t percent = WiFiPower::wifiPower.getPower();
@@ -276,7 +301,22 @@ void handleCommand(fb::Update& u){
             message.text = F("Power: ");
             message.text += percent;
             message.text += "%\n";
-            if ( willWrited)  message.text += TelegramMD::asItallic( waitRecord,  MARKDOWN_TG::escape );
+            if ( willWrited )  message.text += TelegramMD::asItallic( waitRecord,  MARKDOWN_TG::escape );
+            else { 
+              
+                RSSI::begin( u.message().from().id()) ;
+                WiFi.scanNetworksAsync([=](int numNetworks) {    
+                
+                  debugPrintln( wm.getWiFiSSID() );
+                  for (int i = 0; i < numNetworks; ++i) {
+                      debugPrintf("'%s' RSSI=%ddBm\n",  WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+                      if ( WiFi.SSID(i).equals(wm.getWiFiSSID()) ){
+                        RSSI::dBm = WiFi.RSSI(i);
+                      }
+                      RSSI::networks = numNetworks;
+                  }
+                } );
+              }
             debugPrintln( message.text );
           }
           break;
@@ -516,10 +556,8 @@ void handleCommand(fb::Update& u){
     } //startsWith
 };
 
-//#define QUERY_START_OPEN "~o~"
-//#define QUERY_TIME_START 3
+
 #define TAKE_ADMIN "ta~"
-//#define DELETE_CHAT_MENU "~d~"
 
 #define  constLength(array) (((sizeof(array))/(sizeof(array[0])))-1)
 
@@ -569,9 +607,13 @@ void updateh(fb::Update& u) {
     String txt;
     txt.reserve(100);
     long takeAdminMsgId=0;
+
       auto resp = u.query().data();
       debugPrint("Response '"); debugPrint(resp); debugPrintln("'");
+
       //auto startOpen = String(ESP.getChipId(), HEX);
+
+      /// =================== Button in channel ============================
       if ( resp.startsWith(ButtonInlineMenu::bCmds)){ //QUERY_START_OPEN)) {
         auto queryChatId = u.query().message().chat().id(); // entry;
 
@@ -583,11 +625,38 @@ void updateh(fb::Update& u) {
         } else {
           // проверяем время на кнопке
           long buttonTime = resp.substring(strlen(ButtonInlineMenu::bCmds) );//constLength(QUERY_START_OPEN)).toInt32();
-          if ( ! myButton.isExpired( buttonTime ) ){
-            relay.open();
-            txt = settings.getButtonReport(); //settings.chat.button.report;  
-            //getNameFromMessage(txt, u, (char *)F(", ") );
-            getNameFromRead(txt, u.message().from(), (char *)F(", ") ); 
+          if ( ! myButton.isExpired( buttonTime ) ){  
+            
+            if ( relay.isAutocloseable() ){
+              relay.open();    
+              txt = settings.getButtonReport();
+              getNameFromRead(txt, u.message().from(), (char *)F(", ") ); 
+            } else {
+              // тут редактируем кнопку для режима on/off
+              if ( relay.isOpen() ){
+                relay.close(); 
+              } else {
+                relay.open();
+              }
+              myButton.updater(false, relay.isOpen() );              
+            }
+            // // ON relay
+            // if( ! relay.isAutocloseable() && relay.isOpen() ){
+            //   relay.close();
+            // } else {
+            //   relay.open();
+            //    //settings.chat.button.report;  
+            //   //getNameFromMessage(txt, u, (char *)F(", ") );
+            //   getNameFromRead(txt, u.message().from(), (char *)F(", ") ); 
+            // }
+            // if ( ! relay.isAutocloseable() ){
+            //   // тут делаем кнопки 
+            //   debugPrintf("change button here needed");
+
+            //   // и очищаем txt
+            //   txt = NULL_STR;
+            // }
+
           } else {  
             //debugPrintf("")
             txt = TRY_LATTER;
@@ -658,11 +727,7 @@ void updateh(fb::Update& u) {
   break;
   default:
     Serial.println( String(F("Unknown fb::update type "))+(uint)u.type() );
-    // bot.sendMessage( 
-    //   fb::Message( 
-    //     String(F("Unknown type "))+u.type(),
-    //     u.message().chat().id() )  
-    // );
+
   }
 }
 

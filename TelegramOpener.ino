@@ -67,12 +67,12 @@ Relay relay(RELAY_PORT, RELAY_INIT_STATUS, 3);
 // ExpireButton myButton(BUTTON_ENABLE_SEC);
 
 #include "simpleButton.h"
-SimpleButton myButton(bot, settings, POLLING_TIME );
-
 #include "wifiManager.h"
+#include "rssi.h"
 
 static const char fileName[] PROGMEM = "/bot_opener.json";
 BotSettings::Settings settings(fileName);
+SimpleButton myButton(bot, settings, POLLING_TIME );
 
 /// @brief все настройки скетча
 void setup(){
@@ -126,8 +126,8 @@ void setup(){
 
   new (&button_header) WiFiManagerParameter ("button_header","Button header", settings.getButtonHeader(), 150, "placeholder=\"Button message header\"");
   new (&button_name) WiFiManagerParameter ("button_name","Button name", settings.getButtonName(), 50, "placeholder=\"Button name\"");
-  new (&button_report) WiFiManagerParameter ("button_report","Open report", settings.getButtonReport(), 100, "placeholder=\"Open report message\"");
-
+  new (&button_report) WiFiManagerParameter ("button_report","Open report or name", settings.getButtonReport(), 100, "placeholder=\"Open report message or button name\"");
+  new (&relay_period) IntParameter ( "relay_period", "Relay open seconds", settings.getRelayPeriod() , 10 ,  "placeholder=\"period in secconds for relay on, set to 0 for switchable mode\""); 
  
   // add all your parameters here
   wm.addParameter(&custom_html);
@@ -166,19 +166,17 @@ wm.addParameter(&button_report);
 
   pinMode(RX_PIN, INPUT_PULLUP);
   builtInLed.on();
-  if(!wm.autoConnect(getNameByChipId(App::name).c_str(), PortalWiFiPassword )) {
-    Serial.println(F("\nfailed to connect and hit timeout"));
-  }
-  else if( digitalRead(RX_PIN) == 0 ) {
-  //   // start configportal always
-     
+  if( digitalRead(RX_PIN) == 0 ) {
+  //   // start configportal always  
      wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
-   }
-  else {
+  }
+  while( !wm.autoConnect(getNameByChipId(App::name).c_str(), PortalWiFiPassword )) {
+    Serial.println(F("\nfailed to connect and hit timeout"));
+  } 
+    
     //if you get here you have connected to the WiFi
      Serial.println("connected...yeey :)");
 
-  }
 
   //static esp8266::polledTimeout::periodicMs [](){ };
  // Sync time 
@@ -257,7 +255,7 @@ wm.addParameter(&button_report);
     message.text = TelegramMD::asItallic( SAY_HI, MARKDOWN_TG::escape);
     
     if ( settings.getChatId(true) != 0 ) {
-      message.text += '\n';
+      message.text += TelegramMD::newLine(); //'\n';
       message.text +=  CHANNEL_FOR_CONTROL;
 
       if( menuIds.hasChannelName(settings.getChatId(true)) /*myChnlName.isEmpty()*/ ) {
@@ -337,7 +335,7 @@ wm.addParameter(&button_report);
       } 
     }
   
-  
+  relay.setOpenPeriod( settings.getRelayPeriod() );
   builtInLed.off();
   wifiInfo();
   Serial.println(settings);
@@ -355,6 +353,11 @@ wm.addParameter(&button_report);
   //GitHubUpgrade::checkAt( GitHubUpgrade::At::Any, GitHubUpgrade::At::Any, GitHubUpgrade::At::Any );
   GitHubUpgrade::at.set(  GitHubUpgrade::At::Any, GitHubUpgrade::At::Any, GitHubUpgrade::At::Any );
   //debugPrintln("Check upgrade done");
+  // delay(1000);
+  // CertStoreFiles::updatedMsg(bot, settings.getAdminId(), true );
+  //FileTime::setModificated( LittleFS, CertStoreFiles::fileData, 5555555 );
+   
+
 #else
   //GitHubUpgrade::checkAt( GitHubUpgrade::At::Random(7) );
   GitHubUpgrade::at.set( GitHubUpgrade::At::Random(7) );
@@ -399,11 +402,26 @@ void loop(){
   //} else {
     GitHubUpgrade::tick();
     myButton.tick();
+
     if( CertStoreFiles::hasNewestCertsStore() ){
-      bot.tickManual();
+      CertStoreFiles::downloadMsg(bot, settings.getAdminId(), true );
+      debugPrintf("Github certStore date is %s\n", Time::toStr( GitHubUpgrade::release._newCertStoreDate ));
+      debugPrintf("Current certStore date is %s\n", Time::toStr( CertStoreFiles::fileDate(LittleFS ) ));
+    
+      //bot.tickManual();
       if ( CertificateStore::update( GitHubUpgrade::release ) ){
-        debugPrintf("Certs store update to date %s\n", Time::toStr( GitHubUpgrade::release._newCertStoreDate ));
-        GitHubUpgrade::release.resetCertStoreDate();
+        debugPrintf("Certs store update to date %s\n", Time::toStr( GitHubUpgrade::release._newCertStoreDate )); 
+        auto res = CertStoreFiles::updatedMsg(bot, settings.getAdminId(), true );
+        //bot.tickManual();
+        debugPrintln( res ? F("success") : F(" error send msg"));
+
+        if ( CertificateStore::upgrade() ){
+          //bot.reboot();
+          debugPrintln("Reboot...");
+          Serial.flush();
+          delay(1);
+          ESP.restart();
+        }
       } 
     }
   }
@@ -488,6 +506,12 @@ void loop(){
       break;
     // case NeedStart::CertsDownloading:
     //   CertificateStore::Updater certsUpdater();
+    case NeedStart::GetRSSI:
+      if( bot.isPolling() ){
+          if ( RSSI::sendReport() )
+            needStart = NeedStart::None;
+      }
+      break;
     }
    
 }

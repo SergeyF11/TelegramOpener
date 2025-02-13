@@ -86,7 +86,13 @@ namespace BotSettings{
     char tz[10];
     long long chatId;
     ButtonT button;
+    int relayPeriod = DEFAULT_OPEN_SEC;
 
+    bool RelayPeriod(const int sec){
+      if ( sec == relayPeriod ) return false;
+      relayPeriod = sec;
+      return true;
+    }
     // setters return TRUE if value changed
     bool Token(const char * t=nullptr){  
       if ( strcmp(this->token,t) == 0 ) return false;
@@ -95,13 +101,13 @@ namespace BotSettings{
       return true;
     };
     bool AdminId(const long long id=0){
-      if ( this->adminId == id ) return false;
+      if ( id == this->adminId ) return false;
       // else 
       this->adminId = id;
       return true;
     };
     bool ChatId(const long long id=0){
-      if( this->chatId == id ) return false;
+      if( id == this->chatId ) return false;
       // else
       this->chatId = id;
       return true;
@@ -219,6 +225,7 @@ namespace BotSettings{
       strcpy(this->sets.button.header, srcSet.button.header);
       strcpy(this->sets.button.name, srcSet.button.name);
       strcpy(this->sets.button.report, srcSet.button.report);
+      this->sets.relayPeriod = srcSet.relayPeriod;
     };
     
     void fsInit(){
@@ -276,6 +283,7 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
       this->set()->ButtonName(BUTTON_NAME);
       this->set()->ButtonReport(OPEN_REPORT);
       this->set()->Tz(DEFAULT_TZ);
+      this->set()->RelayPeriod(DEFAULT_OPEN_SEC);
       return true;
     }
 
@@ -289,10 +297,13 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
       debugPrintf("Parsing json: %s\n", _json.c_str());
       gson::Parser p;
       if ( ! p.parse(_json)) return defaults();
-      debugPrintln("Json parsed. Get values.");
+      debugPrintln(F("Json parsed. Get values."));
 
       this->sets.adminId = p["admin"];
       this->sets.chatId = p["chatId"];
+      if ( p.has("relayPeriod"))
+        this->sets.relayPeriod = p["relayPeriod"];
+
       //this->sets.tz = p["timeZone"];
       p["timeZone"].toStr(this->sets.tz);
       p["token"].toStr(this->sets.token);
@@ -334,6 +345,7 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
             p["name"] = this->sets.button.name;
             p["report"] = this->sets.button.report;
           p.endObj();
+          p["relayPeriod"] = this->sets.relayPeriod;
         p.endObj();
         p.end();
         res = p.printTo(f);
@@ -374,6 +386,7 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
     const char * getButtonName() const { return this->sets.button.name; };
     const char * getButtonReport() const { return this->sets.button.report; };
     bool hasToken(){ return this->sets.token[0] != '\0'; };
+    const int getRelayPeriod() const { return this->sets.relayPeriod; };
     
     SettingsT* set(const SettingsT* s=nullptr){
       if( s != nullptr ) this->set( s );
@@ -392,6 +405,7 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
         size += p.print(F("Button header:")); p.println(this->sets.button.header);
         size += p.print(F("Button name:")); p.println(this->sets.button.name);
         size += p.print(F("Button report:")); p.println(this->sets.button.report);
+        size += p.print(F("Relay open time ")); p.print(this->sets.adminId); p.println(F("sec"));
         return size;
     };
   };

@@ -14,6 +14,47 @@
 //#include "myFastBotClient.h"
 //#include <ESP8266HTTPClient.h>
 
+namespace FileTime 
+{
+    namespace {
+    static time_t fileTime;
+    time_t myTimeCallback() {
+        return fileTime;
+    };
+    time_t _defaultTime(){
+        return time(nullptr);
+    };
+    void setFilesTime(const time_t t = 0){
+        if ( t ){
+            fileTime = t;
+            LittleFS.setTimeCallback(myTimeCallback);
+        } else {
+            LittleFS.setTimeCallback(_defaultTime);
+        }
+    };
+    }
+    bool setModificated(FS& fs, const char * file, time_t t){
+        bool res = false;
+        setFilesTime( t );
+        auto _file = fs.open(file, "r+");
+        if ( _file ){         
+            uint8_t c;
+            if ( _file.read(&c,1) ){
+                _file.seek(0);
+                res = _file.write(&c, 1);
+                if ( !res) Serial.println("Error write byte");
+            } else {
+                if ( !res) Serial.println("Error read byte");
+            }
+            _file.close();
+            
+        } else {
+            if ( !res) Serial.printf("Error open file %s\n", file );
+        }    
+        setFilesTime();
+        return res;
+    }
+}
 
 namespace CertificateStore { 
     enum Errors {
@@ -131,6 +172,7 @@ namespace CertificateStore {
     };
 
 namespace TmpFile {
+    static bool correct=false;
     static constexpr const char * fileName PROGMEM = CertStoreFiles::fileData+3;
     // File open(FS& fs=LittleFS, const char * tmpFile= fileName, const char * mode="w+" ){
     //     if ( fs.exists( tmpFile) ) fs.remove( tmpFile);
@@ -192,78 +234,24 @@ namespace TmpFile {
         
         if ( httpCode == HTTP_CODE_OK ) {
         
-        #ifdef debug_print
-            debugPrintln(F("Collected headers:"));
-            for( int h=0; h<http.headers(); h++){
-            debugPrintln( http.header(h));
-            }
-            debugPrintln(F("==================="));
-        #endif
-
-
-        // time_t dateGitHubCertStore = getDate( http.header(headerDate) );
-
-        // bool needUpdateCerts  = ( dateGitHubCertStore > dateCertStore );
-        // debugPrintf("My store date: %lld, GitHub store date: %lld\nNeed update: %s\n", dateCertStore, dateGitHubCertStore,
-        // ( needUpdateCerts ? F("yes") : F("no"))
-        //  );
-
-        // if ( ! needUpdateCerts ) {
-        //     debugPrintf("%s < %s\n", Time::toStr(dateGitHubCertStore), Time::toStr( dateCertStore ));
-        //     http.end(); 
-        //     file.close();
-        //     return noNewStore;
-        // }
-
-        // if ( http.getSize() == storeSize ){
-        //     debugPrintln("No update needed");
-        //     http.end();
-        //     file.close();
-        //     return noNewStore;
-        // } else {
-        //     debugPrintf("My store size: %d, GitHub store size: %d, Need update\n", storeSize, http.getSize() );
-            
-        // }
+            #ifdef debug_print
+                debugPrintln(F("Collected headers:"));
+                for( int h=0; h<http.headers(); h++){
+                debugPrintln( http.header(h));
+                }
+                debugPrintln(F("==================="));
+            #endif
     
-        bool contentOctetStream = http.header(content).equals(GitHubUpgrade::contentType );//endsWith(F("octet-stream"));
-        if ( ! contentOctetStream || http.getSize() == 0 ){
-            debugPrintln(  http.header(content));
-            debugPrintf("No Content: octed=%s, len = %d\n", contentOctetStream ? "true":"false", http.getSize() );
-            http.end();
-            file.close();
-            return Errors::noContent;
-        }
-        builtInLed.off();
-        writed = streamToFile( client, http, file, [](){ builtInLed.toggle(); } );
-            // int len = http.getSize();
-            // if ( len == -1) {
-            //     client.setTimeout(5000);
-            // }
-            // {
-            //     static uint8_t buff[256] = { 0 };
-            //     while (  len > 0 || ( len == -1 && http.connected() /* && ! timeOut() */ ) )
-            //     {
-            //         // get available data size
-            //         size_t size = client.available();
-
-            //         if (size)
-            //         {
-            //             // read up to 1024 byte
-            //             int c = client.readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-
-            //             // write it to file
-            //             writed += file.write(buff, c);
-
-            //             if (len > 0)
-            //             {
-            //                 len -= c;
-            //             }
-            //             builtInLed.toggle();
-            //         } 
-            //         delay(0);
-            //     }
-            // }
-
+            bool contentOctetStream = http.header(content).equals(GitHubUpgrade::contentType );//endsWith(F("octet-stream"));
+            if ( ! contentOctetStream || http.getSize() == 0 ){
+                debugPrintln(  http.header(content));
+                debugPrintf("No Content: octed=%s, len = %d\n", contentOctetStream ? "true":"false", http.getSize() );
+                http.end();
+                file.close();
+                return Errors::noContent;
+            }
+            builtInLed.off();
+            writed = streamToFile( client, http, file, [](){ builtInLed.toggle(); } );
             builtInLed.off();
         } 
         http.end();
@@ -303,6 +291,13 @@ namespace TmpFile {
     //     public:
     //     Status getStatus(){ return status; };
 
+    // перезаписывает файл CertStore Из временного файла
+        bool upgrade(const char *from= TmpFile::fileName, const char * to=CertStoreFiles::fileData, FS& fs=LittleFS){ 
+            int res = FileTime::setModificated( fs, from, GitHubUpgrade::release.getNewCertStoreDate() );
+            res += fs.rename( from, to );
+            return res;
+        };
+
         bool update( GitHubUpgrade::Release& release, FS& fs=LittleFS ){
             bool result = false;
             // switch( status){
@@ -318,7 +313,7 @@ namespace TmpFile {
                             client,                
                             release.constructUrl(GitHubUpgrade::Release::Url::CertStore) ) )
                         {
-                            http.setRedirectLimit(1);
+                            //http.setRedirectLimit(1);
                             http.setFollowRedirects( HTTPC_FORCE_FOLLOW_REDIRECTS );
                             int code = http.GET();
                             switch( code ){

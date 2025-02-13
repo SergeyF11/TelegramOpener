@@ -33,6 +33,7 @@ enum NeedStart {
   WebStop = 4,
   Reboot,
   CertsDownloading,
+  GetRSSI,
 };
 
 NeedStart needStart=None;
@@ -42,9 +43,9 @@ WiFiManager wm; //(Serial);
 class IntParameter : public WiFiManagerParameter {
 public:
     IntParameter() : WiFiManagerParameter("") {};
-    IntParameter(const char *id, const char *placeholder, long value, const uint8_t length = 10)
+    IntParameter(const char *id, const char *placeholder, long value, const uint8_t length = 10, const char * label = "")
         : WiFiManagerParameter("") {
-        init(id, placeholder, String(value).c_str(), length, "", WFM_LABEL_BEFORE);
+        init(id, placeholder, String(value).c_str(), length, label, WFM_LABEL_BEFORE);
     }
 
     long getValue() {
@@ -86,6 +87,7 @@ WiFiManagerParameter custom_timeZone;
 WiFiManagerParameter button_header;
 WiFiManagerParameter button_name;
 WiFiManagerParameter button_report;
+IntParameter relay_period;
 
 
 void saveWifiCallback();

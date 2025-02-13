@@ -24,7 +24,8 @@
 #pragma message("Using BOARD settings")
 #endif
 
-#define DEFAULT_OPEN_SEC 1
+#define DEFAULT_OPEN_SEC 3
+#define MAX_OPEN_SECS 60*60*24 // one day
 //#define LOW 0
 //#define HIGH 1
 #define DEBUG_RELAY 0
@@ -138,6 +139,7 @@ class Led : public OutputPin {
 
 /// @brief Relay может срабатывать на определённое время openPeriod.
 ///  Call Relay::tick() in loop for correct works
+/// @note Set openPeriod to 0 for open/close manual control
 class Relay : OutputPin {  
   private:
   //OutputPin pin;
@@ -145,33 +147,51 @@ class Relay : OutputPin {
   unsigned long changeStateMs=0;
 
   public:
+
+  void setOpenPeriod(const unsigned long sec = DEFAULT_OPEN_SEC) { 
+    openPeriodMs = 1000 * ( (sec<=MAX_OPEN_SECS) ? sec : MAX_OPEN_SECS );
+  };
   // define relay instance 
   // args: pin, init state, period for open state 
   Relay(const uint port, const uint8_t initState=LOW, const uint openPeriod=DEFAULT_OPEN_SEC) :
-    OutputPin(port, !initState ), openPeriodMs(openPeriod*1000)
-    {};
+    OutputPin(port, !initState ) 
+    { setOpenPeriod(openPeriod); };
+    
+  inline bool isAutocloseable(){ return openPeriodMs != 0; };
+
+  unsigned long getOpenPeriod() const { return openPeriodMs/1000; };
+  bool isOpen(){ return state(true) == State::ON ; };
 
   // Call in loop for change state the relay
   void tick(){
-    if ( state() == OutputPin::ON  ){
-      //time_t _now = time(nullptr);
-      if ( millis() - changeStateMs >= openPeriodMs ){
-        off();
-        #ifdef TEST_WEMOS
-        builtInLed.flashOn();
-        #endif
+    if ( isAutocloseable() ) {
+      if ( state() == OutputPin::ON  ){
+        //time_t _now = time(nullptr);
+        if ( millis() - changeStateMs >= openPeriodMs ){
+          off();
+          #ifdef TEST_WEMOS
+          builtInLed.flashOn();
+          #endif
+        }
       }
     }
   };
-
+  // Off relay for close
+  void close(){
+    if ( state() == OutputPin::OFF ) return;
+    changeStateMs = millis(); //period != 0 ? (_now + period ) : (_now + this->openPeriod); 
+    #ifdef TEST_WEMOS
+    builtInLed.flashOn();
+    #endif  
+    off();
+  };
   // On relay for open device
   void open(){
     if ( state() == OutputPin::ON ) return;
     changeStateMs = millis(); //period != 0 ? (_now + period ) : (_now + this->openPeriod); 
     #ifdef TEST_WEMOS
     builtInLed.flashOff();
-    #endif
-    
+    #endif  
     on();
   };
 
