@@ -358,5 +358,21 @@ namespace TmpFile {
     //     {};
 
     // };
+    Errors insecureDownload(FS& fs, const char * fileName = CertStoreFiles::fileData ){
+        //bool res = false;
+        debugPretty;
+        if ( ! fs.begin() ) return Errors::noFs;
 
+        // WiFiClientSecure client;
+        // client.setInsecure();
+
+        GitHubUpgrade::check(true); // ) return Errors::noContent;
+        if ( GitHubUpgrade::release.getNewCertStoreDate() == 0 ) return Errors::noContent;
+        debugPrintf("Check Github Ok\n");
+        if ( ! update(GitHubUpgrade::release )) return Errors::noContent;
+        debugPrintf("Update done: %s\n", GitHubUpgrade::Error().c_str() );
+        //GitHubUpgrade::Error() == GitHubUpgrade::Errors::Ok
+        if ( ! upgrade() ) return Errors::errorFile;
+        return Errors::ok;
+    }
 }

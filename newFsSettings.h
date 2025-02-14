@@ -120,7 +120,7 @@ namespace BotSettings{
       return true;
     };
     bool ButtonHeader(const char * bs=nullptr){ 
-      char buf[150];
+      char buf[sizeof(button.header)];
       _shieldingCpy(buf, bs);
       if ( strcmp(button.header,buf) == 0 ) return false;
       // else
@@ -129,7 +129,7 @@ namespace BotSettings{
      };
 
     bool ButtonName(const char * bs=nullptr){
-       char buf[150];
+       char buf[sizeof(button.name)];
       _shieldingCpy(buf, bs);
       if ( strcmp(this->button.name,buf) == 0 ) return false;
       // else
@@ -137,7 +137,7 @@ namespace BotSettings{
       return true;
     };
     bool ButtonReport(const char * bs=nullptr){
-       char buf[150];
+       char buf[sizeof(button.report)];
       _shieldingCpy(buf, bs);
       if ( strcmp(this->button.report,buf) == 0 ) return false;
       // else
@@ -303,6 +303,8 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
       this->sets.chatId = p["chatId"];
       if ( p.has("relayPeriod"))
         this->sets.relayPeriod = p["relayPeriod"];
+      else
+        this->sets.relayPeriod = DEFAULT_OPEN_SEC;
 
       //this->sets.tz = p["timeZone"];
       p["timeZone"].toStr(this->sets.tz);
@@ -405,7 +407,9 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
         size += p.print(F("Button header:")); p.println(this->sets.button.header);
         size += p.print(F("Button name:")); p.println(this->sets.button.name);
         size += p.print(F("Button report:")); p.println(this->sets.button.report);
-        size += p.print(F("Relay open time ")); p.print(this->sets.adminId); p.println(F("sec"));
+        size += p.print(F("Relay period:"));
+          if( this->sets.relayPeriod ) { size += p.print(this->sets.relayPeriod); p.println(F("sec")); }
+          else { size += p.println(F(" closing on command")); }
         return size;
     };
   };

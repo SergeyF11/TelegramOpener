@@ -27,10 +27,11 @@ static long webPortalMsgId = 0;
 //extern WiFiManager wm;
 extern FastBot2Client bot;
 extern Relay relay;
+extern bool isRelayOn();
 //extern SETTINGS::SettingsT settings;
 extern BotSettings::Settings settings;
 //extern bool needStartPortal;
-extern NeedStart needStart;
+extern NeedStartE needStart;
 //extern LastMsg lastMsg;
 
 
@@ -111,7 +112,7 @@ void handleDocument(fb::Update& u) {
                   //bot.sendMessage(fb::Message(REBOOT, u.message().chat().id()), false);
                   //bot.tickManual();
 
-                  needStart = NeedStart::Reboot;
+                  needStart = NeedStartE::Reboot;
                } else {
                   debugPrintln(ERROR_UPGRADE);
                   if ( otaMsg )
@@ -142,9 +143,8 @@ void handleDocument(fb::Update& u) {
 
 static const char webPortal[] PROGMEM = "Веб портал"; 
 static const char  portalStarted[] PROGMEM = "Captive портал запущен...";
-//                                            0123456789ABCDEF
-//static const char * _portalStarted = portalStarted +7;
-static const char * _started = portalStarted +20;
+
+static const char * _started = portalStarted +21;
 static const char  portalClosed[] PROGMEM = "Портал закрыт";
 static const char  waitRecord[] PROGMEM = "Параметр будет сохранён через 10 сек";
 static const char  wifiPowerWrited[] PROGMEM = "Мощность wifi сохранена";
@@ -275,12 +275,21 @@ void handleCommand(fb::Update& u){
           if ( settings.isAdmin( u.message().from().id() ) ){  
             if ( u.message().text().count(" ") >= 2 ) {
               auto seconds = u.message().text().getSub(1, " ").toInt32();
-              relay.setOpenPeriod( seconds );
+              if ( settings.set()->RelayPeriod( seconds ) ) {
+                settings.save();
+                relay.setOpenPeriod( seconds );
+                if ( relay.isAutocloseable() ){
+                  myButton.txtChanger( nullptr);
+                } else {
+                  myButton.txtChanger( isRelayOn );
+                }
+              }
             }
+            
             //message.mode = fb::Message::Mode::Text;
             message.text = F("Open period: ");
             message.text += relay.getOpenPeriod();
-            message.text += "sec";
+            message.text += F("sec");
             debugPrintln( message.text );
           }
         break;
@@ -303,8 +312,32 @@ void handleCommand(fb::Update& u){
             message.text += "%\n";
             if ( willWrited )  message.text += TelegramMD::asItallic( waitRecord,  MARKDOWN_TG::escape );
             else { 
+              auto dBm = WiFi.RSSI();
+              String rssi(dBm);
+                rssi += "dBm";
+                message.text += TelegramMD::asBold( wm.getWiFiSSID().c_str() , MARKDOWN_TG::escape );
+                message.text += PSTR("RSSI");
+                message.text += TelegramMD::textIn(  
+                  ( IS_SIGNAL_GOOD(dBm) ) ? 
+                    TelegramMD::asBold(rssi, MARKDOWN_TG::escape ) : 
+                  ( IS_SIGNAL_POOR(dBm) ) ? 
+                    TelegramMD::asItallic(rssi, MARKDOWN_TG::escape ) : 
+                  MARKDOWN_TG::escape( rssi ),
+                  '(',')', MARKDOWN_TG::escape );
+
+                  /// scan network 
+              // fb::Message msgRssi;
+              //     msgRssi.setModeMD();
+              //     msgRssi.text = TelegramMD::asBold( wm.getWiFiSSID().c_str() , MARKDOWN_TG::escape );
+              //     msgRssi.text += PSTR("rssi\\=");
+              //     msgRssi.text += (  IS_GOOD_SIGNAL(RSSI::dBm) ) ? 
+              //         TelegramMD::asBold(rssi, MARKDOWN_TG::escape ) : MARKDOWN_TG::escape( rssi );
+              //     msgRssi.chatID = userID;
+              // debugPrintln( msgRssi.text );
+              // bot.sendMessage( msgRssi, false );
               
-                RSSI::begin( u.message().from().id()) ;
+              //message.text += wm
+                /* RSSI::begin( u.message().from().id()) ;
                 WiFi.scanNetworksAsync([=](int numNetworks) {    
                 
                   debugPrintln( wm.getWiFiSSID() );
@@ -315,7 +348,7 @@ void handleCommand(fb::Update& u){
                       }
                       RSSI::networks = numNetworks;
                   }
-                } );
+                } ); */
               }
             debugPrintln( message.text );
           }
@@ -370,7 +403,7 @@ void handleCommand(fb::Update& u){
               //delay(1000);
               //bot.skipUpdates();
               //bot.reboot();
-              needStart = NeedStart::Reboot;  
+              needStart = NeedStartE::Reboot;  
             } else {
               debugPrintln(F("Error file deleted."));
             }
@@ -403,7 +436,7 @@ void handleCommand(fb::Update& u){
           bot.setTyping( settings.getAdminId(), false);
           message.text = "";
           //bot.reboot();
-          needStart = NeedStart::Reboot; 
+          needStart = NeedStartE::Reboot; 
         }
           //ESP.restart();
           break;
@@ -477,7 +510,7 @@ void handleCommand(fb::Update& u){
         case "/start_portal"_h:
           if (settings.isAdmin( u.message().from().id() ) ){ //.admin ){
             //needStartPortal = true;
-            needStart = NeedStart::Portal;
+            needStart = NeedStartE::Portal;
             message.text += TelegramMD::asItallic( portalStarted, MARKDOWN_TG::escape);
             //message.text += portalStarted_MD;
             // bot.sendMessage(message, true);
@@ -487,11 +520,11 @@ void handleCommand(fb::Update& u){
         case "/startWeb"_h:
         case "/start_web"_h:
           if (settings.isAdmin( u.message().from().id() ) ){ //.admin ){
-            //if ( needStart == NeedStart::None ){
+            //if ( needStart == NeedStart::Web ){
             
             switch ( needStart) {
-              case NeedStart::None:
-              needStart = NeedStart::Web;
+              case NeedStartE::None:
+              needStart = NeedStartE::Web;
 
               message.text = TelegramMD::asItallic(
                 //String("Settings ") + 
@@ -531,8 +564,8 @@ void handleCommand(fb::Update& u){
         case "/stopWeb"_h: 
         case "/stop_web"_h:
           if (settings.isAdmin( u.message().from().id() ) ){ //.admin ){
-            if ( needStart == NeedStart::WebRunning ){
-              needStart = NeedStart::None;
+            if ( needStart == NeedStartE::WebRunning ){
+              needStart = NeedStartE::None;
               String closed = TelegramMD::asItallic( portalClosed, MARKDOWN_TG::escape);
               if ( webPortalMsgId ){
                 fb::TextEdit editMsg;
@@ -632,13 +665,13 @@ void updateh(fb::Update& u) {
               txt = settings.getButtonReport();
               getNameFromRead(txt, u.message().from(), (char *)F(", ") ); 
             } else {
-              // тут редактируем кнопку для режима on/off
+              // тут обновляем кнопку для режима on/off
               if ( relay.isOpen() ){
                 relay.close(); 
               } else {
                 relay.open();
               }
-              myButton.updater(false, relay.isOpen() );              
+              myButton.updater(false );              
             }
             // // ON relay
             // if( ! relay.isAutocloseable() && relay.isOpen() ){

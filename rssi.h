@@ -6,6 +6,8 @@
 
 
 extern FastBot2Client bot;
+#define IS_SIGNAL_GOOD(DBM) DBM>-30
+#define IS_SIGNAL_POOR(DBM) DBM<-90
 
 
 namespace RSSI {
@@ -15,9 +17,7 @@ namespace RSSI {
     void begin(const long long id){
         userID =id;
         networks=0;
-        needStart = NeedStart::GetRSSI;
-                //         RSSI::userID = u.message().from().id();
-                // RSSI::networks = 0;
+        needStart = NeedStartE::GetRSSI;
     }
 
     bool sendReport(){
@@ -32,7 +32,7 @@ namespace RSSI {
                 msgRssi.setModeMD();
                 msgRssi.text = TelegramMD::asBold( wm.getWiFiSSID().c_str() , MARKDOWN_TG::escape );
                 msgRssi.text += PSTR("rssi\\=");
-                msgRssi.text += ( RSSI::dBm > -18 ) ? 
+                msgRssi.text += (  IS_SIGNAL_GOOD(RSSI::dBm) ) ? 
                     TelegramMD::asBold(rssi, MARKDOWN_TG::escape ) : MARKDOWN_TG::escape( rssi );
                 msgRssi.chatID = userID;
             debugPrintln( msgRssi.text );

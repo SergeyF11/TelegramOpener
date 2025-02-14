@@ -65,8 +65,16 @@ private:
     return sets->getButtonReport();
   };
   bool _needUpdate = false;
+  //bool _changeTxtOnButton = false;
+
+
+  bool (*_changeTxt)(void) = nullptr;
 
 public:
+ void txtChanger( bool (*fn)(void)){
+  _changeTxt = fn;
+ };
+
   enum ReturnCode
   {
     ok = 0,
@@ -297,9 +305,20 @@ public:
     ButtonReport,
   };
 
-const ReturnCode updater(const bool waitBotResponse = false, const int codeButton = CodeButtonE::ButtonName)
+const char * printBool(const bool v){ return v ? "true" : "false"; };  
+const ReturnCode updater(const bool waitBotResponse = false/* , const int codeButton = CodeButtonE::ButtonName */)
   {
-    const char *buttonTxt = (codeButton == ButtonName) ? buttonName() : buttonReport();
+    //const char *buttonTxt = (codeButton == ButtonName) ? buttonName() : buttonReport();
+    // const bool relayManualClose = ( 0 == settings.getRelayPeriod() || settings.getRelayPeriod() >= 30);
+    // const bool relayOn = codeButton;
+    // const bool changeButton = relayManualClose && relayOn;
+
+    // debugPrintf("%s && %s is %s\n", printBool(relayManualClose), printBool( relayOn ), 
+    //       printBool( changeButton ) );
+    
+    const char *buttonTxt = ( _changeTxt && _changeTxt() ) ? 
+      buttonReport() :
+      buttonName();
     debugPretty;
     debugPrintf("chat=%lld, msg=%lu, Button header=%s, name=%s, cmd=%s, wait=%s\n",
                 chatId(), (unsigned long)menuIds.getMenuId(chatId()), buttonHeader(), buttonTxt, dynamicCmd(ButtonInlineMenu::bCmds).c_str(),
@@ -348,7 +367,7 @@ const ReturnCode updater(const bool waitBotResponse = false, const int codeButto
     {
       debugPrintf("Button tick. Need:%d\tlastUpdate:%ld\tperiod:%ld\n", this->needUpdate(), this->lastUpdate, _expiredPeriod);
 
-      this->updater();
+      this->updater( );
     }
   };
 };

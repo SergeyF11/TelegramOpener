@@ -1,8 +1,8 @@
-#define debug_print 1
+//#define debug_print 1
 //#define memory_print
 //#define CHECK_MAXBLOCK_SIZE
 
-#define VERSION 0,1,21
+#define VERSION 0,1,22
 
 #ifdef CHECK_MAXBLOCK_SIZE
   #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
@@ -14,7 +14,7 @@
 #endif
  //#define GitHubUpgrade_ANY_TIME
 
-#define WIFI_POWER 10.0
+#define WIFI_POWER 14.0
 
 #define MFLN_SIZE 1024
 #define SYNC_TIME
@@ -60,6 +60,7 @@
 #include "github_upgrade.h"
 //FastBot2 bot;
 Relay relay(RELAY_PORT, RELAY_INIT_STATUS, 3);
+static bool isRelayOn(){ return relay.isOpen(); };
 
 #include "updateh.h"
 
@@ -76,15 +77,18 @@ SimpleButton myButton(bot, settings, POLLING_TIME );
 
 /// @brief все настройки скетча
 void setup(){
-
+  
   Serial.begin(115200);
     while ( ! Serial ){
       delay(1);
     }
   menuIds.begin();
   myButton.setExtraTime(6000);
-
-    pinMode(RX_PIN,INPUT);
+  relay.setOpenPeriod( settings.getRelayPeriod() );
+  if ( !relay.isAutocloseable() )
+    myButton.txtChanger( isRelayOn );
+  
+    pinMode(RX_PIN, INPUT_PULLUP);
     WiFi.mode(WIFI_STA);
     if (WiFi.getPersistent() == true) WiFi.persistent(false); 
 #if defined WIFI_POWER
@@ -94,7 +98,7 @@ void setup(){
     }
     {
     auto power = WiFiPower::wifiPower.setPower();
-    debugPrintf("Power set to %u%\n", power );
+    debugPrintf("\nPower set to %u%\n", power );
     }
     // else 
     //   WiFi.setOutputPower( WIFI_POWER );
@@ -127,7 +131,7 @@ void setup(){
   new (&button_header) WiFiManagerParameter ("button_header","Button header", settings.getButtonHeader(), 150, "placeholder=\"Button message header\"");
   new (&button_name) WiFiManagerParameter ("button_name","Button name", settings.getButtonName(), 50, "placeholder=\"Button name\"");
   new (&button_report) WiFiManagerParameter ("button_report","Open report or name", settings.getButtonReport(), 100, "placeholder=\"Open report message or button name\"");
-  new (&relay_period) IntParameter ( "relay_period", "Relay open seconds", settings.getRelayPeriod() , 10 ,  "placeholder=\"period in secconds for relay on, set to 0 for switchable mode\""); 
+  new (&relay_period) IntParameter ( "relay_period", "Relay open seconds", settings.getRelayPeriod() , 10 ,  "placeholder=\"relay on (seconds), 0 for manual mode\""); 
  
   // add all your parameters here
   wm.addParameter(&custom_html);
@@ -139,6 +143,7 @@ void setup(){
 wm.addParameter(&button_header);
 wm.addParameter(&button_name);
 wm.addParameter(&button_report);
+wm.addParameter(&relay_period);
 
 
   // callbacks
@@ -157,14 +162,14 @@ wm.addParameter(&button_report);
   wm.setHostname( App::name );
 
   // useful to make it all retry or go to sleep in seconds
-  wm.setConfigPortalTimeout(PORTAL_TIMEOUT);
-  wm.setSaveConnect(true); // false = ( do not connect, only save )
+  wm.setConfigPortalTimeout( settings.hasToken() ? PORTAL_TIMEOUT : (PORTAL_TIMEOUT<<8) );
+  wm.setSaveConnect(false); // false = ( do not connect, only save )
   wm.setBreakAfterConfig(true); // needed to use saveWifiCallback
    wifiInfo();
 
   //wm.setDebugOutput(true, WM_DEBUG_DEV);
 
-  pinMode(RX_PIN, INPUT_PULLUP);
+  
   builtInLed.on();
   if( digitalRead(RX_PIN) == 0 ) {
   //   // start configportal always  
@@ -203,8 +208,11 @@ wm.addParameter(&button_report);
   if ( botCertsStore( certStore, client, LittleFS) ){
     debugPrintf("Use certs store [%llu]\n", certStore );
   } else {
-    Serial.println("No certificate store loaded!! Used fingerprint connection.");    
-    client.setFingerprint(Telegram::fingerprint );
+    Serial.println("No certificate store loaded!! Used fingerprint connection.");
+    Serial.flush();
+    ESP.reset();
+    //client.setInsecure();
+    //client.setFingerprint(Telegram::fingerprint );
     //debugPrintln("Use Telegram fingerprint\n");
   }
   // } else {
@@ -291,7 +299,7 @@ wm.addParameter(&button_report);
   while( ! goToLoop ){
   // check errors noChat, noMesgId, wrongResponse
 
-      switch( myButton.updater( /* settings.getChatId(), settings.getButton(),  */true ) ){
+      switch( myButton.updater( true )){
         // сюда мы не должны попасть никогда
         case SimpleButton::ReturnCode::noChat: 
           debugPrintln("No update needed without admin and chat id");
@@ -435,7 +443,7 @@ void loop(){
 
   switch ( needStart )
     {
-    case NeedStart::Portal:
+    case NeedStartE::Portal:
       if( ! bot.isPolling() ) {
 
         if( bot.tickManual() ) debugPrintln(F("Manual update done"));
@@ -463,20 +471,20 @@ void loop(){
         message.text = F("_portal closed_");
         message.setModeMD();
         bot.sendMessage(message, false);
-        needStart = NeedStart::None; 
+        needStart = NeedStartE::None; 
       }
       break;
-    case NeedStart::Web:
+    case NeedStartE::Web:
       //webPortalMsgId = bot.lastBotMessage();
       wm.startWebPortal();
-      needStart = NeedStart::WebRunning;
+      needStart = NeedStartE::WebRunning;
     
       break;
-    case NeedStart::WebStop:
+    case NeedStartE::WebStop:
       wm.stopWebPortal();
-      needStart = NeedStart::None;
+      needStart = NeedStartE::None;
       break;
-    case NeedStart::WebRunning:
+    case NeedStartE::WebRunning:
       builtInLed.flash(400, 200);
       wm.process();
       if ( ! wm.getWebPortalActive() ) {
@@ -490,10 +498,10 @@ void loop(){
           bot.editText(editMsg, false );
           webPortalMsgId = 0;
         }
-        needStart = NeedStart::None; 
+        needStart = NeedStartE::None; 
       }  
       break;
-    case NeedStart::Reboot:
+    case NeedStartE::Reboot:
       if( bot.isPolling() ) {
         bot.skipNextMessage();
         bot.skipUpdates();
@@ -506,12 +514,12 @@ void loop(){
       break;
     // case NeedStart::CertsDownloading:
     //   CertificateStore::Updater certsUpdater();
-    case NeedStart::GetRSSI:
-      if( bot.isPolling() ){
-          if ( RSSI::sendReport() )
-            needStart = NeedStart::None;
-      }
-      break;
+    // case NeedStartE::GetRSSI:
+    //   if( bot.isPolling() ){
+    //       if ( RSSI::sendReport() )
+    //         needStart = NeedStartE::None;
+    //   }
+    //   break;
     }
    
 }

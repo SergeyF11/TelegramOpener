@@ -10,9 +10,9 @@ WiFiClientSecure client;
 FastBot2Client bot(client);
 
 
-namespace Telegram {
-    static const char fingerprint[] PROGMEM = "1F:77:5F:20:C5:D3:BD:67:DE:E8:07:9B:59:1D:22:E9:C0:E4:52:4B"; //api.telegram.org
-};
+// namespace Telegram {
+//     static const char fingerprint[] PROGMEM = "1F:77:5F:20:C5:D3:BD:67:DE:E8:07:9B:59:1D:22:E9:C0:E4:52:4B"; //api.telegram.org
+// };
 bool botCertsStore(CertStore* cs, WiFiClientSecure& cl, FS& fs, const char * fileData=CertStoreFiles::fileData){
     if ( cs != nullptr ) { 
         delete[](cs);
@@ -32,9 +32,17 @@ bool botCertsStore(CertStore* cs, WiFiClientSecure& cl, FS& fs, const char * fil
                 debugPrintf("Tmp file %s deleted\n", CertificateStore::TmpFile::fileName);
             }
         }
-        if ( fs.exists(fileData) || 
-        //  надо  будет заменить на update
-             CertificateStore::download(LittleFS) == CertificateStore::Errors::ok ) {
+        if ( ! fs.exists(fileData)  ) {
+            cl.setInsecure();
+            if ( CertificateStore::insecureDownload(LittleFS) != CertificateStore::Errors::ok )
+            return 0;
+        } else {
+
+        // }
+        // if ( fs.exists(fileData) || 
+        // //  надо  будет заменить на update
+        //     // CertificateStore::download(LittleFS) == CertificateStore::Errors::ok ) {
+        //     CertificateStore::insecureDownload(LittleFS) == CertificateStore::Errors::ok ) {
             
             if ( cs == nullptr ){
                 cs = new CertStore();

@@ -150,6 +150,7 @@ class Relay : OutputPin {
 
   void setOpenPeriod(const unsigned long sec = DEFAULT_OPEN_SEC) { 
     openPeriodMs = 1000 * ( (sec<=MAX_OPEN_SECS) ? sec : MAX_OPEN_SECS );
+    debugPrintf("Relay open period=%dms\n", openPeriodMs );
   };
   // define relay instance 
   // args: pin, init state, period for open state 
@@ -261,8 +262,10 @@ void rawResponse(const su::Text& resp){
   //debugPrint(__TIME__ ); debugPrint(' ');
   //debugPretty;   // debugPrintln(resp.c_str());
   if ( resp.valid()) wrongCount.reset(); 
-  else 
+  else {
     wrongCount++;
+    debugPretty;
+  }
 };
 
 // class RelayOld {

@@ -18,6 +18,9 @@
 #include "newFsSettings.h"
 //#include "quotesReplace.h"
 #include "simpleButton.h"
+#include "relay.h"
+
+extern Relay relay;
 
 static const char PortalWiFiPassword[] PROGMEM = "12345678";
 #define PORTAL_TIMEOUT 90
@@ -25,7 +28,8 @@ static const char PortalWiFiPassword[] PROGMEM = "12345678";
 //const char* modes[] PROGMEM = { "NULL", "STA", "AP", "STA+AP" };
 
 //unsigned long mtime = 0;
-enum NeedStart {
+enum NeedStartE {
+  Set = -1,
   None = 0,
   Portal = 1,
   Web = 2,
@@ -36,7 +40,19 @@ enum NeedStart {
   GetRSSI,
 };
 
-NeedStart needStart=None;
+NeedStartE needStart=None;
+
+// namespace ns{
+//   int needStart=None;
+// }
+// NeedStartE needStartF(NeedStartE set = NeedStartE::Set ){
+//   if( set == NeedStartE::Set )  { 
+//     ns::needStart = ns::needStart | (1<<set);
+//     return None;
+//   }
+//   if ( set & ns::needStart ) return set;
+//   else return None;
+// } 
 
 WiFiManager wm; //(Serial); 
 
@@ -122,7 +138,7 @@ void configModeCallback (WiFiManager *myWiFiManager) {
 }
 
 // void saveParamCallback(){
-//   Serial.println("[CALLBACK] saveParamCallback fired");
+//   Serial.println("[CALLBACK] saveParamCallback fired");period=3000ms
 //   // wm.stopConfigPortal();
 // }
 
@@ -143,7 +159,10 @@ void saveParamCallback() {
     debugPretty;
     settings.configTz(); 
   }
-
+  if ( settings.set()->RelayPeriod(relay_period.getValue())){
+    debugPretty;
+    relay.setOpenPeriod( settings.getRelayPeriod());
+  }
   // settings.set()->ButtonHeader(button_header.getValue());
   // settings.set()->ButtonName(button_name.getValue());
   // settings.set()->ButtonReport(button_report.getValue());

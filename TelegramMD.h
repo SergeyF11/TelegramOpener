@@ -3,21 +3,34 @@
 
 //#define toTelegramAsCode(...) TelegramMD::asCode( )
 namespace MARKDOWN_TG{
-    static const char chars[] PROGMEM = "_*[]()~`>#+-=|{}.!\'\"";
+    static const char chars[] PROGMEM = "_*[]()~`>#+-=|{}.!'\"\\";
+    
+    static String escape(const char c){
+        String dest;
+        for ( int i=0; i<22; i++){
+            if( c == chars[i]){
+                dest += '\\';
+                break;
+            }
+        }
+        dest += c;
+        return dest;
+    };
     static String escape(const char * txt){
         String dest;
         dest.reserve( 2*strlen( txt));
         int j=0;
         while ( txt[j] != '\0'){
-            int i=0;
-            while ( chars[i] != '\0' ){
-                if ( txt[j] == chars[i] ) {
-                    dest += '\\';
-                    break;
-                }
-                i++;
-            }
-            dest += txt[j];
+            dest += escape( txt[j]);
+        //     int i=0;
+        //     while ( chars[i] != '\0' ){
+        //         if ( txt[j] == chars[i] ) {
+        //             dest += '\\';
+        //             break;
+        //         }
+        //         i++;
+        //     }
+        //     dest += txt[j];
             j++;
         }
         return dest;
@@ -28,17 +41,21 @@ namespace MARKDOWN_TG{
 }
 namespace TelegramMD {
     const char newLine(){ return '\n'; };
-    String textIn(const char * txt, const char Q, const char Q2='\0' ){
+    String textIn(const char * txt, const char Q, const char Q2='\0', String (*encode)(const char)=nullptr ){
         //String _txt(txt);
-        String out(Q);
+        String out = encode ? encode(Q) : String(Q);
         out.reserve( 3+strlen(txt));
         out += txt;
-        out += Q2 ? Q2 : Q;
+        if ( encode ) {
+            out += Q2 ? encode(Q2) : encode(Q);
+        } else { 
+            out += Q2 ? Q2 : Q;
+        }
         out += ' ';
         return out;
     };
-    String textIn(const String& txt, const char Q, const char Q2='\0'  ){ 
-        return textIn( txt.c_str(), Q, Q2);
+    String textIn(const String& txt, const char Q, const char Q2='\0', String (*encode)(const char)=nullptr  ){ 
+        return textIn( txt.c_str(), Q, Q2, encode );
     };
 
 
@@ -72,7 +89,7 @@ namespace TelegramMD {
     String linkTo( const char * txt, const char * link, String (*encode)(const char *)=nullptr ){
         String out;
         out += textIn( ( encode == nullptr) ? txt : encode(txt), '[',']');        
-
+        out.trim(); // del space
         out += textIn(link, '(',')');
         return out;
     }
