@@ -19,6 +19,7 @@
 - с помощью [Flash-ESP8266-NodeMCU](https://github.com/sreenathbs/Flash-ESP8266-NodeMCU) по адресу 0х0
 - с помощью примера беспроводного обновления [ota-basic](https://github.com/esp8266-examples/ota-basic)
 
+Максимально подробное опиание процесса прошивки модуля HW-622 можно найти на [странице](https://community.home-assistant.io/t/hw-622-board-setup-single-relay-single-input-opto-isolated-esp8266-esp-12f-3-80aud/391116).
 
 >**Note:** для первоначальной прошивки потребуется адаптер USB-UART подключение его к плате hw-622 тремя проводами rx-tx,tx-rx,gnd-gnd к терминалу **P6**. При прошивке должна быть установлена перемычка **P3** и подано питание на плату.
 

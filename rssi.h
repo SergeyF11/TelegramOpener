@@ -7,7 +7,7 @@
 
 extern FastBot2Client bot;
 #define IS_SIGNAL_GOOD(DBM) DBM>-30
-#define IS_SIGNAL_POOR(DBM) DBM<-90
+#define IS_SIGNAL_POOR(DBM) DBM<-65
 
 
 namespace RSSI {
