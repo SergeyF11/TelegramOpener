@@ -9,7 +9,7 @@
 #ifdef TEST_WEMOS
 #define RELAY_PORT LED_BUILTIN
 #define RELAY_INIT_STATUS HIGH
-("Using LED_BUILTIN for relay imitation. For test only")
+#pragma message("Using LED_BUILTIN for relay imitation. For test only")
 #endif
 #ifdef HW_622
 #define RELAY_PORT 4

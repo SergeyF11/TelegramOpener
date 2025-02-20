@@ -24,36 +24,68 @@ namespace FileTime
     time_t _defaultTime(){
         return time(nullptr);
     };
-    void setFilesTime(const time_t t = 0){
+    // void setFilesTime(const time_t t = 0){
+    //     if ( t ){
+    //         fileTime = t;
+    //         LittleFS.setTimeCallback(myTimeCallback);
+    //     } else {
+    //         LittleFS.setTimeCallback(_defaultTime);
+    //     }
+    // };
+
+    void setTimeCallback(FS& fs, const time_t t = 0){
         if ( t ){
             fileTime = t;
-            LittleFS.setTimeCallback(myTimeCallback);
+            fs.setTimeCallback(myTimeCallback);
         } else {
-            LittleFS.setTimeCallback(_defaultTime);
+            fs.setTimeCallback(_defaultTime);
         }
     };
-    }
-    bool setModificated(FS& fs, const char * file, time_t t){
-        bool res = false;
-        setFilesTime( t );
-        auto _file = fs.open(file, "r+");
-        if ( _file ){         
+
+    // установить дату модификации t открытому файлу file
+    bool setModificated(FS& fs, fs::File& file, time_t t){
+        bool res=false;
+        if ( file ){
+            //setFilesTime( t );
+            setTimeCallback(fs, t);
             uint8_t c;
-            if ( _file.read(&c,1) ){
-                _file.seek(0);
-                res = _file.write(&c, 1);
-                if ( !res) Serial.println("Error write byte");
-            } else {
-                if ( !res) Serial.println("Error read byte");
+            file.seek(0);
+            if ( file.read(&c,1) ){
+                file.seek(0);
+                res = file.write(&c, 1);
             }
-            _file.close();
-            
-        } else {
-            if ( !res) Serial.printf("Error open file %s\n", file );
-        }    
-        setFilesTime();
+            //setFilesTime();
+            setTimeCallback(fs, t);
+        }
         return res;
     }
+
+    // // установить дату модификации t файлу с именем file
+    bool setModificated(FS& fs, const char * file, time_t t){
+        bool res = false;
+        //setFilesTime( t );
+        setTimeCallback(fs, t);
+        auto _file = fs.open(file, "r+");
+        return setModificated(fs, _file, t);
+        // if ( _file ){         
+        //     uint8_t c;
+        //     if ( _file.read(&c,1) ){
+        //         _file.seek(0);
+        //         res = _file.write(&c, 1);
+        //         if ( !res) Serial.println("Error write byte");
+        //     } else {
+        //         if ( !res) Serial.println("Error read byte");
+        //     }
+        //     _file.close();
+            
+        // } else {
+        //     if ( !res) Serial.printf("Error open file %s\n", file );
+        // }    
+        // setFilesTime();
+//        return res;
+    }
+}
+
 }
 
 namespace CertificateStore { 
@@ -165,7 +197,7 @@ namespace CertificateStore {
                         }
                         if ( inProgressF ) inProgressF();;
                     } 
-                    delay(1);
+                    delay(0);
                 }
             }
         return writed;
@@ -174,13 +206,7 @@ namespace CertificateStore {
 namespace TmpFile {
     static bool correct=false;
     static constexpr const char * fileName PROGMEM = CertStoreFiles::fileData+3;
-    // File open(FS& fs=LittleFS, const char * tmpFile= fileName, const char * mode="w+" ){
-    //     if ( fs.exists( tmpFile) ) fs.remove( tmpFile);
-    //     return fs.open(tmpFile, mode); 
-    // };
-    // bool rename(FS& fs=LittleFS, const char * newName, const char * tmpFile=fileName){
-    //     return fs.rename( tmpFile, newName );
-    // };
+
 }
     
     Errors download(FS& fs, const char * fileName = CertStoreFiles::fileData ){
@@ -274,28 +300,14 @@ namespace TmpFile {
         return Errors::errorFile;
     };
     
-    // class Updater {
-    //     private:
-    //     WiFiClientSecure * cl;
-    //     FS * fs;
-    //     enum Status {
-    //         None,
-    //         CheckUrl,
-    //         Relocating,
-    //         StartDownloading,
-    //         Download,
-    //         Finishing,
-    //     } status;
-    //     //String location;
-    //     // const char * fileName = CertStoreFiles::fileData 
-    //     public:
-    //     Status getStatus(){ return status; };
+
 
     // перезаписывает файл CertStore Из временного файла
         bool upgrade(const char *from= TmpFile::fileName, const char * to=CertStoreFiles::fileData, FS& fs=LittleFS){ 
-            int res = FileTime::setModificated( fs, from, GitHubUpgrade::release.getNewCertStoreDate() );
-            res += fs.rename( from, to );
-            return res;
+            // int res = FileTime::setModificated( fs, from, GitHubUpgrade::release.getNewCertStoreDate() );
+            // res += fs.rename( from, to );
+            // return res;
+            return fs.rename( from, to );
         };
 
         bool update( GitHubUpgrade::Release& release, FS& fs=LittleFS ){
@@ -341,6 +353,8 @@ namespace TmpFile {
                             
                         }
                         http.end();
+                        if (release.getNewCertStoreDate() )
+                            FileTime::setModificated(fs, file, release.getNewCertStoreDate());
                         file.close();
                     }
                     

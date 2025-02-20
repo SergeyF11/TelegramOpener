@@ -407,7 +407,7 @@ namespace GitHubUpgrade {
                                         //copyUrl( &_downloadUrlPtr, doc["assets"][i]["browser_download_url"].c_str());
                                         copyUrl( &release._newCertsStore, url);
                                     } else {
-                                        debugPrintln("Download url can be constructed");
+                                        debugPrintln("CertStore download url can be constructed");
                                     }
                                 }
  
@@ -421,7 +421,7 @@ namespace GitHubUpgrade {
                                         //copyUrl( &_downloadUrlPtr, doc["assets"][i]["browser_download_url"].c_str());
                                         copyUrl( &release._downloadUrl, url);
                                     } else {
-                                        debugPrintln("Download url can be constructed");
+                                        debugPrintln("ino.bin download url can be constructed");
                                     }
                                     
                                     _lastErrorCode = Errors::Ok;

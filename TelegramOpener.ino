@@ -1,8 +1,9 @@
 //#define debug_print 1
 //#define memory_print
 //#define CHECK_MAXBLOCK_SIZE
+//#define certStoreUpdateTest
 
-#define VERSION 0,1,22
+#define VERSION 0,1,23
 
 #ifdef CHECK_MAXBLOCK_SIZE
   #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
@@ -14,7 +15,7 @@
 #endif
  //#define GitHubUpgrade_ANY_TIME
 
-#define WIFI_POWER 14.0
+#define WIFI_POWER 18.0
 
 #define MFLN_SIZE 1024
 #define SYNC_TIME
@@ -207,8 +208,12 @@ wm.addParameter(&relay_period);
   // if ( certStore != nullptr) {
   if ( botCertsStore( certStore, client, LittleFS) ){
     debugPrintf("Use certs store [%llu]\n", certStore );
+    #ifdef certStoreUpdateTest
+      FileTime::setModificated( LittleFS,  CertStoreFiles::fileData, 1739548570 );
+
+    #endif
   } else {
-    Serial.println("No certificate store loaded!! Used fingerprint connection.");
+    Serial.println("No certificate store loaded!! Reset esp.");
     Serial.flush();
     ESP.reset();
     //client.setInsecure();
