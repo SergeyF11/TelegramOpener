@@ -15,15 +15,17 @@
 #endif
  //#define GitHubUpgrade_ANY_TIME
 
-#define WIFI_POWER 18.0
+
 
 #define MFLN_SIZE 1024
 #define SYNC_TIME
 
 #ifdef debug_print 
 #define TEST_WEMOS
+#define WIFI_POWER 8.0
 #else 
 #define HW_622
+#define WIFI_POWER 18.0
 #endif
 
 #define SEC *1000
@@ -210,6 +212,9 @@ wm.addParameter(&relay_period);
     debugPrintf("Use certs store [%llu]\n", certStore );
     #ifdef certStoreUpdateTest
       FileTime::setModificated( LittleFS,  CertStoreFiles::fileData, 1739548570 );
+      #pragma message("=======================================================")
+      #pragma message("======= for debug only!! Change CertStore data ========")
+      #pragma message("=======================================================")
 
     #endif
   } else {

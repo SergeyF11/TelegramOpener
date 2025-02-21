@@ -16,14 +16,16 @@
 
 namespace FileTime 
 {
+    // спрячем функции от других
     namespace {
     static time_t fileTime;
-    time_t myTimeCallback() {
+    inline time_t myTimeCallback() {
         return fileTime;
     };
-    time_t _defaultTime(){
+    inline time_t _defaultTime(){
         return time(nullptr);
     };
+    }
     // void setFilesTime(const time_t t = 0){
     //     if ( t ){
     //         fileTime = t;
@@ -33,20 +35,22 @@ namespace FileTime
     //     }
     // };
 
-    void setTimeCallback(FS& fs, const time_t t = 0){
+    void inline setTimeCallback(FS& fs, const time_t t = 0){
         if ( t ){
+            debugPrintf("Set file date to %lld\n", t );
             fileTime = t;
             fs.setTimeCallback(myTimeCallback);
         } else {
+            debugPrintln("Reset file date callback");
             fs.setTimeCallback(_defaultTime);
         }
     };
 
-    // установить дату модификации t открытому файлу file
+/*     // установить дату модификации t открытому на запись файлу file
+    /// @note закрывает файл
     bool setModificated(FS& fs, fs::File& file, time_t t){
         bool res=false;
         if ( file ){
-            //setFilesTime( t );
             setTimeCallback(fs, t);
             uint8_t c;
             file.seek(0);
@@ -54,38 +58,30 @@ namespace FileTime
                 file.seek(0);
                 res = file.write(&c, 1);
             }
-            //setFilesTime();
+            file.close();
+            setTimeCallback(fs);
+        }
+        return res;
+    } */
+
+    // // установить дату модификации t файлу с именем file
+    bool setModificated(FS& fs, const char * fileName, time_t t){
+        bool res = false;
+        setTimeCallback(fs, t);
+        auto file = fs.open(fileName, "r+");
+        if ( file ){
             setTimeCallback(fs, t);
+            uint8_t c;
+            file.seek(0);
+            if ( file.read(&c,1) ){
+                file.seek(0);
+                res = file.write(&c, 1);
+            }
+            file.close();
+            setTimeCallback(fs);
         }
         return res;
     }
-
-    // // установить дату модификации t файлу с именем file
-    bool setModificated(FS& fs, const char * file, time_t t){
-        bool res = false;
-        //setFilesTime( t );
-        setTimeCallback(fs, t);
-        auto _file = fs.open(file, "r+");
-        return setModificated(fs, _file, t);
-        // if ( _file ){         
-        //     uint8_t c;
-        //     if ( _file.read(&c,1) ){
-        //         _file.seek(0);
-        //         res = _file.write(&c, 1);
-        //         if ( !res) Serial.println("Error write byte");
-        //     } else {
-        //         if ( !res) Serial.println("Error read byte");
-        //     }
-        //     _file.close();
-            
-        // } else {
-        //     if ( !res) Serial.printf("Error open file %s\n", file );
-        // }    
-        // setFilesTime();
-//        return res;
-    }
-}
-
 }
 
 namespace CertificateStore { 
@@ -303,11 +299,10 @@ namespace TmpFile {
 
 
     // перезаписывает файл CertStore Из временного файла
-        bool upgrade(const char *from= TmpFile::fileName, const char * to=CertStoreFiles::fileData, FS& fs=LittleFS){ 
-            // int res = FileTime::setModificated( fs, from, GitHubUpgrade::release.getNewCertStoreDate() );
-            // res += fs.rename( from, to );
-            // return res;
-            return fs.rename( from, to );
+        inline bool upgrade(const char *from= TmpFile::fileName, const char * to=CertStoreFiles::fileData, FS& fs=LittleFS){ 
+            bool res = FileTime::setModificated( fs, from, GitHubUpgrade::release.getNewCertStoreDate() );
+            return fs.rename( from, to ) & res;
+            //return fs.rename( from, to );
         };
 
         bool update( GitHubUpgrade::Release& release, FS& fs=LittleFS ){
@@ -317,9 +312,11 @@ namespace TmpFile {
                     if (! release.constructed[GitHubUpgrade::Release::Url::CertStore] ) return result;
                     //if ( ! fs ) fs.begin();
                     if ( fs.exists( TmpFile::fileName ) ) fs.remove( TmpFile::fileName );
+
                     auto file = fs.open(TmpFile::fileName, "w+"); 
-                    
                     if( file ) {
+                        // не работает почему-то
+                        //FileTime::setTimeCallback(fs, release._newCertStoreDate ); //release.getNewCertStoreDate());
                         HTTPClient http;
                         if ( http.begin( 
                             client,                
@@ -353,26 +350,15 @@ namespace TmpFile {
                             
                         }
                         http.end();
-                        if (release.getNewCertStoreDate() )
-                            FileTime::setModificated(fs, file, release.getNewCertStoreDate());
+                        // if ( release.getNewCertStoreDate() )
+                        //     FileTime::setModificated(fs, file, release.getNewCertStoreDate());
                         file.close();
-                    }
-                    
-                    // if ( result ){
-                    //     fs.rename( TmpFile::fileName,  CertStoreFiles::fileData );
-                    //     //release.resetCertStoreDate();
-                    // }
-            //     break;
-            // }
-            
+                        //FileTime::setTimeCallback(fs);
+                    }  
             return result;
         };
-    //     Updater(WiFiClientSecure& client, FS& fs ) :
-    //     cl(&client), fs(&fs), status(Status::None)
-    //     {};
 
-    // };
-    Errors insecureDownload(FS& fs, const char * fileName = CertStoreFiles::fileData ){
+        Errors insecureDownload(FS& fs, const char * fileName = CertStoreFiles::fileData ){
         //bool res = false;
         debugPretty;
         if ( ! fs.begin() ) return Errors::noFs;
