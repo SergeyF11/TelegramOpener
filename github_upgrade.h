@@ -629,7 +629,7 @@ void tick(){
         if( startUpMsgId) {
                 fb::TextEdit editMsg(txt, startUpMsgId, settings.getAdminId());
                 bot.editText(editMsg);
-                debugPrintf("Txt:%s, msgId=%lu, chatId=%lld\n", editMsg.text.c_str(), editMsg.messageID, editMsg.chatID.toInt64() );
+                debugPrintf("Txt:%s, msgId=%lu, chatId=%s\n", editMsg.text.c_str(), editMsg.messageID, ((Text)editMsg.chatID).toString().c_str() );
                 
             }  
         if ( done ){

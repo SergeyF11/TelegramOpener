@@ -85,8 +85,8 @@ void handleDocument(fb::Update& u) {
           //   digitalWrite(LED_BUILTIN, state);
           //   state =!state;
           // };
-
-           fetch.setProgressFn( [](){ builtInLed.toggle();} );
+          
+          // fetch.setProgressFn( [](){ builtInLed.toggle();} );
            if (fetch) {
                 if (fetch.updateFlash()) {
                   debugPrintln(START_UPGRADE);
@@ -178,7 +178,7 @@ void handleCommand(fb::Update& u){
           }
           break;
         case "/help"_h: 
-          if( ! settings.hasAdmin() || ( message.chatID == settings.getAdminId() )) {
+          if( ! settings.hasAdmin() || ( (Text)message.chatID == settings.getAdminId() )) {
             // String pdf = App::getHomePage();
             // pdf += F("/blob/main/README_rus.pdf");
             // fb::File help( "README_rus.pdf", fb::File::Type::document, 

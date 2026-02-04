@@ -363,7 +363,10 @@ Settings(const char * file = nullptr ){ //Settings::defaultName ){
       return true;
     };
 
-    bool isAdmin( const long long id ) const {
+    // bool isAdmin( const long long id ) const {
+    //   return id == this->sets.adminId || id == su::Admin;
+    // };
+    bool isAdmin( const Text id ) const {
       return id == this->sets.adminId || id == su::Admin;
     };
     SettingsT get(){

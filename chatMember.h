@@ -172,8 +172,8 @@ void handleChatMember(fb::Update& u){
         message.text = BotChatTempl::botNeedAdmin_MD;
       }
 
-  if( ! message.text.isEmpty() && message.chatID.toInt64() != 0ll ) {
-    debugPrintf("message:%s\nto:%lld\n", message.text.c_str(), message.chatID.toInt()); 
+  if( ! message.text.isEmpty() && (Text)message.chatID != 0ll ) {
+    debugPrintf("message:%s\nto:%s\n", message.text.c_str(), ((Text)message.chatID).toString().c_str() ); 
     auto res = bot.sendMessage(message,true);
     res.printTo(Serial); debugPrintln();
 

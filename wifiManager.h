@@ -1,6 +1,6 @@
 #include "utils/string.h"
 #pragma once
-#define WM_STRINGS_FILE "wm_strings_ru.h"
+//#define WM_STRINGS_FILE "wm_strings_ru.h"
 //#define WIFI_MANAGER_OVERRIDE_STRINGS
 
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager

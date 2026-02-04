@@ -1,9 +1,9 @@
-//#define debug_print 1
+#define debug_print 1
 //#define memory_print
 //#define CHECK_MAXBLOCK_SIZE
 //#define certStoreUpdateTest
 
-#define VERSION 0,1,23
+#define VERSION 0,1,24
 
 #ifdef CHECK_MAXBLOCK_SIZE
   #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
@@ -300,7 +300,7 @@ wm.addParameter(&relay_period);
     
     //String chat= message.chatID;
     debugPrintf("+++++++++\nchat=\'%s\' message.text = \"%s\"\n+++++++++\n", 
-      message.chatID.toString().c_str(), 
+      ((Text)message.chatID).toString().c_str(),  //toString().c_str(), 
       message.text.c_str());
     debugPrintln(message.chatID);
 

@@ -11,9 +11,9 @@ extern FastBot2Client bot;
 
 
 namespace RSSI {
-    volatile long long userID;
-    volatile int32_t dBm;
-    volatile int networks;
+     long long userID;
+     int32_t dBm;
+     int networks;
     void begin(const long long id){
         userID =id;
         networks=0;
