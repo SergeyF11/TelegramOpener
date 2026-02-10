@@ -117,57 +117,75 @@ bool sendHelp( fb::Message& message ){
   return true;                
 };
 
-void sysinfoTo( fb::Message& message )                
-{ 
-    // AddedString text(message.text);
-    // text.setDelimeter('/');
-    // text << F("CPU freq ") << ESP.getCpuFreqMHz() << 
-    //         F("MHz\nFree heap=") << ESP.getFreeHeap();
-    // debugPrintf("AddedString result: \'%s\'\n", message.text.c_str());
-
+void sysinfoTo(fb::Message& message)
+{
+    static const String sketchMD5( ESP.getSketchMD5() );
+    yield();
+    static const auto realSize = ESP.getFlashChipRealSize();
+    
     message.mode = fb::Message::Mode::Text;
-    const char * flashMode = PSTR("UNKNOWN"); 
-    //auto _mode = [](const int m){
-    const int m = ESP.getFlashChipMode(); 
-      switch( m ){
-        case FM_QIO:
-          flashMode = PSTR("QIO");
-          break;
-        case FM_QOUT:
-          flashMode = PSTR("QOUT");
-          break;
-        case FM_DIO:
-          flashMode = PSTR("DIO");
-          break;
-        case FM_DOUT:
-          flashMode = PSTR("DOUT");
-          break;
-      }
-    //  return PSTR("UNKNOWN");
-    //};            
+    
+    char buffer[512];
+    int offset = 0;
+    
+    const auto freeHeap = ESP.getFreeHeap();
+    const auto maxFree  = ESP.getMaxFreeBlockSize();
 
-    #define MT(x,y)  { message.text += F(x); message.text += (y); }
-      MT("CPU freq ", ESP.getCpuFreqMHz());
-      MT("MHz\nFree heap=", ESP.getFreeHeap());
-      MT("\nMax free block=", ESP.getMaxFreeBlockSize());
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "CPU freq %uMHz\nFree heap=%lu\nMax free block=%lu\n",
+        ESP.getCpuFreqMHz(), freeHeap, maxFree );
+    
+    yield();
+    debugPrintln( buffer );
 
-      MT("\nChip Id: 0x", String(ESP.getChipId(), HEX) );
-      MT("\nFlash Id: 0x",  String(ESP.getFlashChipId(),HEX) );
-      MT("\n  mode: ", flashMode ); //_mode(ESP.getFlashChipMode()) );
-      MT("\n  size=", ValueSize::inKb(ESP.getFlashChipRealSize(), 1) );
-      MT("\nReset Reason: ",ESP.getResetReason());
-      MT("\nCore version: ", ESP.getCoreVersion());
-      MT("\nSDK version: ",ESP.getSdkVersion ());
-      MT("\nSketch version: ", App::appVersion(version, __DATE__,__TIME__));
-      MT("\n  size=", ValueSize::inKb(ESP.getSketchSize(), 1) );
-      MT("\n  MD5=",ESP.getSketchMD5());
-      MT("\n", Time::uptime());
-    //MT("\nFull version ",ESP.getFullVersion());
-    #undef MT //(x,y) 
-  #ifdef memory_print 
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "Chip Id: 0x%08X\nFlash Id: 0x%08X\n",
+        ESP.getChipId(), ESP.getFlashChipId());
+    
+    const char* flashMode = "UNKNOWN";
+    switch(ESP.getFlashChipMode()) {
+        case FM_QIO:  flashMode = "QIO";  break;
+        case FM_QOUT: flashMode = "QOUT"; break;
+        case FM_DIO:  flashMode = "DIO";  break;
+        case FM_DOUT: flashMode = "DOUT"; break;
+    }
+    
+    yield();
+    debugPrintln( buffer );
+    
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "  mode: %s\n  size=%s\n",
+        flashMode, ValueSize::inKb(realSize, 1).c_str());
+    
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "Reset Reason: %s\nCore version: %s\nSDK version: %s\n",
+        ESP.getResetReason().c_str(),
+        ESP.getCoreVersion().c_str(),
+        ESP.getSdkVersion());
+    
+    yield();
+    debugPrintln( buffer );
+    
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "Sketch version: %s\n  size=%s\n",
+        App::appVersion(version, __DATE__, __TIME__).c_str(),
+        ValueSize::inKb(ESP.getSketchSize(), 1).c_str());
+    
+    // MD5 вычисление - может быть долгим
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "  MD5=%s\n%s\n",
+        sketchMD5.c_str(),
+        Time::uptime().c_str());
+    
+    yield();
+    debugPrintln( buffer );
+    
+    message.text = buffer;
+    
+    #ifdef memory_print
     memory.needPrint(true);
-  #endif
-  }
+    #endif
+}
 
 
 /*
@@ -312,7 +330,7 @@ inline void setReaction( fb::MessageRead msg, const char * emoji) {
 }
 
 bool checkGroupChat(fb::Update& u ){
-  debugPrintf("Type=%u, msg:'%s'", 
+  debugPrintf("Type=%u, msg:'%s'\n", 
     (size_t)u.message().chat().type(),
     u.message().text().decodeUnicode().c_str()
   );
@@ -424,11 +442,17 @@ void handleCommand(fb::Update& u){
   debugPrintln(msgText);
 
       // Text arg;
-  uint8_t hasArgs = msgText.count(" ");
-  auto arg = msgText.getSub(1, " ");
+  uint8_t parts = msgText.count(" ");
+  bool hasArgs = parts > 1;
+  Text cmd = msgText.getSub(0, " ");;
+  Text arg;
+  for ( uint8_t i=1; i< parts; i++ ) { 
+    arg = msgText.getSub( i, " ");
+    if ( arg.length() > 0 ) break;
+  } 
       //auto cmdArgs = !hasBotName ? msgText.getSub(0, " ") : ;
-  debugPrintf("Cmd=%s(%s)\n", msgText.getSub(0, " ").toString().c_str(), 
-            hasArgs > 1 ? msgText.getSub(1, " ").toString().c_str() : "");
+  debugPrintf("Cmd=%s(%s)\n", cmd.toString().c_str(), 
+            hasArgs ? arg.toString().c_str() : "null");
 
   size_t cmdHash = msgText.getSub(0, " ").hash();
       // auto chatId = msg.chat().id().toInt64();
@@ -467,7 +491,7 @@ void handleCommand(fb::Update& u){
                 break;
 
               case "/sysinfo"_h:
-                sysinfoTo(message);
+                sysinfoTo( message ) ;
                 break;
 
               case "/ls"_h:
@@ -648,7 +672,7 @@ void handleCommand(fb::Update& u){
                     break;
                   case "/rm"_h:
                     { 
-                      auto arg = msgText.getSub(1, " ");
+                      //auto arg = msgText.getSub(1, " ");
                       message.text += F("File ");
                       message.text += TelegramMD::asCode( arg.c_str() ); //.c_str();
                       message.text += ' ';
@@ -667,8 +691,7 @@ void handleCommand(fb::Update& u){
                   case "/cat"_h:
                     { 
                       //if ( msgText.count(" ") < 2 ) break;
-                      if ( !hasArgs ) break;
-                      else {
+                      if ( hasArgs ){
                       //auto arg = msgText.getSub(1, " ");
                       bot.setTyping(settings.getAdminId(), false);
                         if( ! LittleFS.exists(arg.c_str()) ){
@@ -697,7 +720,7 @@ void handleCommand(fb::Update& u){
           //#endif          
                   case "/starPortal"_h:
                   case "/start_portal"_h:
-                    { //.admin ){
+                    if ( needStart == NeedStartE::None )  { //.admin ){
 
                       needStart = NeedStartE::Portal;
                       message.text += TelegramMD::asItallic( portalStarted, MARKDOWN_TG::escape);
@@ -734,7 +757,7 @@ void handleCommand(fb::Update& u){
                         
           //              case  NeedStart::Web:
                         default:
-                          message.text += webPortal;//F("Веб портал уже запущен");
+                          message.text = webPortal;//F("Веб портал уже запущен");
                           message.text += _started;
                           
                         // break;
@@ -791,7 +814,7 @@ void handleCommand(fb::Update& u){
 
                 } //switch admin
 
-          }
+          } // is admin
             
     }// switch all
       
@@ -805,8 +828,7 @@ void handleCommand(fb::Update& u){
 
       bot.sendMessage(message, false);
     }
-  } //startsWith '/'
-//};
+ };
 
 
 #define TAKE_ADMIN "ta~"

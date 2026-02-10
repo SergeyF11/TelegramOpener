@@ -67,6 +67,7 @@ void handleChatMember(fb::Update& u){
       switch (status.hash()) {
 
       // покидаем канал управления, переходим к диалогу с Админом
+      case "kiked"_h:
       case "left"_h :
         debugPrintln("Left chat");
         
