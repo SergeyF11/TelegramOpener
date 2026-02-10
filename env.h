@@ -24,8 +24,8 @@ static const char CHANNEL_FOR_CONTROL[] PROGMEM = _CHANNEL_FOR_CONTROL_;
 static const char SAY_HI[] PROGMEM = _SAY_HI_;
 static const char TRY_LATTER[] PROGMEM = _TRY_LATTER_;
 static const char START_UPGRADE[] PROGMEM = "_Начато обновление\\.\\.\\._";
-static const char DONE_UPGRADE[] PROGMEM = "_Обновление завершено\\._"; //Reboot...";
-static const char ERROR_UPGRADE[] PROGMEM = "_Ошибка при обновлении\\._";
+static const char DONE_UPGRADE[] PROGMEM = "_Обновление завершено\\._ "; //Reboot...";
+static const char ERROR_UPGRADE[] PROGMEM = "_Ошибка при обновлении\\._ ";
 static const char REBOOT[] PROGMEM = " _Перезапускаюсь\\.\\.\\._";
 
 
