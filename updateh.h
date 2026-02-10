@@ -266,9 +266,9 @@ void handleDocument(fb::Update& u) {
             debugPrintln( msg.text );
 
             if ( msgId != 0){
-              fb::TextEdit msg( msg.text, msgId, fromId );
-              msg.mode = fb::Message::Mode::MarkdownV2;              
-              auto res = bot.editText( msg, true );
+              fb::TextEdit _msg( msg.text, msgId, fromId );
+              _msg.mode = fb::Message::Mode::MarkdownV2;              
+              auto res = bot.editText( _msg, true );
               // delay(200);
               debugPrintf( "Edit msg[%u] res=", msgId );
               res.printTo(Serial);
