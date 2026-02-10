@@ -3,7 +3,7 @@
 //#define CHECK_MAXBLOCK_SIZE
 //#define certStoreUpdateTest
 
-#define VERSION 0,1,24
+#define VERSION 0,2,1
 
 #ifdef CHECK_MAXBLOCK_SIZE
   #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
@@ -16,6 +16,9 @@
  //#define GitHubUpgrade_ANY_TIME
 
 
+#define USE_CERTSTORE
+//#define TEST_UNSECURE
+
 
 #define MFLN_SIZE 1024
 #define SYNC_TIME
@@ -25,7 +28,7 @@
 #define WIFI_POWER 8.0
 #else 
 #define HW_622
-#define WIFI_POWER 18.0
+#define WIFI_POWER 11.0
 #endif
 
 #define SEC *1000
@@ -73,14 +76,42 @@ static bool isRelayOn(){ return relay.isOpen(); };
 #include "simpleButton.h"
 #include "wifiManager.h"
 #include "rssi.h"
+//#include "proxy.h"
+#include <GeoLocation.h>
+
 
 static const char fileName[] PROGMEM = "/bot_opener.json";
 BotSettings::Settings settings(fileName);
 SimpleButton myButton(bot, settings, POLLING_TIME );
+String botName;
+bool mdnsStarted = false;
 
 /// @brief все настройки скетча
 void setup(){
+
+
+  // Update.onProgress([=](size_t percent, size_t total){
+  //   //builtInLed.toggle();
+  //   auto val = ( percent & 0x01 ) == 0 ? Led::State::OFF : Led::State::ON;
+  //   builtInLed.write( val );
+  // });
+
+  #ifdef INPUT_PORT
+  pinMode(INPUT_PORT, INPUT_PULLUP);
+  #endif
+  // #ifdef USEOTA
+  // ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+
+  //   builtInLed.toggle();
+  //   //Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  // });
   
+  // #endif  
+    // set Hostname
+  //wm.setHostname( App::name );
+  
+  WiFi.setHostname( App::name );
+
   Serial.begin(115200);
     while ( ! Serial ){
       delay(1);
@@ -92,20 +123,6 @@ void setup(){
     myButton.txtChanger( isRelayOn );
   
     pinMode(RX_PIN, INPUT_PULLUP);
-    WiFi.mode(WIFI_STA);
-    if (WiFi.getPersistent() == true) WiFi.persistent(false); 
-#if defined WIFI_POWER
-    //
-    if ( ! WiFiPower::wifiPower.read() ) {
-      debugPrintln("Saved wifi power date not found");
-    }
-    {
-    auto power = WiFiPower::wifiPower.setPower();
-    debugPrintf("\nPower set to %u%\n", power );
-    }
-    // else 
-    //   WiFi.setOutputPower( WIFI_POWER );
-#endif
 
 
     //delay(1000);
@@ -154,6 +171,7 @@ wm.addParameter(&relay_period);
   wm.setWebServerCallback(bindServerCallback);
   wm.setSaveConfigCallback(saveWifiCallback);
   wm.setSaveParamsCallback(saveParamCallback);
+  //wm.handleUpdate
  
   wm.setDebugOutput( false); //true, WM_DEBUG_DEV );
   // invert theme, dark
@@ -161,29 +179,56 @@ wm.addParameter(&relay_period);
    std::vector<const char *> menu = {"wifi","info","sep","param","sep","update","restart","exit"};
   wm.setMenu(menu); // custom menu, pass vector
  
-  // set Hostname
-  wm.setHostname( App::name );
+
 
   // useful to make it all retry or go to sleep in seconds
-  wm.setConfigPortalTimeout( settings.hasToken() ? PORTAL_TIMEOUT : (PORTAL_TIMEOUT<<8) );
+  wm.setConfigPortalTimeout( settings.hasToken() ? PORTAL_TIMEOUT : (PORTAL_TIMEOUT<<4) );
   wm.setSaveConnect(false); // false = ( do not connect, only save )
   wm.setBreakAfterConfig(true); // needed to use saveWifiCallback
-   wifiInfo();
+  //wm.setTitle( App::name );
+  
+  //авто возврат в корень после настройки и выхода
+  wm.setCustomHeadElement( MY_JSCRIPT_CODE );
+  
+  // wm.setPreOtaUpdateCallback([](){
 
+  //   wm.server->sendContent(PROGRESS_JSCRIPT);
+  // });
+
+  if (WiFi.getPersistent() == true) WiFi.persistent(false); 
+  WiFi.mode( WIFI_STA); 
+  delay(100);
+#if defined WIFI_POWER
+    //
+    
+    if ( ! WiFiPower::wifiPower.read() ) {
+      debugPrintln("Saved wifi power date not found");
+    }
+    {
+    auto power = WiFiPower::wifiPower.setPower();
+    debugPrintf("\nPower set to %u%\n", power );
+    }
+    // else 
+    //   WiFi.setOutputPower( WIFI_POWER );
+#endif
+
+  wifiInfo();
+  
   //wm.setDebugOutput(true, WM_DEBUG_DEV);
-
   
   builtInLed.on();
-  if( digitalRead(RX_PIN) == 0 ) {
+  if( digitalRead(RX_PIN) == LOW ) {
   //   // start configportal always  
-     wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
+    // wm.setConfigPortalTimeout( 5 * 60UL );
+    wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
   }
   while( !wm.autoConnect(getNameByChipId(App::name).c_str(), PortalWiFiPassword )) {
     Serial.println(F("\nfailed to connect and hit timeout"));
   } 
     
     //if you get here you have connected to the WiFi
-     Serial.println("connected...yeey :)");
+  Serial.println("connected...yeey :)");
+  
 
 
   //static esp8266::polledTimeout::periodicMs [](){ };
@@ -193,6 +238,11 @@ wm.addParameter(&relay_period);
   // sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
   
       Serial.print(F("Wait sync time "));
+    //   GeoLocation::GeoLocation geoService;
+    //   geoService.configTime( NTP_SERVERS );
+    //   Serial.println("\nStarting location request...");
+    // //bool started = geoService.begin(true, "ru"); // Автоустановка времени, русский язык
+    //   geoService.getLocation( true );
 
       while( ! Time::isSynced() ){        
           builtInLed.flash(200,1);
@@ -204,12 +254,20 @@ wm.addParameter(&relay_period);
       Serial.println( Time::toStr() ); //Time::printTo(Serial);
       //Time::_free_buf();
       debugPrintln(F(" Done" ));
-
   #endif
+
+
+
+  #ifdef USE_CERTSTORE
+
+  
+  //client.setBufferSizes
   // certStore = botCertsStore(client, LittleFS);
   // if ( certStore != nullptr) {
-  if ( botCertsStore( certStore, client, LittleFS) ){
-    debugPrintf("Use certs store [%llu]\n", certStore );
+  int certsCount = botCertsStore( certStore, client, LittleFS);
+  if (  certsCount > 0 ){
+    //client.setTimeout(2000);
+    debugPrintf("Use certs store [%d]\n", certsCount );
     #ifdef certStoreUpdateTest
       FileTime::setModificated( LittleFS,  CertStoreFiles::fileData, 1739548570 );
       #pragma message("=======================================================")
@@ -218,22 +276,41 @@ wm.addParameter(&relay_period);
 
     #endif
   } else {
-    Serial.println("No certificate store loaded!! Reset esp.");
+    Serial.println(F("No certificate store loaded!! Reboot esp"));
     Serial.flush();
     ESP.reset();
     //client.setInsecure();
     //client.setFingerprint(Telegram::fingerprint );
     //debugPrintln("Use Telegram fingerprint\n");
   }
-  // } else {
-  //   client.setInsecure();
-  //   debugPrintln("Use insecure Telegram commection\n");
-  // }
+#else
+Serial.println(F("No certificate store loaded!!"));
+#ifndef TEST_UNSECURE
+{ 
+      Serial.println(F(" Use Anchors"));
+        static BearSSL::X509List certs;
+        certs.append( cert_Go_Daddy_Secure_Certificate_Authority___G2 );
+        certs.append( cert_Sectigo_Public_Server_Authentication_Root_E46 );
+        certs.append( cert_Sectigo_RSA_Domain_Validation_Secure_Server_CA );
+
+        client.setTrustAnchors(&certs);
+      debugPrintf("%u certs loaded\n", certs.getCount() );
+      
+    }
+#else  // } else {
+    //bot.setProxy( PROXY::ip, PROXY::port );
+    client.setInsecure();
+    debugPrintln("Use insecure Telegram commection\n");
+#endif  // }
+#endif
+
+
 
   bot.attachUpdate(updateh);   // подключить обработчик обновлений
   bot.setToken( settings.getToken() );   // установить токен
   //bot.skipNextMessage();
-  bot.skipUpdates();
+
+
   bot.attachRaw(rawResponse);
 
   //check token
@@ -250,20 +327,53 @@ wm.addParameter(&relay_period);
     wrongCount.reset();
   };
   
-  while( ! bot.tickManual() ) {  
-    delay(100);
+  debugPrintln("Wait Telegram responce ");
+  fb::Result res;
+  do {
+    builtInLed.toggle();
+    res = bot.sendCommand(tg_cmd::getMe, true);
+    if ( res.valid() && !res.isError() ) break;
+    
     wrongCount.tick();
-    builtInLed.flash(300, 50);
-    //wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
-  }
+    debugPrint(".");
+    delay( 250);
+    
+
+  } while(1);
+
+  builtInLed.off();
+
+  botName = res[tg_apih::username].c_str();
+
+  debugPrintln("Updates received. Token ok.");
+  debugPrintf("My name is: @%s\n", botName.c_str() );
+
+  debugPrintln( "Skip updates ");
+  bot.skipUpdates();
+
+  // uint32_t startWait = 0;
+  // bool waitRes = false;
+  // do {
+  //   delay(0);
+  //   auto now = millis();
+  //   if ( now - startWait > 500 ){
+  //     startWait = now;
+  //     waitRes = bot.tickManual();
+  //     debugPrint(".");  
+  //   }
+    
+  //   wrongCount.tick();
+  //   builtInLed.flash(300, 50);
+  //   //wm.startConfigPortal(getNameByChipId(App::name).c_str(), PortalWiFiPassword );
+  // } while( !waitRes );
+
   // else {
   wrongCount.setWrongPeriod(POLLING_TIME*15);
-  debugPrintln("Updates received. Token ok.");
+ 
   wrongCount.accidentFunc = ESP.restart;
   //}
 
   bool goToLoop = false;
-  
 
   // если есть админ, поприветствуем его и обновим клавиатуру или создадим новую
   if ( settings.hasAdmin() ){
@@ -278,7 +388,7 @@ wm.addParameter(&relay_period);
 
       if( menuIds.hasChannelName(settings.getChatId(true)) /*myChnlName.isEmpty()*/ ) {
         message.text += TelegramMD::asBold( 
-          TelegramMD::textIn( 
+          TelegramMD::textIn_( 
             (String)menuIds.getChannelName(settings.getChatId(true)), '\'' ),
           MARKDOWN_TG::escape);  
       } else {
@@ -380,12 +490,19 @@ wm.addParameter(&relay_period);
   //GitHubUpgrade::checkAt( GitHubUpgrade::At::Random(7) );
   GitHubUpgrade::at.set( GitHubUpgrade::At::Random(7) );
 #endif
-
+if (MDNS.begin( App::name )) {
+  debugPrintf("mDNS запущен: %s.local\n", App::name );
+  mdnsStarted = true;
+}
 
 } // end setup()
 
+//volatile time_t loopNow;
 
 void loop(){
+  //loopNow = time(nullptr);
+  //time(&loopNow);
+
 #ifdef memory_print
   if( memory.needPrint() ) { 
     //memory.printTo(Serial); 
@@ -401,16 +518,16 @@ void loop(){
   {
     menuIds.tick();
   }
-  {
-    if ( WiFiPower::wifiPower.isWrited() ){
-      fb::Message message;
-      //message.text = myChannel;
-      message.text = TelegramMD::asBold( wifiPowerWrited, MARKDOWN_TG::escape );  
-      message.chatID = settings.getAdminId();
-      message.setModeMD();
-      bot.sendMessage(message);
-    }
+  
+  if ( WiFiPower::wifiPower.isWrited() ){
+    fb::Message message;
+    //message.text = myChannel;
+    message.text = TelegramMD::asBold( wifiPowerWrited, MARKDOWN_TG::escape );  
+    message.chatID = settings.getAdminId();
+    message.setModeMD();
+    bot.sendMessage(message);
   }
+  
 
   maxblock_size_checker;
  
@@ -475,16 +592,17 @@ void loop(){
         // это не обязательно
         //builtInLed.off();
         myButton.needUpdate( true );
-
+        String closed = TelegramMD::asItallic( portalClosed, MARKDOWN_TG::escape);
         fb::Message message;
         message.chatID = settings.getAdminId();
-        message.text = F("_portal closed_");
+        message.text = closed; //F("_portal closed_");
         message.setModeMD();
         bot.sendMessage(message, false);
         needStart = NeedStartE::None; 
       }
       break;
     case NeedStartE::Web:
+
       //webPortalMsgId = bot.lastBotMessage();
       wm.startWebPortal();
       needStart = NeedStartE::WebRunning;
@@ -497,12 +615,15 @@ void loop(){
     case NeedStartE::WebRunning:
       builtInLed.flash(400, 200);
       wm.process();
+      if ( mdnsStarted) MDNS.update();
+
       if ( ! wm.getWebPortalActive() ) {
         if ( webPortalMsgId ){
           //bot.deleteMessage ( settings.getAdminId(), webPortalMsgId, false );
+          String closed = TelegramMD::asItallic( portalClosed, MARKDOWN_TG::escape);
           fb::TextEdit editMsg;
           editMsg.chatID = settings.getAdminId();
-          editMsg.text = F("_portal closed_");
+          editMsg.text = closed; //F("_portal closed_");
           editMsg.mode = fb::Message::Mode::MarkdownV2;
           editMsg.messageID = webPortalMsgId;
           bot.editText(editMsg, false );

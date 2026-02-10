@@ -143,7 +143,7 @@ namespace channelName {
       if ( isEmpty() ){
         text += TelegramMD::asBold( String('#') + (1000000000000ll + chatId) );
       } else {
-        text += TelegramMD::asBold( TelegramMD::textIn( get(), '\'' ));
+        text += TelegramMD::asBold( TelegramMD::textIn_( get(), '\'' ));
       }
 //       text += F("*");
 //       if ( isEmpty() ){

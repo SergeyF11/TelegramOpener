@@ -109,12 +109,13 @@ class MenuIds : public PairsFile {
         return has( strChannelName(key));
     };
     bool removeChannelName(const long long key){
-        // String _key('n');
-        // _key += Value(key).c_str();
-        // return remove( _key );
         return remove( strChannelName(key));
     };
-
+    bool removeChannel(const long long key){
+        remove( strChannelName(key));
+        return removeMenuId(key);
+    };
+    
     bool setUpgradeId(const long long key, const pairs::Value& val){
         // String _key('u');
         // _key += Value(key).c_str();

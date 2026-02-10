@@ -341,30 +341,30 @@ void rawResponse(const su::Text& resp){
     const int _port;
   }; // relay(RELAY_PORT);
 */
-class HW622 {
-  public:
-  HW622() : relay(Relay(RELAY_PORT,RELAY_INIT_STATUS)) {
-    this->init();
-  };
+// class HW622 {
+//   public:
+//   HW622() : relay(Relay(RELAY_PORT,RELAY_INIT_STATUS)) {
+//     this->init();
+//   };
   
-  // inline int  relayStatus(){ return digitalRead(this->_relay);};
-  // inline void relaySet(int pinVal){ digitalWrite(this->_relay, pinVal); };
-  // inline void relayTogle(){ this->relaySet( !this->relayStatus() ); };
-  // inline void relayOn() { this->relaySet( ! RELAY_INIT_STATUS ); };
-  // inline void relayOff(){ this->relaySet( RELAY_INIT_STATUS ); };
+//   // inline int  relayStatus(){ return digitalRead(this->_relay);};
+//   // inline void relaySet(int pinVal){ digitalWrite(this->_relay, pinVal); };
+//   // inline void relayTogle(){ this->relaySet( !this->relayStatus() ); };
+//   // inline void relayOn() { this->relaySet( ! RELAY_INIT_STATUS ); };
+//   // inline void relayOff(){ this->relaySet( RELAY_INIT_STATUS ); };
 
-  //inline void relayTogle(){ digitalWrite(this->_relay, ! this->relayStatus()); };
-  //inline void relayOn(){digitalWrite(this->_relay, ! RELAY_INIT_STATUS ); };
-  //inline void relayOff(){digitalWrite(this->_relay, RELAY_INIT_STATUS ); };
-  inline int  getInput(){ return digitalRead(this->_input);};
-  private:
-  Relay relay;
-  //  const int _relay=RELAY_PORT;
-  const int _input=INPUT_PORT;
-  void init(){
-    pinMode(this->_input, INPUT);
-//    pinMode(this->_relay,OUTPUT);
-//    this->relayOff();
-  };
-} hw_622;
+//   //inline void relayTogle(){ digitalWrite(this->_relay, ! this->relayStatus()); };
+//   //inline void relayOn(){digitalWrite(this->_relay, ! RELAY_INIT_STATUS ); };
+//   //inline void relayOff(){digitalWrite(this->_relay, RELAY_INIT_STATUS ); };
+//   inline int  getInput(){ return digitalRead(this->_input);};
+//   private:
+//   Relay relay;
+//   //  const int _relay=RELAY_PORT;
+//   const int _input=INPUT_PORT;
+//   void init(){
+//     pinMode(this->_input, INPUT_PULLUP);
+// //    pinMode(this->_relay,OUTPUT);
+// //    this->relayOff();
+//   };
+// } hw_622;
 #endif

@@ -28,7 +28,7 @@ static const char takeAdminStr[] PROGMEM = "Стать администрато�
 static const char haveAdmin[] PROGMEM = "У меня уже есть хозяин!\n";
 static const char youCanTake[] PROGMEM = "Но ты всегда можешь завести ";
 static const char youBot[] PROGMEM = "своего бота";
-static const char youAdminAlready[] PROGMEM = "Вы уже являетесь администратором.";
+static const char youAdminAlready[] PROGMEM = "Ты уже администратор";
 static const char forHelp[] PROGMEM = "\nДля помощи отправь "; //`/help`";
 //extern SETTINGS::SettingsT settings;
 extern BotSettings::Settings settings;
@@ -38,9 +38,13 @@ void handleStart(fb::Update& u, fb::Message& message) {
   // будем беседовать с отправителем
   //message.chatID = u.message().from().id();
   
-  fb::MyCommands commands( F("help;start_portal;start_web;stop_web"), F("Помощь;Запустить CaptivеPortal;Запустить вебпортал;Остановить вебпортал"));
-  bot.setMyCommands(commands);
+  fb::MyCommands commands( 
+    F("help;start_portal;start_web;stop_web"), 
+    F("Помощь;Запустить CaptivеPortal;Запустить вебпортал;Остановить вебпортал"));
+  bot.setMyCommands(commands, true);
   
+  // fb::Menu menu;
+  // message.setMenu(menu);
 
   if ( u.message().from().id() == settings.getAdminId() ){ //.admin) {
     String user(u.message().from().username());
@@ -66,8 +70,8 @@ void handleStart(fb::Update& u, fb::Message& message) {
                     (String)(u.message().from().id()));
       message.text = TelegramMD::asBold( haveAdmin,  MARKDOWN_TG::escape ); //haveAdmin_MD; //F("*У меня уже есть хозяин\\!*\n_Но ты всегда можешь завести [своего бота](" THIS_BOT_LINK ")_");
       String S(youCanTake );
-      S += TelegramMD::textIn( youBot, '[', ']');
-      S += TelegramMD::textIn(  App::getHomePage(), '(',')' );
+      S += TelegramMD::textIn( youBot, '[', ']'); //S.trim();
+      S += TelegramMD::textIn(  App::getHomePage(), '(',')' ); //S.trim();
       message.text += TelegramMD::asItallic( S );
 
     } else {

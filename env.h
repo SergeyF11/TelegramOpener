@@ -10,7 +10,7 @@
 #define DEFAULT_TZ      "UTC0" //"MSK-3"
 #define DEFAULT_TZ_MSK  "MSK-3"
 
-#define _SAY_HI_MD_  "_Привет\\. Я снова тут\\.\\.\\._"
+//#define _SAY_HI_MD_  "_Привет\\. Я снова тут\\.\\.\\._"
 //static const char SAY_HI_MD[] PROGMEM = _SAY_HI_MD_;
 
 
@@ -23,10 +23,11 @@
 static const char CHANNEL_FOR_CONTROL[] PROGMEM = _CHANNEL_FOR_CONTROL_;
 static const char SAY_HI[] PROGMEM = _SAY_HI_;
 static const char TRY_LATTER[] PROGMEM = _TRY_LATTER_;
-static const char START_UPGRADE[] PROGMEM = "Начато обновление...";
-static const char DONE_UPGRADE[] PROGMEM = "Обновление завершено. "; //Reboot...";
-static const char ERROR_UPGRADE[] PROGMEM = "Ошибка при обновлении.";
-static const char REBOOT[] PROGMEM = "Перезапускаюсь...";
+static const char START_UPGRADE[] PROGMEM = "_Начато обновление\\.\\.\\._";
+static const char DONE_UPGRADE[] PROGMEM = "_Обновление завершено\\._"; //Reboot...";
+static const char ERROR_UPGRADE[] PROGMEM = "_Ошибка при обновлении\\._";
+static const char REBOOT[] PROGMEM = " _Перезапускаюсь\\.\\.\\._";
+
 
 #include "TelegramMD.h"
 
@@ -156,7 +157,7 @@ namespace App {
     static const char name[] PROGMEM = "TelegramOpener";
     //static const char hostSuffix[] PROGMEM = ".local";
 //    static const char dataCerts[] PROGMEM = "data/certs.ar";
-    static const char GITHUB_IO_FINGERPRINT[] PROGMEM = "97:D8:C5:70:0F:12:24:6C:88:BC:FA:06:7E:8C:A7:4D:A8:62:67:28";
+ //   static const char GITHUB_IO_FINGERPRINT[] PROGMEM = "97:D8:C5:70:0F:12:24:6C:88:BC:FA:06:7E:8C:A7:4D:A8:62:67:28";
     const int gitHubPort = 443;
 
     struct Version : public Printable {
@@ -309,7 +310,7 @@ namespace App {
         return out;
     };
     static const char gitHubUserContent[] PROGMEM = "https://raw.githubusercontent.com";
-    static const char * gitHubUserContentHost = gitHubUserContent + 8;
+    static constexpr const char * gitHubUserContentHost = gitHubUserContent + (sizeof("https://")-sizeof('0'));
 
     String getRawContent(const char * fileName, bool host=true){
         String out;

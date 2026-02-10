@@ -5,6 +5,12 @@
 #include <WiFiClientSecure.h>
 #include "downloadCerts.h"
 
+#ifndef USE_CERTSTORE
+#include "certs/certs_tg.h"
+#include "certs/certs.h"
+#include "certs/certs_rg.h"
+#endif
+
 CertStore* certStore = nullptr;
 WiFiClientSecure client;
 FastBot2Client bot(client);
@@ -13,7 +19,7 @@ FastBot2Client bot(client);
 // namespace Telegram {
 //     static const char fingerprint[] PROGMEM = "1F:77:5F:20:C5:D3:BD:67:DE:E8:07:9B:59:1D:22:E9:C0:E4:52:4B"; //api.telegram.org
 // };
-bool botCertsStore(CertStore* cs, WiFiClientSecure& cl, FS& fs, const char * fileData=CertStoreFiles::fileData){
+int botCertsStore(CertStore* cs, WiFiClientSecure& cl, FS& fs, const char * fileData=CertStoreFiles::fileData){
     if ( cs != nullptr ) { 
         delete[](cs);
         cs == nullptr;
@@ -49,7 +55,8 @@ bool botCertsStore(CertStore* cs, WiFiClientSecure& cl, FS& fs, const char * fil
             }
             numCerts = cs->initCertStore(fs, CertStoreFiles::fileIdx, fileData);
             if ( numCerts > 0 ) {
-                cl.setCertStore(cs);    
+                cl.setCertStore(cs);   
+
             } else {
                 delete[](cs);
                 cs = nullptr;

@@ -14,7 +14,7 @@
 #include <TimeLib.h>
 
 extern BotSettings::Settings settings;
-extern CertStore * certStore;
+//extern CertStore * certStore;
 extern FastBot2Client bot;
 extern App::Version version;
 extern MenuIds menuIds;
@@ -467,7 +467,8 @@ namespace GitHubUpgrade {
     bool check(bool now=false){
         if ( ! now ) 
             if ( at.checkedDay() || ! at.isTime() ) return false;
-            
+        
+        debugPrintln( "Check upgrade" );
         release.clean();
         if ( getGitHubRelease() == Errors::Ok ) {
                 release.has = true;
@@ -594,6 +595,7 @@ void tick(){
       if ( settings.hasAdmin() ) {
         {
         fb::Message msg(txt, settings.getAdminId() );
+        msg.mode = fb::Message::Mode::MarkdownV2;
         bot.sendMessage( msg );
         }
         unsigned long startUpMsgId = bot.lastBotMessage();
@@ -628,6 +630,7 @@ void tick(){
         debugPrintf("Txt=%s, to msgId=%lu\n", txt.c_str(), startUpMsgId );
         if( startUpMsgId) {
                 fb::TextEdit editMsg(txt, startUpMsgId, settings.getAdminId());
+                editMsg.mode = fb::Message::Mode::MarkdownV2;
                 bot.editText(editMsg);
                 debugPrintf("Txt:%s, msgId=%lu, chatId=%s\n", editMsg.text.c_str(), editMsg.messageID, ((Text)editMsg.chatID).toString().c_str() );
                 
@@ -693,7 +696,7 @@ bool CertStoreFiles::updatedMsg(FastBot2Client& bot, const long long toId, bool 
     setNewCerts.text = TelegramMD::asBold( F("Сертификаты обновлены."), MARKDOWN_TG::escape );
     setNewCerts.text += TelegramMD::newLine();
     setNewCerts.text += TelegramMD::asItallic(F("Требуется перезагрузка!"), MARKDOWN_TG::escape );
-    setNewCerts.text += TelegramMD::asItallic( REBOOT, MARKDOWN_TG::escape );
+    setNewCerts.text += REBOOT; //TelegramMD::asItallic( REBOOT, MARKDOWN_TG::escape );
 
     setNewCerts.chatID  = toId;
 
