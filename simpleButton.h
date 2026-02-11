@@ -263,40 +263,32 @@ public:
     debugPretty;
     debugPrintf("chat=%lld, Button header=%s, name=%s, cmd=%s, wait\n",
                 chatId(), buttonHeader(), buttonName(), dynamicCmd(ButtonInlineMenu::bCmds).c_str());
-    ReturnCode ret;
+    
     if (chatId() == 0)
-      ret = ReturnCode::noChat;
-    else
-    {
+      return ReturnCode::noChat;
+    
+    //else
+    fb::Message message;
 
-      fb::Message message;
+    fb::InlineMenu menu(buttonName(), dynamicCmd(ButtonInlineMenu::bCmds).c_str());
+    message.chatID = chatId(); // sets->getChatId();
+    message.protect = true;
+    message.text = buttonHeader();
+    message.setInlineMenu(menu);
 
-      fb::InlineMenu menu(buttonName(), dynamicCmd(ButtonInlineMenu::bCmds).c_str());
-      message.chatID = chatId(); // sets->getChatId();
-      message.protect = true;
-      message.text = buttonHeader();
-      message.setInlineMenu(menu);
+    fb::Result res = botP->sendMessage(message, true);
 
-      fb::Result res = botP->sendMessage(message, true);
-
-      if (!res.valid())
-      {
-        /*       debugPrintf("Chat:'%lld'\nHeader:'%s'\nText:'%s', cmd:'%s'\n",
-                chatId(), buttonHeader(), menu.text.c_str(), menu.data.c_str() ); */
-        ret = ReturnCode::wrongResponse;
-      }
-      else
-      {
-        ret = ReturnCode::ok;
-        menuIds.setMenuId(chatId(), botP->lastBotMessage());
-        this->lastUpdate = millis();
-        this->needUpdate(false);
-        // debugPrintf("\tmsg=%lu\n", (unsigned long)menuIds.getMenuId( chatId() ) );
-      }
-    }
-    debugPrintf("\tResp=%s\n", codeToString(ret));
-
-    return ret;
+    if ( res.valid() && ! res.isError() ){
+      
+      menuIds.setMenuId(chatId(), botP->lastBotMessage());
+      this->lastUpdate = millis();
+      this->needUpdate(false);
+      return ReturnCode::ok;
+      
+    } //else {
+  
+    return ReturnCode::wrongResponse;
+      
   };
 
   enum CodeButtonE

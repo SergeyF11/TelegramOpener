@@ -109,12 +109,13 @@ bool sendHelp( fb::Message& message ){
     res.printTo(Serial);
     #endif
 
-    if ( !res.valid() || res.isError()  ){
-      message.text = F("Ошибка получения файла! Поробуйте скачать:");
-      message.text += TelegramMD::asCode( pdfPath );
-      return false;
-    }
-  return true;                
+    if ( res.valid() && !res.isError() ) 
+      return true;
+    
+    // else
+    message.text = F("Ошибка получения файла! Поробуйте скачать:");
+    message.text += TelegramMD::asCode( pdfPath );
+    return false;               
 };
 
 void sysinfoTo(String& out)
@@ -272,7 +273,7 @@ void handleDocument(fb::Update& u) {
           msg.mode = fb::Message::Mode::MarkdownV2;
           auto res = bot.sendMessage( msg, true);
           uint32_t otaMsg = 0; 
-          if ( res.valid() ) otaMsg = bot.lastBotMessage();
+          if ( res.valid() && ! res.isError() ) otaMsg = bot.lastBotMessage();
           // не нужно для simpleButton
           //myButton.stopUpdate();
           
@@ -375,7 +376,7 @@ void setReaction(const int64_t chatId, const int32_t msgId, const char * emoji, 
     // Отправляем через встроенный метод sendCommand
     auto res = bot.sendCommand( tg_cmd::setMessageReaction, payload, wait);
     if ( wait ) {
-          if( res.valid() ){
+          if( res.valid() && ! res.isError() ){
             debugPrintln( "ok:" );
             debugPrintln( res.toString() );
           } else {
@@ -492,84 +493,88 @@ void handleCommand(fb::Update& u){
   if( msgText.c_str()[0] != '/') return; 
   
   // готовим ответ
-  fb::Message message;
-  message.setModeMD();
+  fb::Message respond;
+  respond.setModeMD();
 // будем беседовать с отправителем
-  message.chatID = msg.from().id();
+  respond.chatID = msg.from().id();
 
   
 
   debugPrintln(msg.from().username());
   debugPrintln(msgText);
 
-      // Text arg;
-  uint8_t hasArgs = msgText.count(" ");
-  auto arg = msgText.getSub(1, " ");
+        // Text arg;
+  uint8_t parts = msgText.count(" ");
+  bool hasArgs = parts > 1;
+  Text cmd = msgText.getSub(0, " ");;
+  Text arg;
+  for ( uint8_t i=1; i< parts; i++ ) { 
+    arg = msgText.getSub( i, " ");
+    if ( arg.length() > 0 ) break;
+  } 
       //auto cmdArgs = !hasBotName ? msgText.getSub(0, " ") : ;
-  debugPrintf("Cmd=%s(%s)\n", msgText.getSub(0, " ").toString().c_str(), 
-            hasArgs > 1 ? msgText.getSub(1, " ").toString().c_str() : "");
+  debugPrintf("Cmd=%s(%s)\n", cmd.toString().c_str(), 
+            hasArgs ? arg.toString().c_str() : "null");
 
   size_t cmdHash = msgText.getSub(0, " ").hash();
-      // auto chatId = msg.chat().id().toInt64();
-      // auto fromId = msg.from().id().toInt64();
-
     // команды для всех 
 
       switch( cmdHash ){
           case "/hi"_h:{
-            message.text = TelegramMD::asItallic( SAY_HI,  MARKDOWN_TG::escape );
+            respond.text = TelegramMD::asItallic( SAY_HI,  MARKDOWN_TG::escape );
           }
           break; 
         case "/start"_h:          
-          handleStart(u, message);  
+          handleStart(u, respond);  
           break;
         case "/version"_h:
-          versionTo( message );
+          versionTo( respond );
           break;
 
         default: 
         
     // команды для только Админа    
         //bool freeOrAdmin = ! settings.hasAdmin() || settings.isAdmin( message.chatID );
-          if ( !settings.hasAdmin() || settings.isAdmin( message.chatID ) ){
+          if ( !settings.hasAdmin() || settings.isAdmin( respond.chatID ) ){
       // if ( freeOrAdmin ){
             switch( cmdHash ){
               case "/time"_h:
                 {
-                  message.text = MARKDOWN_TG::escape( Time::toStr() );
+                  respond.text = MARKDOWN_TG::escape( Time::toStr() );
                   Time::_free_buf();
                 }
                 break;
               case "/help"_h: 
-                sendHelp( message );  
+                sendHelp( respond );  
               
                 break;
 
               case "/sysinfo"_h:
               {
+                bot.setTyping(respond.chatID, false);
                 String sysinfo; sysinfo.reserve(512);
                 sysinfoTo(sysinfo);
-                message.text = sysinfo;
-                message.mode = fb::Message::Mode::Text;
+                respond.text = sysinfo;
+                respond.mode = fb::Message::Mode::Text;
               }
                 break;
 
               case "/ls"_h:
                 {
                   runStart;
-                  bot.setTyping(settings.getAdminId(), false);
+                  bot.setTyping(respond.chatID, false);
                   String list; list.reserve(1024);
                   BotSettings::listDirTo(list, "/");
                   int startPtr = 0;
                   
                   while ( list.length() > 512 ){
                     int endPtr = startPtr + 512;  
-                    message.text = TelegramMD::asCode( list.substring(startPtr, endPtr ));
-                    bot.sendMessage( message, false );
+                    respond.text = TelegramMD::asCode( list.substring(startPtr, endPtr ));
+                    bot.sendMessage( respond, false );
                     startPtr = endPtr;
                     list = list.substring(endPtr );
                   }
-                  message.text += TelegramMD::asCode( BotSettings::listDirToString("/"));
+                  respond.text += TelegramMD::asCode( BotSettings::listDirToString("/"));
                   // message.chatID = msg.from().id();
                   printRunTime;
                 }
@@ -591,10 +596,10 @@ void handleCommand(fb::Update& u){
                 }
                 
                 //message.mode = fb::Message::Mode::Text;
-                message.text = F("Open period: ");
-                message.text += relay.getOpenPeriod();
-                message.text += F("sec");
-                debugPrintln( message.text );
+                respond.text = F("Open period: ");
+                respond.text += relay.getOpenPeriod();
+                respond.text += F("sec");
+                debugPrintln( respond.text );
               }
               break;
               
@@ -614,17 +619,17 @@ void handleCommand(fb::Update& u){
                       }
                   }
                 }
-                message.text = F("Power: ");
-                message.text += percent;
-                message.text += "%\n";
-                if ( willWrited )  message.text += TelegramMD::asItallic( waitRecord,  MARKDOWN_TG::escape );
+                respond.text = F("Power: ");
+                respond.text += percent;
+                respond.text += "%\n";
+                if ( willWrited )  respond.text += TelegramMD::asItallic( waitRecord,  MARKDOWN_TG::escape );
                 else { 
                   auto dBm = WiFi.RSSI();
                   String rssi(dBm);
                     rssi += "dBm";
-                    message.text += TelegramMD::asBold( wm.getWiFiSSID().c_str() , MARKDOWN_TG::escape );
-                    message.text += PSTR("RSSI");
-                    message.text += TelegramMD::textIn_(  
+                    respond.text += TelegramMD::asBold( wm.getWiFiSSID().c_str() , MARKDOWN_TG::escape );
+                    respond.text += PSTR("RSSI");
+                    respond.text += TelegramMD::textIn_(  
                       ( IS_SIGNAL_GOOD(dBm) ) ? 
                         TelegramMD::asBold(rssi, MARKDOWN_TG::escape ) : 
                       ( IS_SIGNAL_POOR(dBm) ) ? 
@@ -633,7 +638,7 @@ void handleCommand(fb::Update& u){
                       '(',')', MARKDOWN_TG::escape );
 
                   }
-                debugPrintln( message.text );
+                debugPrintln( respond.text );
               }
               break;
 
@@ -641,8 +646,8 @@ void handleCommand(fb::Update& u){
           //#ifdef debug_print
               case "/uptime"_h:
               {
-                Time::uptimeTo(message.text); 
-                debugPrintln( message.text );
+                Time::uptimeTo(respond.text); 
+                debugPrintln( respond.text );
               }
               break;
 
@@ -664,12 +669,12 @@ void handleCommand(fb::Update& u){
                           GitHubUpgrade::at.setDay( day );
                         }
                       } 
-                      message.mode = fb::Message::Mode::Text;
-                      message.text = F("Checked day=");
-                      message.text += GitHubUpgrade::at._checkedDay;
-                      message.text += '\n';
-                      message.text += GitHubUpgrade::at.toString();
-                      debugPrintln(message.text);
+                      respond.mode = fb::Message::Mode::Text;
+                      respond.text = F("Checked day=");
+                      respond.text += GitHubUpgrade::at._checkedDay;
+                      respond.text += '\n';
+                      respond.text += GitHubUpgrade::at.toString();
+                      debugPrintln(respond.text);
                   }
                   break;
 
@@ -678,9 +683,9 @@ void handleCommand(fb::Update& u){
                       if ( settings.remove() ){
                         debugPrintln(F("Settings file deleted."));
                         settings.load();
-                        message.text += REBOOT; //TelegramMD::asItallic( REBOOT,  MARKDOWN_TG::escape );
-                        bot.sendMessage( message );
-                        message.text = "";
+                        respond.text += REBOOT; //TelegramMD::asItallic( REBOOT,  MARKDOWN_TG::escape );
+                        bot.sendMessage( respond );
+                        respond.text = "";
                         //needStartPortal = true;
                         //needStart = NeedStart::Portal;
                         //delay(1000);
@@ -713,11 +718,11 @@ void handleCommand(fb::Update& u){
                   { 
                     
                     //message.chatID = settings.getAdminId();
-                    message.text = REBOOT; //TelegramMD::asItallic( REBOOT,  MARKDOWN_TG::escape ); //rebootMsg_MD;
+                    respond.text = REBOOT; //TelegramMD::asItallic( REBOOT,  MARKDOWN_TG::escape ); //rebootMsg_MD;
                     //message.setModeMD;
-                    bot.sendMessage(message, true);
+                    bot.sendMessage(respond, true);
                     bot.setTyping( settings.getAdminId(), false);
-                    message.text = "";
+                    respond.text = "";
                     //bot.reboot();
                     needStart = NeedStartE::Reboot; 
                   }
@@ -744,17 +749,17 @@ void handleCommand(fb::Update& u){
                   case "/rm"_h:
                     { 
                       auto arg = msgText.getSub(1, " ");
-                      message.text += F("File ");
-                      message.text += TelegramMD::asCode( arg.c_str() ); //.c_str();
-                      message.text += ' ';
+                      respond.text += F("File ");
+                      respond.text += TelegramMD::asCode( arg.c_str() ); //.c_str();
+                      respond.text += ' ';
                       if( ! arg.valid() ||  ! LittleFS.exists(arg.c_str()) ){  
-                        message.text += F("not exist");  
+                        respond.text += F("not exist");  
                       } else {
                         auto res = LittleFS.remove( arg.c_str() );
                         if ( res ){
-                          message.text += F("deleted");
+                          respond.text += F("deleted");
                         } else {
-                          message.text += F("error");
+                          respond.text += F("error");
                         }
                       }
                     }
@@ -767,15 +772,15 @@ void handleCommand(fb::Update& u){
                       //auto arg = msgText.getSub(1, " ");
                       bot.setTyping(settings.getAdminId(), false);
                         if( ! LittleFS.exists(arg.c_str()) ){
-                          message.text += F("File ");
-                          message.text += TelegramMD::asCode( arg ); //.c_str();
-                          message.text += F(" not exist");
+                          respond.text += F("File ");
+                          respond.text += TelegramMD::asCode( arg ); //.c_str();
+                          respond.text += F(" not exist");
                           break;
                         }
                         auto f = LittleFS.open(arg.c_str(), "r");
                         if ( ! f ) {
-                          message.text += F("Error open file "); //`");
-                          message.text += TelegramMD::asCode( arg ); //.c_str();
+                          respond.text += F("Error open file "); //`");
+                          respond.text += TelegramMD::asCode( arg ); //.c_str();
                           //message.text += '`';
                           break; 
                         } 
@@ -785,7 +790,7 @@ void handleCommand(fb::Update& u){
                         debugPrintln(s);
                         s.replace('\\','/');
 
-                        message.text += TelegramMD::asCode( s );
+                        respond.text += TelegramMD::asCode( s );
                       }
                     }
                     break;
@@ -795,7 +800,7 @@ void handleCommand(fb::Update& u){
                     { //.admin ){
 
                       needStart = NeedStartE::Portal;
-                      message.text += TelegramMD::asItallic( portalStarted, MARKDOWN_TG::escape);
+                      respond.text += TelegramMD::asItallic( portalStarted, MARKDOWN_TG::escape);
 
                     }
                     break;
@@ -808,7 +813,7 @@ void handleCommand(fb::Update& u){
                         case NeedStartE::None:
                         needStart = NeedStartE::Web;
 
-                        message.text = TelegramMD::asItallic(
+                        respond.text = TelegramMD::asItallic(
                           //String("Settings ") + 
                           TelegramMD::linkTo(
                             webPortal, //"web portal", 
@@ -821,7 +826,7 @@ void handleCommand(fb::Update& u){
                         debugPrintf( "web portal on: %s\n", 
                             WiFi.localIP().toString().c_str());
 
-                        if ( bot.sendMessage(message) ){
+                        if ( bot.sendMessage(respond) ){
                           webPortalMsgId = bot.lastBotMessage();
                           //message.text = NULL_STR;
                         }
@@ -829,8 +834,8 @@ void handleCommand(fb::Update& u){
                         
           //              case  NeedStart::Web:
                         default:
-                          message.text += webPortal;//F("Веб портал уже запущен");
-                          message.text += _started;
+                          respond.text += webPortal;//F("Веб портал уже запущен");
+                          respond.text += _started;
                           
                         // break;
                         // case  NeedStart::Portal:
@@ -839,9 +844,9 @@ void handleCommand(fb::Update& u){
                         //   message.
                         // break;
                       }
-                      if ( ! message.text.isEmpty() ){
-                        debugPrintln( message.text);
-                        message.text = NULL_STR;
+                      if ( ! respond.text.isEmpty() ){
+                        debugPrintln( respond.text);
+                        respond.text = NULL_STR;
                       }
                     }
                     break;
@@ -861,7 +866,7 @@ void handleCommand(fb::Update& u){
                           webPortalMsgId = 0;
                           //message.text = "";
                         } else {
-                          message.text += closed;
+                          respond.text += closed;
                         }
                       }
                     }
@@ -870,7 +875,7 @@ void handleCommand(fb::Update& u){
                     {
                        //settingsBackup();
                         if ( ! Backup::settings() ){
-                          message.text ="TODO: release backup function";
+                          respond.text ="TODO: release backup function";
                         }
                     } break;
 
@@ -891,14 +896,14 @@ void handleCommand(fb::Update& u){
     }// switch all
       
     // если есть что ответить 
-    if ( ! message.text.isEmpty() ) {
+    if ( ! respond.text.isEmpty() ) {
 
       debugPrint("msg: ");
-      debugPrintln( message.text );
+      debugPrintln( respond.text );
       debugPrint("To:");
-      debugPrintln( message.chatID );
+      debugPrintln( respond.chatID );
 
-      bot.sendMessage(message, false);
+      bot.sendMessage(respond, false);
     }
   } //startsWith '/'
 //};

@@ -298,13 +298,14 @@ Serial.println(F("No certificate store loaded!!"));
       
     }
 #else  // } else {
-    //bot.setProxy( PROXY::ip, PROXY::port );
+    bot.setProxy( PROXY::ip, PROXY::port );
+    .setS
     client.setInsecure();
     debugPrintln("Use insecure Telegram commection\n");
 #endif  // }
 #endif
 
-
+  
 
   bot.attachUpdate(updateh);   // подключить обработчик обновлений
   bot.setToken( settings.getToken() );   // установить токен

@@ -109,12 +109,14 @@ namespace GitHubUpgrade {
         char * _newCertsStore = nullptr;
         char * _infoUrl = nullptr;
         time_t _newCertStoreDate = 0;
-        void resetCertStoreDate(){
-            _newCertStoreDate=0;
-        };
-        time_t getNewCertStoreDate(){
-            if ( ! constructed[ Url::CertStore ] ) resetCertStoreDate();
-            return _newCertStoreDate;
+
+        // void resetCertStoreDate(){
+        //     _newCertStoreDate=0;
+        // };
+        time_t getNewCertStoreDate() const {
+            return  constructed[ Url::CertStore ] ? _newCertStoreDate : 0;
+            // if ( ! constructed[ Url::CertStore ] ) resetCertStoreDate();
+            // return _newCertStoreDate;
         };
 
         // bool  hasCertStore(){
@@ -126,10 +128,10 @@ namespace GitHubUpgrade {
         bool has = false;
         bool constructed[3] = {false};
         void _clean( char ** ptr){
-            if ( *ptr != nullptr ){
+            //if ( *ptr != nullptr ){
                 delete[] *ptr;
                 *ptr = nullptr;
-            }
+            //}
         };
         void clean(){
             debugPretty;
@@ -683,7 +685,7 @@ bool CertStoreFiles::downloadMsg(FastBot2Client& bot, const long long toId, bool
     fb::Message certsDownload( TelegramMD::asItallic( F("Обновляю сертификаты..."), MARKDOWN_TG::escape),  toId);
     certsDownload.setModeMD();
     auto res = bot.sendMessage( certsDownload, wait );
-    return res.valid(); //bot.lastBotMessage();
+    return res.valid() && ! res.isError(); //bot.lastBotMessage();
 };
 bool CertStoreFiles::updatedMsg(FastBot2Client& bot, const long long toId, bool wait){
     if ( ! toId ) return false;
@@ -704,5 +706,5 @@ bool CertStoreFiles::updatedMsg(FastBot2Client& bot, const long long toId, bool 
     bot.tickManual();
 
     debugPrintf("Send msg to %lld: %s\n", toId, setNewCerts.text.c_str() );
-    return res.valid();
+    return res.valid() && ! res.isError();
 }

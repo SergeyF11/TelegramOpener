@@ -139,9 +139,9 @@ void handleChatMember(fb::Update& u){
                 if( prevChannelButton != 0 ){
                   fb::Result res;
                   res = bot.deleteMessage( chatId, prevChannelButton );
-                  if ( res.valid() ) {
+                  if ( res.valid() && ! res.isError() ) {
                     debugPrintf("Button msgId=%lu in this channel %lld deleted\n", prevChannelButton, chatId );
-                    delay(300);
+                    //delay(300);
 
                   }
                 }
@@ -241,7 +241,7 @@ void handleChatMember(fb::Update& u){
         debugPrintln("Need add bot as administrator");
         message.text = BotChatTempl::botNeedAdmin_MD;
         auto res = bot.sendMessage(message, true);
-        if( res.valid() ) waitAdmin = bot.lastBotMessage();
+        if( res.valid() && ! res.isError() ) waitAdmin = bot.lastBotMessage();
         message.text = "";
       }
 
