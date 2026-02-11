@@ -10,10 +10,6 @@
 #define DEFAULT_TZ      "UTC0" //"MSK-3"
 #define DEFAULT_TZ_MSK  "MSK-3"
 
-//#define _SAY_HI_MD_  "_Привет\\. Я снова тут\\.\\.\\._"
-//static const char SAY_HI_MD[] PROGMEM = _SAY_HI_MD_;
-
-
 #define _SAY_HI_  "Привет. Я снова тут..."
 #define NTP_SERVERS "ntp1.stratum2.ru" , "ru.pool.ntp.org", "pool.ntp.org"
 #define _TRY_LATTER_ "Что-то пошло не так. Попробуйте ещё раз."
@@ -23,9 +19,9 @@
 static const char CHANNEL_FOR_CONTROL[] PROGMEM = _CHANNEL_FOR_CONTROL_;
 static const char SAY_HI[] PROGMEM = _SAY_HI_;
 static const char TRY_LATTER[] PROGMEM = _TRY_LATTER_;
-static const char START_UPGRADE[] PROGMEM = "_Начато обновление\\.\\.\\._";
-static const char DONE_UPGRADE[] PROGMEM = "_Обновление завершено\\._"; //Reboot...";
-static const char ERROR_UPGRADE[] PROGMEM = "_Ошибка при обновлении\\._";
+static const char START_UPGRADE[] PROGMEM = "_Начато обновление\\.\\.\\._ ";
+static const char DONE_UPGRADE[] PROGMEM = "_Обновление завершено\\._ "; //Reboot...";
+static const char ERROR_UPGRADE[] PROGMEM = "_Ошибка при обновлении\\._ ";
 static const char REBOOT[] PROGMEM = " _Перезапускаюсь\\.\\.\\._";
 
 

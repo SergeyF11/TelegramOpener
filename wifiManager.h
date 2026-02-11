@@ -46,9 +46,11 @@ enum NeedStartE {
 
 NeedStartE needStart=None;
 
-const char MY_JSCRIPT_CODE[] PROGMEM = "<script>if(window.location.href.includes('save') || " \
-    "window.location.href.includes('exit'))" \
-    "{setTimeout(function(){window.location.href='/';}, 2000);}" \
+const char MY_JSCRIPT_CODE[] PROGMEM = "<script>if("
+    "window.location.href.includes('save') " 
+    "|| window.location.href.includes('saveparam')"
+    "|| window.location.href.includes('exit'))" 
+    "{setTimeout(function(){window.location.href='/';}, 2000);}" 
     "</script>";
 
 // const char PROGRESS_JSCRIPT[] PROGMEM = R"=====(

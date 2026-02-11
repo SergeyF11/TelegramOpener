@@ -152,60 +152,133 @@ namespace BotSettings{
     }
   };
 
-
-  String listDirToString( const String& dirname, bool subDir=false){
-//  D_PRINT("List dir: ", dirname);
-  
-  String out;  
-  if( ! subDir ) {
-    out = String(dirname);
-    out.concat( F("\r\n"));
-  }  
-  Dir root = LittleFS.openDir(dirname);
-  
-  while (root.next()) {
-    File file = root.openFile("r");
-    out.concat(F(" "));  
-    if ( subDir ) out.concat(F(" ")); 
-    if ( file.isDirectory()){
-      out += root.fileName();
-      out.concat( F("/\r\n"));
-      String filePath = dirname;
-      filePath += root.fileName();
-      out += listDirToString( filePath, true);    
-      
-    } else 
-      if (root.isFile()){   
-        out += (root.fileName());
-        out.concat(F(" - "));
-        out += file.size();
-        out.concat(F(" bytes "));
+void listDirTo(String& out, const String& dirname, bool subDir = false, int depth = 0) {
+    static const size_t BUFFER_SIZE = 512;
+    char buffer[BUFFER_SIZE];
+    
+    if (depth == 0) {
+        out.reserve(2048);
+        snprintf(buffer, BUFFER_SIZE, "%s\r\n", dirname.c_str());
+        out += buffer;
     }
     
-    time_t cr = file.getCreationTime();
-    time_t lw = file.getLastWrite();
-    file.close();
-    out.concat(F(" C:")); 
-    out += Time::toStr( cr);
-    out.concat(F(" M:"));
-    out += Time::toStr( lw);
-    out.concat(F("\r\n"));
-    Time::_free_buf();
-  }
-  if ( ! subDir ){
-    out.concat(F("FS uses "));
-    FSInfo info;
-    LittleFS.info(info);
-    out += info.usedBytes;
-    out += F(" bytes of ");
-    out += info.totalBytes;
-    out.concat(F("\r\n"));        
-    //nextLine(out);
-  }    
+    Dir root = LittleFS.openDir(dirname);
+    // if (!root) return;
+    
+    // Формируем отступы в зависимости от глубины
+    char indent[32] = "";
+    for (int i = 0; i <= depth; i++) {
+        strcat(indent, " ");
+    }
+    
+    while (root.next()) {
+        File file = root.openFile("r");
+        if (!file) continue;
+        
+        if (root.isDirectory()) {
+            snprintf(buffer, BUFFER_SIZE, "%s%s/\r\n", indent, root.fileName().c_str());
+            out += buffer;
+            
+            // Рекурсивный вызов
+            String subPath = dirname;
+            if (!dirname.endsWith("/")) subPath += "/";
+            subPath += root.fileName();
+            
+            listDirTo(out, subPath, true, depth + 1);
+            
+        } else if (root.isFile()) {
+            time_t cr = file.getCreationTime();
+            time_t lw = file.getLastWrite();
+            
+            char mtimeBuf[20];
+            const char* ctime = (cr > 0) ? Time::toStr(cr) : "N/A"; // use internal buffer
+            const char* mtime = (lw > 0) ? Time::toStr(lw, mtimeBuf ) : "N/A";
+            
+            snprintf(buffer, BUFFER_SIZE, "%s%s - %ld bytes C:%s M:%s\r\n",
+                    indent, root.fileName().c_str(), file.size(), ctime, mtime);
+            out += buffer;
+            
+            // if (Time::_free_buf) {
+            //     Time::_free_buf();
+            // }
+        }
+        
+        file.close();
+    }
+    
+    if (depth == 0) {
+        FSInfo info;
+        if (LittleFS.info(info)) {
+            snprintf(buffer, BUFFER_SIZE, 
+                    "\r\nTotal: %ld/%ld bytes (%.1f%% used)\r\n",
+                    info.usedBytes, info.totalBytes,
+                    (info.totalBytes > 0) ? (info.usedBytes * 100.0 / info.totalBytes) : 0.0);
+            out += buffer;
+        }
+    }
+}
+
+void listDirTo(fb::Message& msg, const String& dirname, bool subDir = false, int depth = 0) {
+  String list; list.reserve(1024);
+  listDirTo(list, "/", subDir, depth );
+  msg.text += '`';
+  msg.text += list;
+  msg.text += '`';
+}
+
+//   String listDirToString( const String& dirname, bool subDir=false){
+// //  D_PRINT("List dir: ", dirname);
   
-//  D_PRINT("Listdir result: ", out);  
-  return out;
-};
+//   String out;  
+//   if( ! subDir ) {
+//     out = String(dirname);
+//     out.concat( F("\r\n"));
+//   }  
+//   Dir root = LittleFS.openDir(dirname);
+  
+//   while (root.next()) {
+//     File file = root.openFile("r");
+//     out.concat(F(" "));  
+//     if ( subDir ) out.concat(F(" ")); 
+//     if ( file.isDirectory()){
+//       out += root.fileName();
+//       out.concat( F("/\r\n"));
+//       String filePath = dirname;
+//       filePath += root.fileName();
+//       out += listDirToString( filePath, true);    
+      
+//     } else 
+//       if (root.isFile()){   
+//         out += (root.fileName());
+//         out.concat(F(" - "));
+//         out += file.size();
+//         out.concat(F(" bytes "));
+//     }
+    
+//     time_t cr = file.getCreationTime();
+//     time_t lw = file.getLastWrite();
+//     file.close();
+//     out.concat(F(" C:")); 
+//     out += Time::toStr( cr);
+//     out.concat(F(" M:"));
+//     out += Time::toStr( lw);
+//     out.concat(F("\r\n"));
+//     Time::_free_buf();
+//   }
+//   if ( ! subDir ){
+//     out.concat(F("FS uses "));
+//     FSInfo info;
+//     LittleFS.info(info);
+//     out += info.usedBytes;
+//     out += F(" bytes of ");
+//     out += info.totalBytes;
+//     out.concat(F("\r\n"));        
+//     //nextLine(out);
+//   }    
+  
+// //  D_PRINT("Listdir result: ", out);  
+//   return out;
+// };
 
 
   class Settings : public Printable {

@@ -1,18 +1,14 @@
 #define debug_print 1
+
 //#define memory_print
 //#define CHECK_MAXBLOCK_SIZE
-//#define certStoreUpdateTest
+#define CHECK_MEMORY_LEAK
+#include "debug.h"
+
 
 #define VERSION 0,2,1
 
-#ifdef CHECK_MAXBLOCK_SIZE
-  #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
-  if ( __pre_free_block - ESP.getMaxFreeBlockSize() > 1000 ){ \
-  Serial.printf( "%lu in %d of %s: Pre free block size=%lu now %lu\n", millis()/1000, __LINE__, __PRETTY_FUNCTION__, __pre_free_block, ESP.getMaxFreeBlockSize()); } \
-  __pre_free_block=ESP.getMaxFreeBlockSize(); } 
-#else
-  #define maxblock_size_checker
-#endif
+//#define certStoreUpdateTest
  //#define GitHubUpgrade_ANY_TIME
 
 
@@ -77,7 +73,7 @@ static bool isRelayOn(){ return relay.isOpen(); };
 #include "wifiManager.h"
 #include "rssi.h"
 //#include "proxy.h"
-#include <GeoLocation.h>
+//#include <GeoLocation.h>
 
 
 static const char fileName[] PROGMEM = "/bot_opener.json";
@@ -86,9 +82,13 @@ SimpleButton myButton(bot, settings, POLLING_TIME );
 String botName;
 bool mdnsStarted = false;
 
+
+#ifdef debug_print
+static String _sysInfo;
+#endif
+
 /// @brief все настройки скетча
 void setup(){
-
 
   // Update.onProgress([=](size_t percent, size_t total){
   //   //builtInLed.toggle();
@@ -116,6 +116,16 @@ void setup(){
     while ( ! Serial ){
       delay(1);
     }
+
+  // #ifdef debug_print
+  // _sysInfo.reserve(512);
+  // sysinfoTo( _sysInfo);
+  // debugPrintln( _sysInfo );
+ 
+  // #endif
+
+   MEMORY_CHECKER;
+
   menuIds.begin();
   myButton.setExtraTime(6000);
   relay.setOpenPeriod( settings.getRelayPeriod() );
@@ -213,6 +223,12 @@ wm.addParameter(&relay_period);
 #endif
 
   wifiInfo();
+  // #ifdef debug_print
+  // sysinfoTo( _sysInfo);
+  // debugPretty;
+  // debugPrintln( _sysInfo );
+  // #endif
+ MEMORY_CHECKER;
   
   //wm.setDebugOutput(true, WM_DEBUG_DEV);
   
@@ -229,7 +245,12 @@ wm.addParameter(&relay_period);
     //if you get here you have connected to the WiFi
   Serial.println("connected...yeey :)");
   
-
+  // #ifdef debug_print
+  // sysinfoTo( _sysInfo);
+  // debugPretty;
+  // debugPrintln( _sysInfo );
+  // #endif
+MEMORY_CHECKER;
 
   //static esp8266::polledTimeout::periodicMs [](){ };
  // Sync time 
@@ -256,7 +277,12 @@ wm.addParameter(&relay_period);
       debugPrintln(F(" Done" ));
   #endif
 
-
+  // #ifdef debug_print
+  // sysinfoTo( _sysInfo);
+  // debugPretty;
+  // debugPrintln( _sysInfo );
+  // #endif
+MEMORY_CHECKER;
 
   #ifdef USE_CERTSTORE
 
@@ -305,6 +331,12 @@ Serial.println(F("No certificate store loaded!!"));
 #endif
 
 
+  // #ifdef debug_print
+  // sysinfoTo( _sysInfo);
+  // debugPretty;
+  // debugPrintln( _sysInfo );
+  // #endif
+MEMORY_CHECKER;
 
   bot.attachUpdate(updateh);   // подключить обработчик обновлений
   bot.setToken( settings.getToken() );   // установить токен
@@ -374,6 +406,13 @@ Serial.println(F("No certificate store loaded!!"));
   //}
 
   bool goToLoop = false;
+
+  // #ifdef debug_print
+  // sysinfoTo( _sysInfo);
+  // debugPretty;
+  // debugPrintln( _sysInfo );
+  // #endif
+MEMORY_CHECKER;
 
   // если есть админ, поприветствуем его и обновим клавиатуру или создадим новую
   if ( settings.hasAdmin() ){
@@ -495,6 +534,13 @@ if (MDNS.begin( App::name )) {
   mdnsStarted = true;
 }
 
+  // #ifdef debug_print
+  // sysinfoTo( _sysInfo);
+  // debugPretty;
+  // debugPrintln( _sysInfo );
+  // #endif
+MEMORY_CHECKER;
+
 } // end setup()
 
 //volatile time_t loopNow;
@@ -503,13 +549,14 @@ void loop(){
   //loopNow = time(nullptr);
   //time(&loopNow);
 
-#ifdef memory_print
-  if( memory.needPrint() ) { 
-    //memory.printTo(Serial); 
-    Serial.println( memory );
-    //memory.needPrint(false); 
-  }
-#endif
+// #ifdef memory_print
+//   if( memory.needPrint() ) { 
+//     //memory.printTo(Serial); 
+//     Serial.println( memory );
+//     //memory.needPrint(false); 
+//   }
+// #endif
+MEMORY_CHECKER;
   {
     wrongCount.tick();
     relay.tick();
@@ -520,6 +567,7 @@ void loop(){
   }
   
   if ( WiFiPower::wifiPower.isWrited() ){
+    MEMORY_CHECKER;
     fb::Message message;
     //message.text = myChannel;
     message.text = TelegramMD::asBold( wifiPowerWrited, MARKDOWN_TG::escape );  
@@ -530,27 +578,39 @@ void loop(){
   
 
   maxblock_size_checker;
- 
+ MEMORY_CHECKER;
 
   if ( ! bot.isPolling() ) {
+    MEMORY_CHECKER;
   //  myButton.tick();
   //} else {
     GitHubUpgrade::tick();
+    MEMORY_CHECKER;
+    
     myButton.tick();
+    MEMORY_CHECKER;
 
     if( CertStoreFiles::hasNewestCertsStore() ){
+      MEMORY_CHECKER;
       CertStoreFiles::downloadMsg(bot, settings.getAdminId(), true );
-      debugPrintf("Github certStore date is %s\n", Time::toStr( GitHubUpgrade::release._newCertStoreDate ));
+      MEMORY_CHECKER;
+
+      debugPrintf("Github certStore date is %s\n", Time::toStr( GitHubUpgrade::release.getNewCertStoreDate() ));
       debugPrintf("Current certStore date is %s\n", Time::toStr( CertStoreFiles::fileDate(LittleFS ) ));
     
       //bot.tickManual();
       if ( CertificateStore::update( GitHubUpgrade::release ) ){
-        debugPrintf("Certs store update to date %s\n", Time::toStr( GitHubUpgrade::release._newCertStoreDate )); 
+        MEMORY_CHECKER;
+        debugPrintf("Certs store update to date %s\n", Time::toStr( GitHubUpgrade::release.getNewCertStoreDate() )); 
         auto res = CertStoreFiles::updatedMsg(bot, settings.getAdminId(), true );
+       
+        MEMORY_CHECKER;
         //bot.tickManual();
         debugPrintln( res ? F("success") : F(" error send msg"));
 
         if ( CertificateStore::upgrade() ){
+
+          MEMORY_CHECKER;
           //bot.reboot();
           debugPrintln("Reboot...");
           Serial.flush();
@@ -559,6 +619,7 @@ void loop(){
         }
       } 
     }
+    MEMORY_CHECKER;
   }
 
   if ( bot.canReboot() ) {
@@ -572,7 +633,7 @@ void loop(){
     {
     case NeedStartE::Portal:
       if( ! bot.isPolling() ) {
-
+MEMORY_CHECKER;
         if( bot.tickManual() ) debugPrintln(F("Manual update done"));
         else debugPrintln(F("Error manual update"));
         
@@ -602,17 +663,20 @@ void loop(){
       }
       break;
     case NeedStartE::Web:
-
+MEMORY_CHECKER;
       //webPortalMsgId = bot.lastBotMessage();
       wm.startWebPortal();
       needStart = NeedStartE::WebRunning;
     
       break;
     case NeedStartE::WebStop:
+MEMORY_CHECKER;    
       wm.stopWebPortal();
       needStart = NeedStartE::None;
       break;
+
     case NeedStartE::WebRunning:
+MEMORY_CHECKER;
       builtInLed.flash(400, 200);
       wm.process();
       if ( mdnsStarted) MDNS.update();
@@ -632,7 +696,9 @@ void loop(){
         needStart = NeedStartE::None; 
       }  
       break;
+      
     case NeedStartE::Reboot:
+MEMORY_CHECKER;
       if( bot.isPolling() ) {
         bot.skipNextMessage();
         bot.skipUpdates();

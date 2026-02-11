@@ -140,7 +140,7 @@ void handleChatMember(fb::Update& u){
                 if( prevChannelButton != 0 ){
                   fb::Result res;
                   res = bot.deleteMessage( chatId, prevChannelButton );
-                  if ( res.valid() ) {
+                  if ( res.valid() && ! res.isError() ) {
                     debugPrintf("Button msgId=%lu in this channel %lld deleted\n", prevChannelButton, chatId );
                     delay(300);
 

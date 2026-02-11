@@ -88,7 +88,7 @@ void handleStart(fb::Update& u, fb::Message& message) {
       message.text = TelegramMD::asBold( noAdmin, MARKDOWN_TG::escape ); //noAdmin_MD; //F("*У меня пока нет хозяина\\. Хочешь им стать\\?*");
       message.setInlineMenu(menu);
       auto res = bot.sendMessage(message);
-      if ( res.valid() ){
+      if ( res.valid() && ! res.isError() ){
       // и запоминаем id этого сообщения в самом сообщении для последующего удаления
         cmd += bot.lastBotMessage();
         menu = fb::InlineMenu(takeAdminStr, cmd.c_str());

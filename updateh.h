@@ -102,37 +102,71 @@ bool sendHelp( fb::Message& message ){
 
     
     help.chatID = message.chatID;
-    auto res = bot.sendFile( help, true); //false);
+    auto res = bot.sendFile( help, true ); //false);
 
     debugPrint("Resp: "); 
     #ifdef debug_print 
     res.printTo(Serial);
     #endif
 
-    if ( !res.valid() || res.isError()  ){
-      message.text = F("Ошибка получения файла! Поробуйте скачать:");
-      message.text += TelegramMD::asCode( pdfPath );
-      return false;
-    }
-  return true;                
+    if ( res.valid() && !res.isError() ) 
+      return true;
+    
+    // else
+    message.text = F("Ошибка получения файла! Поробуйте скачать:");
+    message.text += TelegramMD::asCode( pdfPath );
+    return false;
+                  
 };
 
+
+// struct SketchMD5 {
+//   char MD5[33] = { 0 };
+//   bool isEmpty(){
+//     return ( *(uint32_t *)&MD5 == 0 );
+//   };
+//   char * get(){
+//     if ( isEmpty() ){
+//       auto md5Str = ESP.getSketchMD5();
+//       strncpy(md5, md5Str.c_str(), sizeof(md5) - 1);
+//       md5[sizeof(md5) - 1] = '\0';
+//     }
+//   return MD5;
+//   }
+// }
+
+#include <umm_malloc/umm_malloc.h>  // для ESP8266
 void sysinfoTo(fb::Message& message)
 {
-    static const String sketchMD5( ESP.getSketchMD5() );
-    yield();
-    static const auto realSize = ESP.getFlashChipRealSize();
+    static char sketchMD5[33] = { 0 };
+    if ( sketchMD5[0] == 0  ) {
+      auto md5Str = ESP.getSketchMD5();
+      yield();
+      strncpy(sketchMD5, md5Str.c_str(), sizeof(sketchMD5) - 1);
+      sketchMD5[sizeof(sketchMD5) - 1] = '\0';
+    }
+    //static const String sketchMD5( ESP.getSketchMD5() );
+    
+    static uint32_t realSize = 0;
+    if ( ! realSize ) realSize = ESP.getFlashChipRealSize();
     
     message.mode = fb::Message::Mode::Text;
     
     char buffer[512];
     int offset = 0;
     
-    const auto freeHeap = ESP.getFreeHeap();
-    const auto maxFree  = ESP.getMaxFreeBlockSize();
+    const uint32_t freeHeap = ESP.getFreeHeap();
+    const uint32_t maxFree  = ESP.getMaxFreeBlockSize();
+  
+
+    uint32_t realMaxFree = umm_max_block_size();
+    Serial.printf("umm_max_block_size = %u\n", realMaxFree);
+
+    debugPrintln( freeHeap );
+    debugPrintln( maxFree );
 
     offset += snprintf(buffer + offset, sizeof(buffer) - offset,
-        "CPU freq %uMHz\nFree heap=%lu\nMax free block=%lu\n",
+        "CPU freq %uMHz\nFree heap=%u\nMax free block=%u\n",
         ESP.getCpuFreqMHz(), freeHeap, maxFree );
     
     yield();
@@ -142,15 +176,16 @@ void sysinfoTo(fb::Message& message)
         "Chip Id: 0x%08X\nFlash Id: 0x%08X\n",
         ESP.getChipId(), ESP.getFlashChipId());
     
-    const char* flashMode = "UNKNOWN";
-    switch(ESP.getFlashChipMode()) {
-        case FM_QIO:  flashMode = "QIO";  break;
-        case FM_QOUT: flashMode = "QOUT"; break;
-        case FM_DIO:  flashMode = "DIO";  break;
-        case FM_DOUT: flashMode = "DOUT"; break;
-    }
-    
-    yield();
+    const char* flashMode = [](){
+        switch(ESP.getFlashChipMode()) {
+            case FM_QIO:  return PSTR("QIO");
+            case FM_QOUT: return PSTR("QOUT");
+            case FM_DIO:  return PSTR("DIO");
+            case FM_DOUT: return PSTR("DOUT");
+            default:      return PSTR("UNKNOWN");
+        }
+    }();
+      
     debugPrintln( buffer );
     
     offset += snprintf(buffer + offset, sizeof(buffer) - offset,
@@ -174,7 +209,7 @@ void sysinfoTo(fb::Message& message)
     // MD5 вычисление - может быть долгим
     offset += snprintf(buffer + offset, sizeof(buffer) - offset,
         "  MD5=%s\n%s\n",
-        sketchMD5.c_str(),
+        sketchMD5,
         Time::uptime().c_str());
     
     yield();
@@ -186,125 +221,307 @@ void sysinfoTo(fb::Message& message)
     memory.needPrint(true);
     #endif
 }
-
-
-/*
-void getNameFromMessage(String& txt, fb::Update& u, const char* prefix=((char *) 0), const char* postfix=((char *)0) ){
-  txt += prefix; //F("Поздравляю! "); 
+void sysinfoTo(String& out)
+{
+    static char sketchMD5[33] = { 0 };
+    if ( sketchMD5[0] == 0  ) {
+      auto md5Str = ESP.getSketchMD5();
+      yield();
+      strncpy(sketchMD5, md5Str.c_str(), sizeof(sketchMD5) - 1);
+      sketchMD5[sizeof(sketchMD5) - 1] = '\0';
+    }
+    //static const String sketchMD5( ESP.getSketchMD5() );
+    
+    static uint32_t realSize = 0;
+    if ( ! realSize ) realSize = ESP.getFlashChipRealSize();
+    
+    
+    char buffer[512];
+    int offset = 0;
+    
+    const uint32_t freeHeap = ESP.getFreeHeap();
+    const uint32_t maxFree  = ESP.getMaxFreeBlockSize();
   
-  if ( u.message().from().firstName().length() != 0 ) txt += u.message().from().firstName().decodeUnicode();
-  else if ( u.message().from().username().length() != 0 ) txt += u.message().from().username().toString() ;
-  else { 
-    txt += F("Незнакомец с id#");
-    txt += u.message().from().id().toString();
-  }
-  txt += postfix; //F(", теперь я твой раб.");
-};
-void getNameFromMessage(String& txt, const fb::Update& u, const String& prefix, const String& postfix ){
-  getNameFromMessage(txt, u, prefix.c_str(), postfix.c_str());
-};
-/**/
+
+    uint32_t realMaxFree = umm_max_block_size();
+    Serial.printf("umm_max_block_size = %u\n", realMaxFree);
+
+    debugPrintln( freeHeap );
+    debugPrintln( maxFree );
+
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "CPU freq %uMHz\nFree heap=%u\nMax free block=%u\n",
+        ESP.getCpuFreqMHz(), freeHeap, maxFree );
+    
+    yield();
+    debugPrintln( buffer );
+
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "Chip Id: 0x%08X\nFlash Id: 0x%08X\n",
+        ESP.getChipId(), ESP.getFlashChipId());
+    
+    const char* flashMode = [](){
+        switch(ESP.getFlashChipMode()) {
+            case FM_QIO:  return PSTR("QIO");
+            case FM_QOUT: return PSTR("QOUT");
+            case FM_DIO:  return PSTR("DIO");
+            case FM_DOUT: return PSTR("DOUT");
+            default:      return PSTR("UNKNOWN");
+        }
+    }();
+      
+    debugPrintln( buffer );
+    
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "  mode: %s\n  size=%s\n",
+        flashMode, ValueSize::inKb(realSize, 1).c_str());
+    
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "Reset Reason: %s\nCore version: %s\nSDK version: %s\n",
+        ESP.getResetReason().c_str(),
+        ESP.getCoreVersion().c_str(),
+        ESP.getSdkVersion());
+    
+    yield();
+    debugPrintln( buffer );
+    
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "Sketch version: %s\n  size=%s\n",
+        App::appVersion(version, __DATE__, __TIME__).c_str(),
+        ValueSize::inKb(ESP.getSketchSize(), 1).c_str());
+    
+    // MD5 вычисление - может быть долгим
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "  MD5=%s\n%s\n",
+        sketchMD5,
+        Time::uptime().c_str());
+    
+    yield();
+    debugPrintln( buffer );
+    
+    out = buffer;
+    
+}
+
 void handleDocument(fb::Update& u) {
     if ( u.message().from().id() == settings.getAdminId() ){ //settings.admin ){
-      if (u.message().document().name().endsWith(".bin")) {  // .bin - значит это ОТА
-          fb::Message msg(START_UPGRADE, u.message().chat().id());
+
+      auto docId = u.message().document().id();
+      auto docName = u.message().document().name();
+      int32_t fromId = u.message().from().id().toInt32();
+      //int64_t _chatId = u.message().chat().id().toInt64();
+      
+      if ( docName.endsWith(".bin")) {  // .bin - значит это ОТА    
+          fb::Message msg(START_UPGRADE, fromId );
           msg.mode = fb::Message::Mode::MarkdownV2;
           auto res = bot.sendMessage( msg, true);
           uint32_t otaMsg = 0; 
-          if ( res.valid() ) otaMsg = bot.lastBotMessage();
-          // не нужно для simpleButton
-          //myButton.stopUpdate();
-          
-          // между downloadFile и updateFlash/updateFS/writeTo не должно быть отправки сообщений!
-          // OTA обновление тип 1
-          //bot.updateFlash(u.message().document(), u.message().chat().id());
-          
+          if ( res.valid() && !res.isError() ) 
+              otaMsg = bot.lastBotMessage();
+
+          debugPrintln(START_UPGRADE);
           //OTA обновление тип 2
-          fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
-          // auto progress =[](){ 
-          //   static uint8_t state=0;
-          //   digitalWrite(LED_BUILTIN, state);
-          //   state =!state;
-          // };
+          fb::Fetcher fetch = bot.downloadFile( docId );
           
-          // fetch.setProgressFn( [](){ builtInLed.toggle();} );
-           if (fetch) {
+          if (fetch) {
                 if (fetch.updateFlash()) {
-                  debugPrintln(START_UPGRADE);
-                  //bot.reboot();          
-                  //bot.skipUpdates(100);
-                  // if ( otaMsg != 0 ){
-                  //   bot.editText(fb::TextEdit(DONE_UPGRADE, otaMsg, u.message().chat().id()), true);
-                  // } else {
-                  //   bot.sendMessage(fb::Message(DONE_UPGRADE, u.message().chat().id()), true);
-                  // }
+
+                  debugPrintln(DONE_UPGRADE);
+
+                  msg.text = DONE_UPGRADE;
+                  msg.text += REBOOT;
+                  
                   if ( otaMsg != 0 ){
-                    fb::TextEdit done(DONE_UPGRADE, otaMsg, u.message().chat().id());
-                    done.text += REBOOT;
+                    fb::TextEdit done(msg.text, otaMsg, fromId );
+                    //done.text += REBOOT;
                     done.mode = fb::Message::Mode::MarkdownV2;
                     bot.editText(done, true);
                   } else {
-                    fb::Message done(DONE_UPGRADE, u.message().chat().id());
-                    done.text += REBOOT;
-                    done.mode = fb::Message::Mode::MarkdownV2;
-                    bot.sendMessage(done, true);
+                    // fb::Message done(DONE_UPGRADE, u.message().chat().id());
+                    // done.text += REBOOT;
+                    // done.mode = fb::Message::Mode::MarkdownV2;
+                    bot.sendMessage(msg, true);
                   }
 
                   bot.reboot();
-                  //bot.skipNextMessage();
-                  //bot.sendMessage(fb::Message(REBOOT, u.message().chat().id()), false);
-                  //bot.tickManual();
-
                   needStart = NeedStartE::Reboot;
-               } else {
+
+                } else {
                   debugPrintln(ERROR_UPGRADE);
+
+                  msg.text = ERROR_UPGRADE;
+
                   if ( otaMsg ){
-                    fb::TextEdit msg(ERROR_UPGRADE, otaMsg, u.message().chat().id());
+                    fb::TextEdit msg(ERROR_UPGRADE, otaMsg, fromId );
                     msg.mode = fb::Message::Mode::MarkdownV2;
                     bot.editText( msg, false);
                   } else {
-                    fb::Message msg(ERROR_UPGRADE, u.message().chat().id());
-                    msg.mode = fb::Message::Mode::MarkdownV2;
+                    // fb::Message msg(ERROR_UPGRADE, u.message().chat().id());
+                    // msg.mode = fb::Message::Mode::MarkdownV2;
                     bot.sendMessage( msg, false);
                   }
                }
            }
 
-      } else if (u.message().document().name() == CertStoreFiles::fileData+1 ) {
-          fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
+      } else if (docName == CertStoreFiles::fileData+1 ) {
+          fb::Message msg(F("_Загружаем сертификаты_"), fromId );
+          msg.mode = fb::Message::Mode::MarkdownV2;
+          auto res = bot.sendMessage( msg, true);
+          uint32_t msgId = 0;
+          if ( res.valid() && !res.isError() )
+            msgId = bot.lastBotMessage();
+
+
+          fb::Fetcher fetch = bot.downloadFile( docId );
           if (fetch) {
-             File file = LittleFS.open(CertStoreFiles::fileData, "w");
-             fetch.writeTo(file);
-             file.close();
+            File file = LittleFS.open(CertStoreFiles::fileData, "w");
+            fetch.writeTo(file);
+            file.close();
+            msg.text = F("_Новые сертификаты загружены_ ");
+            msg.text += REBOOT;
+
+            debugPrintln( msg.text );
+
+            if ( msgId != 0){
+              fb::TextEdit _msg( msg.text, msgId, fromId );
+              _msg.mode = fb::Message::Mode::MarkdownV2;              
+              auto res = bot.editText( _msg, true );
+              // delay(200);
+              debugPrintf( "Edit msg[%u] res=", msgId );
+              res.printTo(Serial);
+
+            } else {
+              auto res = bot.sendMessage(msg, true );
+              debugPrint( "Send msg res=" );
+              res.printTo(Serial);
+            }
+            bot.reboot();
+            needStart = NeedStartE::Reboot;
+
+          } else {
+            msg.text = F("_Ошибка загрузки_");
+            if ( msgId != 0){
+              fb::TextEdit msg( msg.text, msgId, fromId );
+              msg.mode = fb::Message::Mode::MarkdownV2;              
+              bot.editText( msg, true );
+              // delay(200);
+            }
           }
-      } else if ( (u.message().document().name().endsWith(".ar")) ) {
+      } else if ( docName.endsWith(".ar")) {
           if ( ! Backup::restore() ){
-            fb::Message msg("TODO: release backup function", u.message().from().id() );
+            fb::Message msg("TODO: release backup function", fromId );
             bot.sendMessage(msg );
           }
       
       } else {
         String unknownFile = F("Unknown file: ");
-        unknownFile += u.message().document().name().toString();
+        unknownFile += docName.toString();
         //bot.answerCallbackQuery(u.query().id(), unknownFile.c_str());
         debugPrintln(unknownFile);
       }
     }
 };
+// void handleDocument(fb::Update& u) {
+//     if ( u.message().from().id() == settings.getAdminId() ){ //settings.admin ){
+//       if (u.message().document().name().endsWith(".bin")) {  // .bin - значит это ОТА
+//           fb::Message msg(START_UPGRADE, u.message().chat().id());
+//           msg.mode = fb::Message::Mode::MarkdownV2;
+//           auto res = bot.sendMessage( msg, true);
+//           uint32_t otaMsg = 0; 
+//           if ( res.valid() ) otaMsg = bot.lastBotMessage();
+//           // не нужно для simpleButton
+//           //myButton.stopUpdate();
+          
+//           // между downloadFile и updateFlash/updateFS/writeTo не должно быть отправки сообщений!
+//           // OTA обновление тип 1
+//           //bot.updateFlash(u.message().document(), u.message().chat().id());
+          
+//           //OTA обновление тип 2
+//           fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
+//           // auto progress =[](){ 
+//           //   static uint8_t state=0;
+//           //   digitalWrite(LED_BUILTIN, state);
+//           //   state =!state;
+//           // };
+          
+//           // fetch.setProgressFn( [](){ builtInLed.toggle();} );
+//            if (fetch) {
+//                 if (fetch.updateFlash()) {
+//                   debugPrintln(START_UPGRADE);
+//                   //bot.reboot();          
+//                   //bot.skipUpdates(100);
+//                   // if ( otaMsg != 0 ){
+//                   //   bot.editText(fb::TextEdit(DONE_UPGRADE, otaMsg, u.message().chat().id()), true);
+//                   // } else {
+//                   //   bot.sendMessage(fb::Message(DONE_UPGRADE, u.message().chat().id()), true);
+//                   // }
+//                   if ( otaMsg != 0 ){
+//                     fb::TextEdit done(DONE_UPGRADE, otaMsg, u.message().chat().id());
+//                     done.text += REBOOT;
+//                     done.mode = fb::Message::Mode::MarkdownV2;
+//                     bot.editText(done, true);
+//                   } else {
+//                     fb::Message done(DONE_UPGRADE, u.message().chat().id());
+//                     done.text += REBOOT;
+//                     done.mode = fb::Message::Mode::MarkdownV2;
+//                     bot.sendMessage(done, true);
+//                   }
+
+//                   bot.reboot();
+//                   //bot.skipNextMessage();
+//                   //bot.sendMessage(fb::Message(REBOOT, u.message().chat().id()), false);
+//                   //bot.tickManual();
+
+//                   needStart = NeedStartE::Reboot;
+//                } else {
+//                   debugPrintln(ERROR_UPGRADE);
+//                   if ( otaMsg ){
+//                     fb::TextEdit msg(ERROR_UPGRADE, otaMsg, u.message().chat().id());
+//                     msg.mode = fb::Message::Mode::MarkdownV2;
+//                     bot.editText( msg, false);
+//                   } else {
+//                     fb::Message msg(ERROR_UPGRADE, u.message().chat().id());
+//                     msg.mode = fb::Message::Mode::MarkdownV2;
+//                     bot.sendMessage( msg, false);
+//                   }
+//                }
+//            }
+
+//       } else if (u.message().document().name() == CertStoreFiles::fileData+1 ) {
+//           fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
+//           if (fetch) {
+//              File file = LittleFS.open(CertStoreFiles::fileData, "w");
+//              fetch.writeTo(file);
+//              file.close();
+//           }
+//       } else if ( (u.message().document().name().endsWith(".ar")) ) {
+//           if ( ! Backup::restore() ){
+//             fb::Message msg("TODO: release backup function", u.message().from().id() );
+//             bot.sendMessage(msg );
+//           }
+      
+//       } else {
+//         String unknownFile = F("Unknown file: ");
+//         unknownFile += u.message().document().name().toString();
+//         //bot.answerCallbackQuery(u.query().id(), unknownFile.c_str());
+//         debugPrintln(unknownFile);
+//       }
+//     }
+// };
 
 
 
 
 void setReaction(const int64_t chatId, const int32_t msgId, const char * emoji, bool wait = true) {
   // Формируем JSON вручную для передачи массива реакций
-  static constexpr const char tmpl[] PROGMEM = 
+  static constexpr const char TMPL_REACTION[] PROGMEM = 
     "{\"chat_id\":\"%lld\","
     "\"message_id\":%ld,"
     "\"reaction\":["
       "{\"type\":\"emoji\",\"emoji\":\"%s\"}"
     "]}";
   char payload[128];
-  auto len = snprintf( payload, sizeof(payload), tmpl,
+  auto len = snprintf( payload, sizeof(payload), TMPL_REACTION,
     chatId, msgId, emoji );
 
   if( len > 0) {
@@ -314,7 +531,7 @@ void setReaction(const int64_t chatId, const int32_t msgId, const char * emoji, 
     // Отправляем через встроенный метод sendCommand
     auto res = bot.sendCommand( tg_cmd::setMessageReaction, payload, wait);
     if ( wait ) {
-          if( res.valid() ){
+          if( res.valid() && !res.isError() ){
             debugPrintln( "ok:" );
             debugPrintln( res.toString() );
           } else {
@@ -491,6 +708,7 @@ void handleCommand(fb::Update& u){
                 break;
 
               case "/sysinfo"_h:
+                bot.setTyping(settings.getAdminId(), false);
                 sysinfoTo( message ) ;
                 break;
 
@@ -498,7 +716,8 @@ void handleCommand(fb::Update& u){
                 {
                   runStart;
                   bot.setTyping(settings.getAdminId(), false);
-                  message.text += TelegramMD::asCode( BotSettings::listDirToString("/"));
+                  BotSettings::listDirTo( message, "/" );
+                  //message.text += TelegramMD::asCode( BotSettings::listDirToString("/"));
                   // message.chatID = msg.from().id();
                   printRunTime;
                 }

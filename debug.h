@@ -124,3 +124,55 @@ class RunTimeMs : public Printable {
   private:
   unsigned long start;
 };
+
+
+
+#ifdef CHECK_MEMORY_LEAK
+  #define MEMORY_CHECKER \
+    do { \
+      static uint32_t prev_free = 0; \
+      static uint32_t prev_max = 0; \
+      uint32_t curr_free = ESP.getFreeHeap(); \
+      uint32_t curr_max = ESP.getMaxFreeBlockSize(); \
+      uint32_t now = millis() / 1000; \
+      \
+      /* Проверка на явное повреждение кучи */ \
+      if (curr_max > curr_free || curr_free > 50000) { \
+        Serial.printf("[%lu] CRITICAL: Heap corrupted! free=%lu max=%lu at %s:%d\n", \
+                      now, curr_free, curr_max, __FILE__, __LINE__); \
+      } \
+      \
+      /* Утечка: свободная память уменьшилась более чем на 2 КБ */ \
+      if (prev_free != 0 && prev_free - curr_free > 2048) { \
+        Serial.printf("[%lu] LEAK: Free heap dropped by %ld bytes (was %lu, now %lu) at %s:%d\n", \
+                      now, prev_free - curr_free, prev_free, curr_free, __FILE__, __LINE__); \
+      } \
+      \
+      /* Фрагментация: максимальный блок уменьшился более чем на 1 КБ */ \
+      if (prev_max != 0 && prev_max - curr_max > 1024) { \
+        Serial.printf("[%lu] FRAG: Max block dropped by %ld bytes (was %lu, now %lu) at %s:%d\n", \
+                      now, prev_max - curr_max, prev_max, curr_max, __FILE__, __LINE__); \
+      } \
+      \
+      /* Освобождение: память увеличилась более чем на 2 КБ */ \
+      if (prev_free != 0 && curr_free - prev_free > 2048) { \
+        Serial.printf("[%lu] FREE: Heap increased by %ld bytes (was %lu, now %lu) at %s:%d\n", \
+                      now, curr_free - prev_free, prev_free, curr_free, __FILE__, __LINE__); \
+      } \
+      \
+      prev_free = curr_free; \
+      prev_max = curr_max; \
+    } while(0)
+#else
+  #define MEMORY_CHECKER
+#endif
+
+
+#ifdef CHECK_MAXBLOCK_SIZE
+  #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
+  if ( __pre_free_block - ESP.getMaxFreeBlockSize() > 1000 ){ \
+  Serial.printf( "%lu in %d of %s: Pre free block size=%lu now %lu\n", millis()/1000, __LINE__, __PRETTY_FUNCTION__, __pre_free_block, ESP.getMaxFreeBlockSize()); } \
+  __pre_free_block=ESP.getMaxFreeBlockSize(); } 
+#else
+  #define maxblock_size_checker
+#endif

@@ -309,7 +309,8 @@ namespace TmpFile {
             bool result = false;
             // switch( status){
             //     case Status::None:
-                    if (! release.constructed[GitHubUpgrade::Release::Url::CertStore] ) return result;
+                    //if (! release.constructed[GitHubUpgrade::Release::Url::CertStore] ) return result;
+                    //if (! release.canConstruct[GitHubUpgrade::Release::Url::CertStore] ) return result;
                     //if ( ! fs ) fs.begin();
                     if ( fs.exists( TmpFile::fileName ) ) fs.remove( TmpFile::fileName );
 
@@ -319,8 +320,9 @@ namespace TmpFile {
                         //FileTime::setTimeCallback(fs, release._newCertStoreDate ); //release.getNewCertStoreDate());
                         HTTPClient http;
                         if ( http.begin( 
-                            client,                
-                            release.constructUrl(GitHubUpgrade::Release::Url::CertStore) ) )
+                            client,    
+                            release.getUrl(GitHubUpgrade::Release::Url::CertStore )  ))          
+                            //release.constructUrl(GitHubUpgrade::Release::Url::CertStore) ) )
                         {
                             //http.setRedirectLimit(1);
                             http.setFollowRedirects( HTTPC_FORCE_FOLLOW_REDIRECTS );
@@ -366,7 +368,7 @@ namespace TmpFile {
         // WiFiClientSecure client;
         // client.setInsecure();
 
-        GitHubUpgrade::check(true); // ) return Errors::noContent;
+        GitHubUpgrade::check( false ); // true); // ) return Errors::noContent;
         if ( GitHubUpgrade::release.getNewCertStoreDate() == 0 ) return Errors::noContent;
         debugPrintf("Check Github Ok\n");
         if ( ! update(GitHubUpgrade::release )) return Errors::noContent;
