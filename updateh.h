@@ -117,57 +117,136 @@ bool sendHelp( fb::Message& message ){
   return true;                
 };
 
-void sysinfoTo( fb::Message& message )                
-{ 
-    // AddedString text(message.text);
-    // text.setDelimeter('/');
-    // text << F("CPU freq ") << ESP.getCpuFreqMHz() << 
-    //         F("MHz\nFree heap=") << ESP.getFreeHeap();
-    // debugPrintf("AddedString result: \'%s\'\n", message.text.c_str());
+void sysinfoTo(String& out)
+{
+    static char sketchMD5[33] = { 0 };
+    if ( sketchMD5[0] == 0  ) {
+      auto md5Str = ESP.getSketchMD5();
+      yield();
+      strncpy(sketchMD5, md5Str.c_str(), sizeof(sketchMD5) - 1);
+      sketchMD5[sizeof(sketchMD5) - 1] = '\0';
+    }
+    //static const String sketchMD5( ESP.getSketchMD5() );
+    
+    static uint32_t realSize = 0;
+    if ( ! realSize ) realSize = ESP.getFlashChipRealSize();
+    
+    
+    char buffer[512];
+    int offset = 0;
+    
+    const uint32_t freeHeap = ESP.getFreeHeap();
+    const uint32_t maxFree  = ESP.getMaxFreeBlockSize();
+  
 
-    message.mode = fb::Message::Mode::Text;
-    const char * flashMode = PSTR("UNKNOWN"); 
-    //auto _mode = [](const int m){
-    const int m = ESP.getFlashChipMode(); 
-      switch( m ){
-        case FM_QIO:
-          flashMode = PSTR("QIO");
-          break;
-        case FM_QOUT:
-          flashMode = PSTR("QOUT");
-          break;
-        case FM_DIO:
-          flashMode = PSTR("DIO");
-          break;
-        case FM_DOUT:
-          flashMode = PSTR("DOUT");
-          break;
-      }
-    //  return PSTR("UNKNOWN");
-    //};            
+    debugPrintln( freeHeap );
+    debugPrintln( maxFree );
 
-    #define MT(x,y)  { message.text += F(x); message.text += (y); }
-      MT("CPU freq ", ESP.getCpuFreqMHz());
-      MT("MHz\nFree heap=", ESP.getFreeHeap());
-      MT("\nMax free block=", ESP.getMaxFreeBlockSize());
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "CPU freq %uMHz\nFree heap=%u\nMax free block=%u\n",
+        ESP.getCpuFreqMHz(), freeHeap, maxFree );
+    
+    yield();
+    debugPrintln( buffer );
 
-      MT("\nChip Id: 0x", String(ESP.getChipId(), HEX) );
-      MT("\nFlash Id: 0x",  String(ESP.getFlashChipId(),HEX) );
-      MT("\n  mode: ", flashMode ); //_mode(ESP.getFlashChipMode()) );
-      MT("\n  size=", ValueSize::inKb(ESP.getFlashChipRealSize(), 1) );
-      MT("\nReset Reason: ",ESP.getResetReason());
-      MT("\nCore version: ", ESP.getCoreVersion());
-      MT("\nSDK version: ",ESP.getSdkVersion ());
-      MT("\nSketch version: ", App::appVersion(version, __DATE__,__TIME__));
-      MT("\n  size=", ValueSize::inKb(ESP.getSketchSize(), 1) );
-      MT("\n  MD5=",ESP.getSketchMD5());
-      MT("\n", Time::uptime());
-    //MT("\nFull version ",ESP.getFullVersion());
-    #undef MT //(x,y) 
-  #ifdef memory_print 
-    memory.needPrint(true);
-  #endif
-  }
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "Chip Id: 0x%08X\nFlash Id: 0x%08X\n",
+        ESP.getChipId(), ESP.getFlashChipId());
+    
+    const char* flashMode = [](){
+        switch(ESP.getFlashChipMode()) {
+            case FM_QIO:  return PSTR("QIO");
+            case FM_QOUT: return PSTR("QOUT");
+            case FM_DIO:  return PSTR("DIO");
+            case FM_DOUT: return PSTR("DOUT");
+            default:      return PSTR("UNKNOWN");
+        }
+    }();
+      
+    debugPrintln( buffer );
+    
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "  mode: %s\n  size=%s\n",
+        flashMode, ValueSize::inKb(realSize, 1).c_str());
+    
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "Reset Reason: %s\nCore version: %s\nSDK version: %s\n",
+        ESP.getResetReason().c_str(),
+        ESP.getCoreVersion().c_str(),
+        ESP.getSdkVersion());
+    
+    yield();
+    debugPrintln( buffer );
+    
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "Sketch version: %s\n  size=%s\n",
+        App::appVersion(version, __DATE__, __TIME__).c_str(),
+        ValueSize::inKb(ESP.getSketchSize(), 1).c_str());
+    
+    // MD5 вычисление - может быть долгим
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "  MD5=%s\n%s\n",
+        sketchMD5,
+        Time::uptime().c_str());
+    
+    yield();
+    debugPrintln( buffer );
+    
+    out = buffer;
+    
+}
+
+// void sysinfoTo( fb::Message& message )                
+// { 
+//     // AddedString text(message.text);
+//     // text.setDelimeter('/');
+//     // text << F("CPU freq ") << ESP.getCpuFreqMHz() << 
+//     //         F("MHz\nFree heap=") << ESP.getFreeHeap();
+//     // debugPrintf("AddedString result: \'%s\'\n", message.text.c_str());
+
+//     message.mode = fb::Message::Mode::Text;
+//     const char * flashMode = PSTR("UNKNOWN"); 
+//     //auto _mode = [](const int m){
+//     const int m = ESP.getFlashChipMode(); 
+//       switch( m ){
+//         case FM_QIO:
+//           flashMode = PSTR("QIO");
+//           break;
+//         case FM_QOUT:
+//           flashMode = PSTR("QOUT");
+//           break;
+//         case FM_DIO:
+//           flashMode = PSTR("DIO");
+//           break;
+//         case FM_DOUT:
+//           flashMode = PSTR("DOUT");
+//           break;
+//       }
+//     //  return PSTR("UNKNOWN");
+//     //};            
+
+//     #define MT(x,y)  { message.text += F(x); message.text += (y); }
+//       MT("CPU freq ", ESP.getCpuFreqMHz());
+//       MT("MHz\nFree heap=", ESP.getFreeHeap());
+//       MT("\nMax free block=", ESP.getMaxFreeBlockSize());
+
+//       MT("\nChip Id: 0x", String(ESP.getChipId(), HEX) );
+//       MT("\nFlash Id: 0x",  String(ESP.getFlashChipId(),HEX) );
+//       MT("\n  mode: ", flashMode ); //_mode(ESP.getFlashChipMode()) );
+//       MT("\n  size=", ValueSize::inKb(ESP.getFlashChipRealSize(), 1) );
+//       MT("\nReset Reason: ",ESP.getResetReason());
+//       MT("\nCore version: ", ESP.getCoreVersion());
+//       MT("\nSDK version: ",ESP.getSdkVersion ());
+//       MT("\nSketch version: ", App::appVersion(version, __DATE__,__TIME__));
+//       MT("\n  size=", ValueSize::inKb(ESP.getSketchSize(), 1) );
+//       MT("\n  MD5=",ESP.getSketchMD5());
+//       MT("\n", Time::uptime());
+//     //MT("\nFull version ",ESP.getFullVersion());
+//     #undef MT //(x,y) 
+//   #ifdef memory_print 
+//     memory.needPrint(true);
+//   #endif
+//   }
 
 
 /*
@@ -467,13 +546,29 @@ void handleCommand(fb::Update& u){
                 break;
 
               case "/sysinfo"_h:
-                sysinfoTo(message);
+              {
+                String sysinfo; sysinfo.reserve(512);
+                sysinfoTo(sysinfo);
+                message.text = sysinfo;
+                message.mode = fb::Message::Mode::Text;
+              }
                 break;
 
               case "/ls"_h:
                 {
                   runStart;
                   bot.setTyping(settings.getAdminId(), false);
+                  String list; list.reserve(1024);
+                  BotSettings::listDirTo(list, "/");
+                  int startPtr = 0;
+                  
+                  while ( list.length() > 512 ){
+                    int endPtr = startPtr + 512;  
+                    message.text = TelegramMD::asCode( list.substring(startPtr, endPtr ));
+                    bot.sendMessage( message, false );
+                    startPtr = endPtr;
+                    list = list.substring(endPtr );
+                  }
                   message.text += TelegramMD::asCode( BotSettings::listDirToString("/"));
                   // message.chatID = msg.from().id();
                   printRunTime;

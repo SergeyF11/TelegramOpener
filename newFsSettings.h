@@ -152,6 +152,71 @@ namespace BotSettings{
     }
   };
 
+void listDirTo(String& out, const String& dirname, bool subDir = false, int depth = 0) {
+    static const size_t BUFFER_SIZE = 1024;
+    char buffer[BUFFER_SIZE];
+    
+    if (depth == 0) {
+        out.reserve(2048);
+        snprintf(buffer, BUFFER_SIZE, "%s\r\n", dirname.c_str());
+        out += buffer;
+    }
+    
+    Dir root = LittleFS.openDir(dirname);
+    // if (!root) return;
+    
+    // Формируем отступы в зависимости от глубины
+    char indent[32] = "";
+    for (int i = 0; i <= depth; i++) {
+        strcat(indent, " ");
+    }
+    
+    while (root.next()) {
+        File file = root.openFile("r");
+        if (!file) continue;
+        
+        if (root.isDirectory()) {
+            snprintf(buffer, BUFFER_SIZE, "%s%s/\r\n", indent, root.fileName().c_str());
+            out += buffer;
+            
+            // Рекурсивный вызов
+            String subPath = dirname;
+            if (!dirname.endsWith("/")) subPath += "/";
+            subPath += root.fileName();
+            
+            listDirTo(out, subPath, true, depth + 1);
+            
+        } else if (root.isFile()) {
+            time_t cr = file.getCreationTime();
+            time_t lw = file.getLastWrite();
+            
+            char mtimeBuf[20];
+            const char* ctime = (cr > 0) ? Time::toStr(cr) : "N/A"; // use internal buffer
+            const char* mtime = (lw > 0) ? Time::toStr(lw, mtimeBuf ) : "N/A";
+            
+            snprintf(buffer, BUFFER_SIZE, "%s%s - %ld bytes C:%s M:%s\r\n",
+                    indent, root.fileName().c_str(), file.size(), ctime, mtime);
+            out += buffer;
+            
+            // if (Time::_free_buf) {
+            //     Time::_free_buf();
+            // }
+        }
+        
+        file.close();
+    }
+    
+    if (depth == 0) {
+        FSInfo info;
+        if (LittleFS.info(info)) {
+            snprintf(buffer, BUFFER_SIZE, 
+                    "\r\nTotal: %ld/%ld bytes (%.1f%% used)\r\n",
+                    info.usedBytes, info.totalBytes,
+                    (info.totalBytes > 0) ? (info.usedBytes * 100.0 / info.totalBytes) : 0.0);
+            out += buffer;
+        }
+    }
+}
 
   String listDirToString( const String& dirname, bool subDir=false){
 //  D_PRINT("List dir: ", dirname);
