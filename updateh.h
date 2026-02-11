@@ -290,7 +290,7 @@ void handleDocument(fb::Update& u) {
                   debugPrintln(DONE_UPGRADE);
  
                   msg.text = DONE_UPGRADE;
-                  msg.text += REBOOT;
+                  msg.text += REBOOT_MD;
 
                   if ( otaMsg != 0 ){
                     fb::TextEdit done(msg.text, otaMsg, fromId );
@@ -326,7 +326,7 @@ void handleDocument(fb::Update& u) {
            }
 
       } else if (docName == CertStoreFiles::fileData+1 ) {
-          fb::Message msg(F("_Загружаем сертификаты_"), fromId );
+          fb::Message msg(RENEW_CERTSSTORE_MD, fromId );
           msg.mode = fb::Message::Mode::MarkdownV2;
           auto res = bot.sendMessage( msg, true);
           uint32_t msgId = 0;
@@ -339,8 +339,9 @@ void handleDocument(fb::Update& u) {
             File file = LittleFS.open(CertStoreFiles::fileData, "w");
             fetch.writeTo(file);
             file.close();
-            msg.text = F("_Новые сертификаты загружены_ ");
-            msg.text += REBOOT;
+            msg.text = CERTSSTORE_LOADED_MD;//F("_Новый пакет сертификатов загружен_ ");
+            msg.text += NEED_REBOOT_MD;
+            msg.text += REBOOT_MD;
 
             debugPrintln( msg.text );
 
@@ -713,7 +714,7 @@ void handleCommand(fb::Update& u){
                       if ( settings.remove() ){
                         debugPrintln(F("Settings file deleted."));
                         settings.load();
-                        respond.text += REBOOT; //TelegramMD::asItallic( REBOOT,  MARKDOWN_TG::escape );
+                        respond.text += REBOOT_MD; //TelegramMD::asItallic( REBOOT,  MARKDOWN_TG::escape );
                         bot.sendMessage( respond );
                         respond.text = "";
                         //needStartPortal = true;
@@ -748,7 +749,7 @@ void handleCommand(fb::Update& u){
                   { 
                     
                     //message.chatID = settings.getAdminId();
-                    respond.text = REBOOT; //TelegramMD::asItallic( REBOOT,  MARKDOWN_TG::escape ); //rebootMsg_MD;
+                    respond.text = REBOOT_MD; //TelegramMD::asItallic( REBOOT,  MARKDOWN_TG::escape ); //rebootMsg_MD;
                     //message.setModeMD;
                     bot.sendMessage(respond, true);
                     bot.setTyping( settings.getAdminId(), false);

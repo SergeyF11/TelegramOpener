@@ -636,7 +636,7 @@ void tick(){
                 //menuIds.update();
             }
             txt = DONE_UPGRADE;
-            txt += REBOOT; 
+            txt += REBOOT_MD; 
             //bot.reboot();
         }
         debugPrintf("Txt=%s, to msgId=%lu\n", txt.c_str(), startUpMsgId );
@@ -689,10 +689,16 @@ bool CertStoreFiles::hasNewestCertsStore( )    {
     }
     return ( newDate > myCertsDate );  
 };
+
+
+static const char RENEW_CERTSSTORE_MD[] PROGMEM = "_Обновляю сертификаты\\.\\.\\._ ";
+static const char CERTSSTORE_LOADED_MD[] PROGMEM = " *Сертификаты обновлены\\.* ";
+static const char NEED_REBOOT_MD[] PROGMEM = " _Требуется перезагрузка\\!_ ";
+
 bool CertStoreFiles::downloadMsg(FastBot2Client& bot, const long long toId, bool wait ){
     if ( ! toId ) return false;
     bot.tickManual();
-    fb::Message certsDownload( TelegramMD::asItallic( F("Обновляю сертификаты..."), MARKDOWN_TG::escape),  toId);
+    fb::Message certsDownload( RENEW_CERTSSTORE_MD, toId);
     certsDownload.setModeMD();
     auto res = bot.sendMessage( certsDownload, wait );
     return res.valid() && ! res.isError(); //bot.lastBotMessage();
@@ -705,10 +711,10 @@ bool CertStoreFiles::updatedMsg(FastBot2Client& bot, const long long toId, bool 
     setNewCerts.messageID = bot.lastBotMessage();
     setNewCerts.mode = fb::Message::Mode::MarkdownV2;
        
-    setNewCerts.text = TelegramMD::asBold( F("Сертификаты обновлены."), MARKDOWN_TG::escape );
+    setNewCerts.text = CERTSSTORE_LOADED_MD; //TelegramMD::asBold( F(), MARKDOWN_TG::escape );
     setNewCerts.text += TelegramMD::newLine();
-    setNewCerts.text += TelegramMD::asItallic(F("Требуется перезагрузка!"), MARKDOWN_TG::escape );
-    setNewCerts.text += REBOOT; //TelegramMD::asItallic( REBOOT, MARKDOWN_TG::escape );
+    setNewCerts.text += //TelegramMD::asItallic(F("Требуется перезагрузка!"), MARKDOWN_TG::escape );
+    setNewCerts.text += REBOOT_MD; //TelegramMD::asItallic( REBOOT, MARKDOWN_TG::escape );
 
     setNewCerts.chatID  = toId;
 

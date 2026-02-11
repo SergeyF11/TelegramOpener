@@ -26,7 +26,7 @@ static const char TRY_LATTER[] PROGMEM = _TRY_LATTER_;
 static const char START_UPGRADE[] PROGMEM = "_Начато обновление\\.\\.\\._";
 static const char DONE_UPGRADE[] PROGMEM = "_Обновление завершено\\._"; //Reboot...";
 static const char ERROR_UPGRADE[] PROGMEM = "_Ошибка при обновлении\\._";
-static const char REBOOT[] PROGMEM = " _Перезапускаюсь\\.\\.\\._";
+static const char REBOOT_MD[] PROGMEM = " _Перезапускаюсь\\.\\.\\._";
 
 
 #include "TelegramMD.h"
