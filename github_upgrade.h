@@ -85,21 +85,28 @@ namespace GitHubUpgrade {
     static Errors _lastErrorCode;
     
     void copyUrl(char ** dest, const su::Text::Cstr src){ 
+        if ( !src ) return;
         #ifdef debug_print 
             debugPretty;
             debugPrint( "Dest adr=" );
             Serial.println( (long long unsigned int)&(*dest), HEX );
             debugPrintln( src );
         #endif
-        if ( *dest != nullptr ) delete[] dest;
+        if ( *dest != nullptr ) delete[] *dest;
         //auto buf = src;
-        *dest = new char[ strlen( src ) ]; //(char *)malloc(  );
-        strcpy( *dest, src );
+        const auto len = strlen( src )+1;
+        *dest = new char[ len ]; //(char *)malloc(  );
+        strncpy( *dest, src, len-1 );
         debugPrintln( *dest );
     };
     
     static struct Release {
-        char tag[9] = "0.0.0dbg";
+        Release(){};
+        ~Release() = default;
+        Release(const Release&) = delete; 
+        Release& operator=(const Release&) = delete;
+
+        char tag[12 ] = "00.00.00dbg";
         enum Url {
             Download,
             Info,
@@ -142,15 +149,10 @@ namespace GitHubUpgrade {
             _clean( &_downloadUrl);
             _clean( &_infoUrl );
             _clean( &_newCertsStore );
-
-            // if ( _downloadUrl != nullptr ){
-            //     delete[](_downloadUrl);
-            //     _downloadUrl = nullptr;
-            // }
-            // if ( _infoUrl != nullptr  ){
-            //     delete[](_infoUrl);
-            //     _infoUrl = nullptr; 
-            // }
+            //constructed = {false, false, false};
+            constructed[0] = false;
+            constructed[1] = false;
+            constructed[2] = false;
         };
 
 
@@ -229,24 +231,32 @@ namespace GitHubUpgrade {
         int hour=4;
         int min=0;
         int _checkedDay=WeekDays::Any;
-        bool setCheckedDay(int cd){
-            return _checkedDay = cd;
-        }; 
-        // bool setCheckedDay(int cd){ 
-        //     bool valid =( cd > WeekDays::Any && cd <= WeekDays::Sat );
-        //     if ( valid ) _checkedDay=cd;
-        //     return valid;
-        // };
+        // bool setCheckedDay(int cd){
+        //     if ( cd < WeekDays::Sun || cd > WeekDays::Sat ) {
+        //         _checkedDay = WeekDays::Any;
+        //         return false;
+        //     }
+        //     _checkedDay = cd;
+        //     return true;
+        // }; 
+        bool setCheckedDay(int cd){ 
+            bool valid =( cd > WeekDays::Any && cd <= WeekDays::Sat );
+            if ( valid ) _checkedDay=cd;
+            return valid;
+        };
         bool setDay(const char * cd){
-            bool valid = false;
+            if ( !cd || strlen(cd)< 3 ) return false;
+
+            //bool valid = false;
             for( int i=WeekDays::Sun; i<= WeekDays::Sat; i++ ){
                 if( strncmp( cd, _weekDays[i], 3) == 0 ){
                     weekDay = i;
-                    valid = !valid;
-                    break;
+                    return true;
+                    // valid = !valid;
+                    // break;
                 }
             }
-            return valid;
+            return false;
         };
         bool isAny(const int val){
             return val == WeekDays::Any;
@@ -370,7 +380,7 @@ namespace GitHubUpgrade {
                     if( ! doc.has(su::SH("tag_name")) ){
                         _lastErrorCode = Errors::No_Tag_Name;
                     } else {
-                        doc[su::SH("tag_name")].toStr( (char *)release.tag ); //_releaseTag);  //toString();
+                        doc[su::SH("tag_name")].toStr( (char *)release.tag , sizeof(release.tag)); //_releaseTag);  //toString();
                         //String release_name = doc["name"].toString();
                         bool prerelease = doc[su::SH("prerelease")].toBool();
                         if ( prerelease ) {

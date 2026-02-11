@@ -267,87 +267,117 @@ void getNameFromMessage(String& txt, const fb::Update& u, const String& prefix, 
 };
 /**/
 void handleDocument(fb::Update& u) {
-    if ( u.message().from().id() == settings.getAdminId() ){ //settings.admin ){
-      if (u.message().document().name().endsWith(".bin")) {  // .bin - значит это ОТА
-          fb::Message msg(START_UPGRADE, u.message().chat().id());
+    if ( settings.isAdmin( u.message().from().id() ) ){ //settings.admin ){
+
+
+      auto docId = u.message().document().id();
+      auto docName = u.message().document().name();
+      int32_t fromId = u.message().from().id().toInt32();
+      //int64_t _chatId = u.message().chat().id().toInt64();
+      
+      if ( docName.endsWith(".bin")) {  // .bin - значит это ОТА 
+          fb::Message msg(START_UPGRADE, fromId);
           msg.mode = fb::Message::Mode::MarkdownV2;
           auto res = bot.sendMessage( msg, true);
-          uint32_t otaMsg = 0; 
-          if ( res.valid() && ! res.isError() ) otaMsg = bot.lastBotMessage();
-          // не нужно для simpleButton
-          //myButton.stopUpdate();
-          
-          // между downloadFile и updateFlash/updateFS/writeTo не должно быть отправки сообщений!
-          // OTA обновление тип 1
-          //bot.updateFlash(u.message().document(), u.message().chat().id());
-          
+          const uint32_t otaMsg = ( res.valid() && ! res.isError() ) ? bot.lastBotMessage() : 0;
+
+          debugPrintln(START_UPGRADE);
           //OTA обновление тип 2
-          fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
-          // auto progress =[](){ 
-          //   static uint8_t state=0;
-          //   digitalWrite(LED_BUILTIN, state);
-          //   state =!state;
-          // };
-          
-          // fetch.setProgressFn( [](){ builtInLed.toggle();} );
+          fb::Fetcher fetch = bot.downloadFile( docId );
+
            if (fetch) {
                 if (fetch.updateFlash()) {
-                  debugPrintln(START_UPGRADE);
-                  //bot.reboot();          
-                  //bot.skipUpdates(100);
-                  // if ( otaMsg != 0 ){
-                  //   bot.editText(fb::TextEdit(DONE_UPGRADE, otaMsg, u.message().chat().id()), true);
-                  // } else {
-                  //   bot.sendMessage(fb::Message(DONE_UPGRADE, u.message().chat().id()), true);
-                  // }
+                  debugPrintln(DONE_UPGRADE);
+ 
+                  msg.text = DONE_UPGRADE;
+                  msg.text += REBOOT;
+
                   if ( otaMsg != 0 ){
-                    fb::TextEdit done(DONE_UPGRADE, otaMsg, u.message().chat().id());
-                    done.text += REBOOT;
+                    fb::TextEdit done(msg.text, otaMsg, fromId );
+                    //done.text += REBOOT;
                     done.mode = fb::Message::Mode::MarkdownV2;
                     bot.editText(done, true);
                   } else {
-                    fb::Message done(DONE_UPGRADE, u.message().chat().id());
-                    done.text += REBOOT;
-                    done.mode = fb::Message::Mode::MarkdownV2;
-                    bot.sendMessage(done, true);
+                    // fb::Message done(DONE_UPGRADE, u.message().chat().id());
+                    // done.text += REBOOT;
+                    // done.mode = fb::Message::Mode::MarkdownV2;
+                    bot.sendMessage(msg, true);
                   }
 
                   bot.reboot();
-                  //bot.skipNextMessage();
-                  //bot.sendMessage(fb::Message(REBOOT, u.message().chat().id()), false);
-                  //bot.tickManual();
-
                   needStart = NeedStartE::Reboot;
+                  //msg.text = "";
+
                } else {
                   debugPrintln(ERROR_UPGRADE);
+
+                  msg.text = ERROR_UPGRADE;
+
                   if ( otaMsg ){
-                    fb::TextEdit msg(ERROR_UPGRADE, otaMsg, u.message().chat().id());
+                    fb::TextEdit msg(ERROR_UPGRADE, otaMsg, fromId );
                     msg.mode = fb::Message::Mode::MarkdownV2;
                     bot.editText( msg, false);
                   } else {
-                    fb::Message msg(ERROR_UPGRADE, u.message().chat().id());
-                    msg.mode = fb::Message::Mode::MarkdownV2;
+                    // fb::Message msg(ERROR_UPGRADE, u.message().chat().id());
+                    // msg.mode = fb::Message::Mode::MarkdownV2;
                     bot.sendMessage( msg, false);
                   }
-               }
+                }
            }
 
-      } else if (u.message().document().name() == CertStoreFiles::fileData+1 ) {
-          fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
+      } else if (docName == CertStoreFiles::fileData+1 ) {
+          fb::Message msg(F("_Загружаем сертификаты_"), fromId );
+          msg.mode = fb::Message::Mode::MarkdownV2;
+          auto res = bot.sendMessage( msg, true);
+          uint32_t msgId = 0;
+          if ( res.valid() && !res.isError() )
+            msgId = bot.lastBotMessage();
+
+
+          fb::Fetcher fetch = bot.downloadFile( docId );
           if (fetch) {
-             File file = LittleFS.open(CertStoreFiles::fileData, "w");
-             fetch.writeTo(file);
-             file.close();
+            File file = LittleFS.open(CertStoreFiles::fileData, "w");
+            fetch.writeTo(file);
+            file.close();
+            msg.text = F("_Новые сертификаты загружены_ ");
+            msg.text += REBOOT;
+
+            debugPrintln( msg.text );
+
+            if ( msgId != 0){
+              fb::TextEdit _msg( msg.text, msgId, fromId );
+              _msg.mode = fb::Message::Mode::MarkdownV2;              
+              auto res = bot.editText( _msg, true );
+              // delay(200);
+              debugPrintf( "Edit msg[%u] res=", msgId );
+              res.printTo(Serial);
+
+            } else {
+              auto res = bot.sendMessage(msg, true );
+              debugPrint( "Send msg res=" );
+              res.printTo(Serial);
+            }
+            bot.reboot();
+            needStart = NeedStartE::Reboot;
+
+          } else {
+            msg.text = F("_Ошибка загрузки_");
+            if ( msgId != 0){
+              fb::TextEdit msg( msg.text, msgId, fromId );
+              msg.mode = fb::Message::Mode::MarkdownV2;              
+              bot.editText( msg, true );
+              // delay(200);
+            }
           }
-      } else if ( (u.message().document().name().endsWith(".ar")) ) {
+      } else if ( docName.endsWith(".ar")) {
           if ( ! Backup::restore() ){
-            fb::Message msg("TODO: release backup function", u.message().from().id() );
+            fb::Message msg("TODO: release backup function", fromId );
             bot.sendMessage(msg );
           }
       
       } else {
         String unknownFile = F("Unknown file: ");
-        unknownFile += u.message().document().name().toString();
+        unknownFile += docName.toString();
         //bot.answerCallbackQuery(u.query().id(), unknownFile.c_str());
         debugPrintln(unknownFile);
       }
