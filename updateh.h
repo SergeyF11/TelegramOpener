@@ -140,9 +140,6 @@ void sysinfoTo(String& out)
     const uint32_t maxFree  = ESP.getMaxFreeBlockSize();
   
 
-    debugPrintln( freeHeap );
-    debugPrintln( maxFree );
-
     offset += snprintf(buffer + offset, sizeof(buffer) - offset,
         "CPU freq %uMHz\nFree heap=%u\nMax free block=%u\n",
         ESP.getCpuFreqMHz(), freeHeap, maxFree );
@@ -423,7 +420,7 @@ inline void setReaction( fb::MessageRead msg, const char * emoji) {
 }
 
 bool checkGroupChat(fb::Update& u ){
-  debugPrintf("Type=%u, msg:'%s'", 
+  debugPrintf("Type=%u, msg:'%s'\n", 
     (size_t)u.message().chat().type(),
     u.message().text().decodeUnicode().c_str()
   );
@@ -778,8 +775,10 @@ void handleCommand(fb::Update& u){
                     }
                     break;
                   case "/rm"_h:
+                    if ( !hasArgs ) break;
+                      else 
                     { 
-                      auto arg = msgText.getSub(1, " ");
+                      //auto arg = msgText.getSub(1, " ");
                       respond.text += F("File ");
                       respond.text += TelegramMD::asCode( arg.c_str() ); //.c_str();
                       respond.text += ' ';
