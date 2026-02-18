@@ -6,6 +6,7 @@
 #include "utils/parser_stream.h"
 #include "env.h"
 #include "debug.h"
+
 //#define debug_print 1
 
 #define DEBUG_GSON 0
@@ -76,10 +77,11 @@ namespace BotSettings{
     char name[NAME_MAX_LEN]={0};
     char report[REPORT_MAX_LEN]={0};
   };
-  struct ControlChat {
-    long long id;
-//
-  };
+//   struct ControlChat {
+//     long long id;
+// //
+//   };
+
   struct SettingsT {
     char token[50]={0};
     long long adminId;

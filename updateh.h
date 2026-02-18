@@ -774,6 +774,15 @@ void handleCommand(fb::Update& u){
                       // debugPrint("LastMsg:"); debugPrintln(lm.get());
                     }
                     break;
+                  case "/reportTo"_h:
+                    if( hasArgs ){
+                      //if ( arg.compare( Report::toStr(Report::Admin))){
+                        Report::setReportTo( arg );
+                      //} else 
+                      //if ()
+                    }
+                    respond.text = Report::toStr();
+                    break;
                   case "/rm"_h:
                     if ( !hasArgs ) break;
                       else 
@@ -991,7 +1000,7 @@ void updateh(fb::Update& u) {
     {
     bool myAlert = false;
     
-    bool needReport = false;
+    //bool needReport = false;
     auto sender = u.query().from();
 
     
@@ -1023,7 +1032,7 @@ void updateh(fb::Update& u) {
                   myAlert = true;
                   txt += F("Вы не можете пользоватся ботом со скрытым id!");
             } else {
-              needReport = true;
+              //needReport = true;
               if ( relay.isAutocloseable() ){
                 
                 relay.open();    
@@ -1124,9 +1133,9 @@ void updateh(fb::Update& u) {
     if( takeAdminMsgId ){ //} && u.message().from().id() == takeAdmin.userId ){
      /* fb::Result res = */ bot.deleteMessage(u.message().from().id(), takeAdminMsgId, false); //takeAdmin.userId, takeAdmin.msgId);
     }
-    if ( needReport ) {
-      sendReport( settings.getAdminId(), sender );
-    }
+    //if ( needReport ) {
+    sendReport( /* settings.getAdminId(), */ sender );
+    //}
   }
   break;
   default:

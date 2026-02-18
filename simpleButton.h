@@ -5,6 +5,7 @@
 #include "env.h"
 // #include "LastMsgInFile.h"
 #include "newFsSettings.h"
+#include "report.h"
 
 #ifdef BUTTON_NAME
 namespace ButtonInlineMenu
@@ -358,8 +359,15 @@ const ReturnCode updater(const bool waitBotResponse = false/* , const int codeBu
     if (this->needUpdate() || millis() - this->lastUpdate >= _expiredPeriod)
     {
       debugPrintf("Button tick. Need:%d\tlastUpdate:%ld\tperiod:%ld\n", this->needUpdate(), this->lastUpdate, _expiredPeriod);
-
-      this->updater( );
+      if ( Report::needRecreateKeyboard ){
+        // delete keyboar
+        this->cleaner(false);
+        //clean keyboar msgID
+        this->creater();
+        Report::needRecreateKeyboard = false;
+      } else {
+        this->updater( );
+      }
     }
   };
 };
