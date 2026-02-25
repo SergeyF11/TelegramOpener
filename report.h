@@ -46,15 +46,106 @@ namespace Report {
 
 extern BotSettings::Settings settings;
 
-bool sendReport( fb::UserRead opener ) {
+namespace ReportSheduler {
+    struct Opener {
+        int64_t id;
+        String userName;
+        String firstName;
+        String lastName;
+        Opener* next = nullptr;
+        Opener() : id(0) {
+            userName.reserve(64);
+            firstName.reserve(64);
+            lastName.reserve(64);
+            clean();
+        }
+        Opener( fb::UserRead& opener)  : Opener()
+        {
+            *this = opener; 
+            //next = new Opener;
+        };
+        ~Opener(){
+            clean();
+        }
+        Opener(const Opener&) = delete;
+        Opener& operator=(const Opener&) = delete;
+
+        // add to end
+        Opener& operator=( fb::UserRead& opener){
+            Opener * current = this;
+            if ( has() ){
+                // Ищем конец
+                while( current->hasNext() ){
+                    current = current->next;
+                }
+                current->next = new Opener;
+                current = current->next;
+            } /* else
+                active = this;
+             */
+            current->id = opener.id().toInt64();
+            current->userName = opener.username().toString();
+            current->firstName = opener.firstName().toString();
+            current->lastName = opener.lastName().toString();
+            
+            return (*this);
+        };
+        
+        void clean(){
+            Serial.println("clean");Serial.flush();
+
+            if( ! has() ) return;
+            if( hasNext()) {
+
+                Serial.println("clean next"); Serial.flush();
+                next->clean();
+
+                Serial.println("delete next");Serial.flush();
+                delete next;
+                next = nullptr;
+                return;
+            }
+            id = 0LL;
+
+            Serial.println("Sheduler cleaned");Serial.flush();
+        }
+
+        bool has() const { return id != 0; }
+        bool hasNext() const {
+            return next != nullptr; // && next->has();
+        }
+
+    };
+    static Opener opener;
+}
+
+bool sendReport( const ReportSheduler::Opener& opener /* = ReportSheduler::opener  */);
+
+bool sheduleReport( fb::UserRead& _opener ) {
+    ReportSheduler::opener = _opener;
+    return ReportSheduler::opener.has();
+}
+
+bool sendReport(  fb::UserRead& _opener ) {
+    //ReportSheduler::Opener opener(_opener);
+    ReportSheduler::opener = _opener;
+    if( ReportSheduler::opener.has())
+        return sendReport(ReportSheduler::opener);
+    else    
+        return false;
+}
+
+
+bool sendReport( const ReportSheduler::Opener& opener /* = ReportSheduler::opener  */){
+    
     static constexpr  char TMPL_OPEN[] PROGMEM = "<i>Открыл</i> <a href=\"tg://user?id=%lld\"> <b>";
     static const char SPOILER[] PROGMEM = "<%stg-spoiler>";
     static constexpr  char START[] = "";
     static constexpr  char END[] = "/";
 
-    const auto openerId = opener.id().toInt64();
-    if ( Report::to == Report::None ||
-        ( Report::to == Report::Admin && openerId == settings.getAdminId() ) ) return true;
+    //const auto openerId = opener.id().toInt64();
+    if ( Report::to == Report::None /* ||
+        ( Report::to == Report::Admin && opener.id == settings.getAdminId() ) */ ) return true;
     int64_t reportTo = ( Report::to == Report::Admin ) 
         ? settings.getAdminId() 
         : settings.getChatId();
@@ -69,16 +160,17 @@ bool sendReport( fb::UserRead opener ) {
     
     // Статическая часть
     int len = snprintf(ptr, remaining, TMPL_OPEN, 
-                       openerId);
+                       opener.id);
     ptr += len;
     remaining -= len;
     
     // Username или ID
-    String usernameStr = opener.username().toString();
-    if (!usernameStr.isEmpty()) {
-        len = snprintf(ptr, remaining, "@%s", usernameStr.c_str());
+    //String usernameStr = opener.username().toString();
+    //if (!usernameStr.isEmpty()) {
+    if (!opener.userName.isEmpty()) {
+        len = snprintf(ptr, remaining, "@%s", opener.userName.c_str());
     } else {
-        len = snprintf(ptr, remaining, "#%lld", openerId);
+        len = snprintf(ptr, remaining, "#%lld", opener.id);
     }
     ptr += len;
     remaining -= len;
@@ -89,28 +181,28 @@ bool sendReport( fb::UserRead opener ) {
     remaining -= len;
     
     // Имя и фамилия (если есть)
-    String firstNameStr = opener.firstName().toString();
-    String lastNameStr = opener.lastName().toString();
+    // String firstNameStr = opener.firstName().toString();
+    // String lastNameStr = opener.lastName().toString();
     
-    if (!firstNameStr.isEmpty() || !lastNameStr.isEmpty()) {
+    if (!opener.firstName.isEmpty() || !opener.lastName.isEmpty()) {
         len = snprintf(ptr, remaining, SPOILER, START );//"<tg-spoiler>");
         ptr += len;
         remaining -= len;
         
-        if (!firstNameStr.isEmpty()) {
-            len = snprintf(ptr, remaining, "%s", firstNameStr.c_str());
+        if (!opener.firstName.isEmpty()) {
+            len = snprintf(ptr, remaining, "%s", opener.firstName.c_str());
             ptr += len;
             remaining -= len;
             
-            if (!lastNameStr.isEmpty()) {
+            if (!opener.lastName.isEmpty()) {
                 len = snprintf(ptr, remaining, " ");
                 ptr += len;
                 remaining -= len;
             }
         }
         
-        if (!lastNameStr.isEmpty()) {
-            len = snprintf(ptr, remaining, "%s", lastNameStr.c_str());
+        if (!opener.lastName.isEmpty()) {
+            len = snprintf(ptr, remaining, "%s", opener.lastName.c_str());
             ptr += len;
             remaining -= len;
         }
@@ -129,6 +221,11 @@ bool sendReport( fb::UserRead opener ) {
     msg.mode = fb::Message::Mode::HTML;
    
     //return bot.sendMessage(msg).type() == fb::Result::Type::OK;
+    // auto res = bot.sendMessage(msg, false);
+    // return res.valid();
+
+    // opener.clean();
+    // return res;
     auto res = bot.sendMessage(msg, true);
 
     return res.valid() && ! res.isError() ;

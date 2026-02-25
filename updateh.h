@@ -148,7 +148,7 @@ void sysinfoTo(String& out)
     debugPrintln( buffer );
 
     offset += snprintf(buffer + offset, sizeof(buffer) - offset,
-        "Chip Id: 0x%08X\nFlash Id: 0x%08X\n",
+        "Chip Id: 0x%06X\nFlash Id: 0x%06X\n",
         ESP.getChipId(), ESP.getFlashChipId());
     
     const char* flashMode = [](){
@@ -590,20 +590,22 @@ void handleCommand(fb::Update& u){
               case "/ls"_h:
                 {
                   runStart;
+
+                  static constexpr int CHUNK_LENGTH = 1000;
+
                   bot.setTyping(respond.chatID, false);
-                  String list; list.reserve(1024);
+                  String list; list.reserve(2048);
                   BotSettings::listDirTo(list, "/");
-                  int startPtr = 0;
                   
-                  while ( list.length() > 512 ){
-                    int endPtr = startPtr + 512;  
-                    respond.text = TelegramMD::asCode( list.substring(startPtr, endPtr ));
+                  while ( list.length() > CHUNK_LENGTH ){
+                    int endPtr = list.substring(0, CHUNK_LENGTH).lastIndexOf('\n'); 
+                    respond.text =  TelegramMD::asCode( list.substring(0, endPtr));
                     bot.sendMessage( respond, false );
-                    startPtr = endPtr;
-                    list = list.substring(endPtr );
+
+                    list = list.substring( endPtr +1 );
                   }
-                  respond.text += TelegramMD::asCode( BotSettings::listDirToString("/"));
-                  // message.chatID = msg.from().id();
+                  respond.text = TelegramMD::asCode( list );
+                  
                   printRunTime;
                 }
                 break;
@@ -1033,6 +1035,7 @@ void updateh(fb::Update& u) {
                   txt += F("Вы не можете пользоватся ботом со скрытым id!");
             } else {
               //needReport = true;
+              sheduleReport( sender );
               if ( relay.isAutocloseable() ){
                 
                 relay.open();    
@@ -1134,7 +1137,8 @@ void updateh(fb::Update& u) {
      /* fb::Result res = */ bot.deleteMessage(u.message().from().id(), takeAdminMsgId, false); //takeAdmin.userId, takeAdmin.msgId);
     }
     //if ( needReport ) {
-    sendReport( /* settings.getAdminId(), */ sender );
+    //sendReport( /* settings.getAdminId(), */ sender );
+    //sheduleReport( sender );
     //}
   }
   break;

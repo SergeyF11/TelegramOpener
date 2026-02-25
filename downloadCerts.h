@@ -94,7 +94,19 @@ namespace CertificateStore {
         noContent,
         noNewStore,
     };
-
+    const char* errorStr(Errors e){
+        switch(e){
+            case ok: return PSTR("Ok");
+            case noFs: return PSTR("FS not formated");
+            case noConnect: return PSTR("No connect");
+            case errorFile: return PSTR("File error");
+            case notFound: return PSTR("Not found");
+            case noContent: return PSTR("No content");
+            case noNewStore: return PSTR("No new store");
+            default:
+                return PSTR("Unknown");
+        }
+    };
     // int strFind(const char * srs, char find, const int start = 0){
     // int pos = start;
     // while( srs[pos] != '\0' ){
@@ -299,66 +311,67 @@ namespace TmpFile {
 
 
     // перезаписывает файл CertStore Из временного файла
-        inline bool upgrade(const char *from= TmpFile::fileName, const char * to=CertStoreFiles::fileData, FS& fs=LittleFS){ 
-            bool res = FileTime::setModificated( fs, from, GitHubUpgrade::release.getNewCertStoreDate() );
-            return fs.rename( from, to ) & res;
-            //return fs.rename( from, to );
-        };
+    inline bool upgrade(const char *from= TmpFile::fileName, const char * to=CertStoreFiles::fileData, FS& fs=LittleFS){ 
+        bool res = FileTime::setModificated( fs, from, GitHubUpgrade::release.getNewCertStoreDate() );
+        return fs.rename( from, to ) & res;
+        //return fs.rename( from, to );
+    };
 
-        bool update( GitHubUpgrade::Release& release, FS& fs=LittleFS ){
-            bool result = false;
-            // switch( status){
-            //     case Status::None:
-                    if (! release.constructed[GitHubUpgrade::Release::Url::CertStore] ) return result;
-                    //if ( ! fs ) fs.begin();
-                    if ( fs.exists( TmpFile::fileName ) ) fs.remove( TmpFile::fileName );
+    bool update( GitHubUpgrade::Release& release, FS& fs=LittleFS ){
+        bool result = false;
+        // switch( status){
+        //     case Status::None:
+        if (! release.constructed[GitHubUpgrade::Release::Url::CertStore] ) return result;
 
-                    auto file = fs.open(TmpFile::fileName, "w+"); 
-                    if( file ) {
-                        // не работает почему-то
-                        //FileTime::setTimeCallback(fs, release._newCertStoreDate ); //release.getNewCertStoreDate());
-                        HTTPClient http;
-                        if ( http.begin( 
-                            client,                
-                            release.constructUrl(GitHubUpgrade::Release::Url::CertStore) ) )
-                        {
-                            //http.setRedirectLimit(1);
-                            http.setFollowRedirects( HTTPC_FORCE_FOLLOW_REDIRECTS );
-                            int code = http.GET();
-                            switch( code ){
-                                case HTTP_CODE_OK:
-                                // dowload here
-                                // get content
-                                {
-                                    int writed = CertificateStore::streamToFile( client, http, file , [](){ builtInLed.toggle(); } );
-                                    result = ( writed == http.getSize() );
-                                }
-                                break;
-                                case HTTP_CODE_FOUND:
-                                case HTTP_CODE_PERMANENT_REDIRECT:
-                                case HTTP_CODE_TEMPORARY_REDIRECT:
-                                // redirect     
-                                    debugPretty;
-                                    debugPrintf("Http code=%d\n", code);
-                                
-                                break;
-                                default:
-                                //errors
-                                    debugPretty;
-                                    debugPrintf("Http code=%d\n", code);
-                            }
-                            
-                        }
-                        http.end();
-                        // if ( release.getNewCertStoreDate() )
-                        //     FileTime::setModificated(fs, file, release.getNewCertStoreDate());
-                        file.close();
-                        //FileTime::setTimeCallback(fs);
-                    }  
-            return result;
-        };
+        //if ( ! fs ) fs.begin();
+        if ( fs.exists( TmpFile::fileName ) ) fs.remove( TmpFile::fileName );
 
-        Errors insecureDownload(FS& fs, const char * fileName = CertStoreFiles::fileData ){
+        auto file = fs.open(TmpFile::fileName, "w+"); 
+        if( file ) {
+            // не работает почему-то
+            //FileTime::setTimeCallback(fs, release._newCertStoreDate ); //release.getNewCertStoreDate());
+            HTTPClient http;
+            if ( http.begin( 
+                client,                
+                release.constructUrl(GitHubUpgrade::Release::Url::CertStore) ) )
+            {
+                //http.setRedirectLimit(1);
+                http.setFollowRedirects( HTTPC_FORCE_FOLLOW_REDIRECTS );
+                int code = http.GET();
+                switch( code ){
+                    case HTTP_CODE_OK:
+                    // dowload here
+                    // get content
+                    {
+                        int writed = CertificateStore::streamToFile( client, http, file , [](){ builtInLed.toggle(); } );
+                        result = ( writed == http.getSize() );
+                    }
+                    break;
+                    case HTTP_CODE_FOUND:
+                    case HTTP_CODE_PERMANENT_REDIRECT:
+                    case HTTP_CODE_TEMPORARY_REDIRECT:
+                    // redirect     
+                        debugPretty;
+                        debugPrintf("Http code=%d\n", code);
+                    
+                    break;
+                    default:
+                    //errors
+                        debugPretty;
+                        debugPrintf("Http code=%d\n", code);
+                }
+                
+            }
+            http.end();
+            // if ( release.getNewCertStoreDate() )
+            //     FileTime::setModificated(fs, file, release.getNewCertStoreDate());
+            file.close();
+            //FileTime::setTimeCallback(fs);
+        }  
+        return result;
+    };
+
+    Errors insecureDownload(FS& fs, const char * fileName = CertStoreFiles::fileData ){
         //bool res = false;
         debugPretty;
         if ( ! fs.begin() ) return Errors::noFs;

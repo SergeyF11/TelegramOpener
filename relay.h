@@ -261,7 +261,10 @@ struct WrongCount {
 void rawResponse(const su::Text& resp){
   //debugPrint(__TIME__ ); debugPrint(' ');
   //debugPretty;   // debugPrintln(resp.c_str());
-  if ( resp.valid()) wrongCount.reset(); 
+  if ( resp.valid()){
+    wrongCount.reset(); 
+    //botSession = client.
+  }
   else {
     wrongCount++;
     debugPretty;

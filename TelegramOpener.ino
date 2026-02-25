@@ -1,9 +1,9 @@
-//#define debug_print 1
+#define debug_print 1
 //#define memory_print
 //#define CHECK_MAXBLOCK_SIZE
 //#define certStoreUpdateTest
 
-#define VERSION 0,2,2
+#define VERSION 0,2,4
 
 #ifdef CHECK_MAXBLOCK_SIZE
   #define maxblock_size_checker { static uint32_t __pre_free_block=0; \
@@ -41,6 +41,8 @@
 #include "env.h"
 #include "debug.h"
 
+
+
 #if defined debug_print
   PrintMemory memory;
   static App::Version version{VERSION,"dbg"};
@@ -77,7 +79,7 @@ static bool isRelayOn(){ return relay.isOpen(); };
 #include "wifiManager.h"
 #include "rssi.h"
 //#include "proxy.h"
-#include <GeoLocation.h>
+//#include <GeoLocation.h>
 
 
 static const char fileName[] PROGMEM = "/bot_opener.json";
@@ -85,6 +87,16 @@ BotSettings::Settings settings(fileName);
 SimpleButton myButton(bot, settings, POLLING_TIME );
 String botName;
 bool mdnsStarted = false;
+
+
+namespace Fail {
+  void loop(){
+    do {
+      builtInLed.flash(100,10);
+      delay(1);
+    }while(1);
+  }
+}
 
 /// @brief все настройки скетча
 void setup(){
@@ -111,6 +123,8 @@ void setup(){
   //wm.setHostname( App::name );
   
   WiFi.setHostname( App::name );
+  sntp_stop(); 
+
 
   Serial.begin(115200);
     while ( ! Serial ){
@@ -171,6 +185,7 @@ wm.addParameter(&relay_period);
   wm.setWebServerCallback(bindServerCallback);
   wm.setSaveConfigCallback(saveWifiCallback);
   wm.setSaveParamsCallback(saveParamCallback);
+  wm.setPreOtaUpdateCallback(handlePreOtaUpdateCallback);
   //wm.handleUpdate
  
   wm.setDebugOutput( false); //true, WM_DEBUG_DEV );
@@ -183,7 +198,7 @@ wm.addParameter(&relay_period);
 
   // useful to make it all retry or go to sleep in seconds
   wm.setConfigPortalTimeout( settings.hasToken() ? PORTAL_TIMEOUT : (PORTAL_TIMEOUT<<4) );
-  wm.setSaveConnect(false); // false = ( do not connect, only save )
+  wm.setSaveConnect(true); // false = ( do not connect, only save )
   wm.setBreakAfterConfig(true); // needed to use saveWifiCallback
   //wm.setTitle( App::name );
   
@@ -243,6 +258,8 @@ wm.addParameter(&relay_period);
     //   Serial.println("\nStarting location request...");
     // //bool started = geoService.begin(true, "ru"); // Автоустановка времени, русский язык
     //   geoService.getLocation( true );
+      
+      sntp_init();
 
       while( ! Time::isSynced() ){        
           builtInLed.flash(200,1);
@@ -278,8 +295,10 @@ wm.addParameter(&relay_period);
   } else {
     Serial.println(F("No certificate store loaded!! Reboot esp"));
     Serial.flush();
-    ESP.reset();
-    //client.setInsecure();
+    //ESP.reset();
+    //Fail::loop();
+    
+    client.setInsecure();
     //client.setFingerprint(Telegram::fingerprint );
     //debugPrintln("Use Telegram fingerprint\n");
   }
@@ -328,13 +347,17 @@ Serial.println(F("No certificate store loaded!!"));
     wrongCount.reset();
   };
   
+  // client.setSession( &botSession );
   debugPrintln("Wait Telegram responce ");
   fb::Result res;
   do {
     builtInLed.toggle();
     res = bot.sendCommand(tg_cmd::getMe, true);
-    if ( res.valid() && !res.isError() ) break;
-    
+    if ( res.valid() && !res.isError() ) {
+      
+      
+      break;
+    }
     wrongCount.tick();
     debugPrint(".");
     delay( 250);
@@ -496,6 +519,9 @@ if (MDNS.begin( App::name )) {
   mdnsStarted = true;
 }
 
+
+  bot.tickManual();
+
 } // end setup()
 
 //volatile time_t loopNow;
@@ -514,8 +540,18 @@ void loop(){
   {
     wrongCount.tick();
     relay.tick();
+    // if( ReportSheduler::opener.has() && !relay.isOpen() ){
+    //   debugPrintf("send report 'Opener %llu'\n", ReportSheduler::opener.id );
+    //   sendReport( ReportSheduler::opener);
+    //   ReportSheduler::opener.clean();
+    // }
   }
-    bot.tick() ;
+  bot.tick();
+ 
+
+  
+
+
   {
     menuIds.tick();
   }
@@ -533,7 +569,27 @@ void loop(){
   maxblock_size_checker;
  
 
-  if ( ! bot.isPolling() ) {
+  if ( ! bot.isPolling() && !relay.isOpen() ) {
+    if( ReportSheduler::opener.has() /* && !relay.isOpen() */ ){
+      
+      ReportSheduler::Opener* currentPtr = &ReportSheduler::opener;
+
+      // sendReport( *currentPtr);
+      // debugPrintf("send report 'Open %llu\n", currentPtr->id );
+
+      while( currentPtr->has()) {
+        sendReport( *currentPtr );
+        debugPrintf("send report 'Open %lld'\n", currentPtr->id );
+
+        if ( ! currentPtr->hasNext() ) break;
+        currentPtr = currentPtr->next;
+      }
+      ReportSheduler::opener.clean();
+      // debugPrintf("send report 'Open %llu\n", ReportSheduler::opener.id );
+      // sendReport( ReportSheduler::opener);
+      // ReportSheduler::opener.clean();
+    }
+
   //  myButton.tick();
   //} else {
     GitHubUpgrade::tick();

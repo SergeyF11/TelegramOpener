@@ -339,6 +339,14 @@ String getNameByChipId(const char* baseName=nullptr)  {
 }
 void saveWifiCallback(){
   debugPrintln("[CALLBACK] saveCallback fired");
+  
+}
+
+void handlePreOtaUpdateCallback(){
+  Update.onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("CUSTOM Progress: %u%%\r", (progress / (total / 100)));
+      digitalWrite(LED_BUILTIN, (progress & 1)  );
+  });
 }
 
 //gets called when WiFiManager enters configuration mode

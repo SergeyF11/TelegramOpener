@@ -4,6 +4,7 @@
 #include <LittleFS.h>
 #include <WiFiClientSecure.h>
 #include "downloadCerts.h"
+#include "cachedClient.h"
 
 #ifndef USE_CERTSTORE
 #include "certs/certs_tg.h"
@@ -13,7 +14,9 @@
 
 CertStore* certStore = nullptr;
 WiFiClientSecure client;
+//CachedSessionClient client;
 FastBot2Client bot(client);
+BearSSL::Session botSession; // = nullptr;
 
 
 // namespace Telegram {
@@ -40,8 +43,11 @@ int botCertsStore(CertStore* cs, WiFiClientSecure& cl, FS& fs, const char * file
         }
         if ( ! fs.exists(fileData)  ) {
             cl.setInsecure();
-            if ( CertificateStore::insecureDownload(LittleFS) != CertificateStore::Errors::ok )
-            return 0;
+            auto res = CertificateStore::insecureDownload(LittleFS);
+            if ( res != CertificateStore::Errors::ok ){
+                debugPrintf( "Error: %s\n", CertificateStore::errorStr( res) );
+                return 0;
+            }
         } else {
 
         // }

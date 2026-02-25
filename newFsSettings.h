@@ -3,6 +3,8 @@
 #include <LittleFS.h>
 //#include "my_credential.h"
 #include <GSON.h>
+#include <sntp.h>
+
 #include "utils/parser_stream.h"
 #include "env.h"
 #include "debug.h"
@@ -220,59 +222,59 @@ void listDirTo(String& out, const String& dirname, bool subDir = false, int dept
     }
 }
 
-  String listDirToString( const String& dirname, bool subDir=false){
-//  D_PRINT("List dir: ", dirname);
+//   String listDirToString( const String& dirname, bool subDir=false){
+// //  D_PRINT("List dir: ", dirname);
   
-  String out;  
-  if( ! subDir ) {
-    out = String(dirname);
-    out.concat( F("\r\n"));
-  }  
-  Dir root = LittleFS.openDir(dirname);
+//   String out;  
+//   if( ! subDir ) {
+//     out = String(dirname);
+//     out.concat( F("\r\n"));
+//   }  
+//   Dir root = LittleFS.openDir(dirname);
   
-  while (root.next()) {
-    File file = root.openFile("r");
-    out.concat(F(" "));  
-    if ( subDir ) out.concat(F(" ")); 
-    if ( file.isDirectory()){
-      out += root.fileName();
-      out.concat( F("/\r\n"));
-      String filePath = dirname;
-      filePath += root.fileName();
-      out += listDirToString( filePath, true);    
+//   while (root.next()) {
+//     File file = root.openFile("r");
+//     out.concat(F(" "));  
+//     if ( subDir ) out.concat(F(" ")); 
+//     if ( file.isDirectory()){
+//       out += root.fileName();
+//       out.concat( F("/\r\n"));
+//       String filePath = dirname;
+//       filePath += root.fileName();
+//       out += listDirToString( filePath, true);    
       
-    } else 
-      if (root.isFile()){   
-        out += (root.fileName());
-        out.concat(F(" - "));
-        out += file.size();
-        out.concat(F(" bytes "));
-    }
+//     } else 
+//       if (root.isFile()){   
+//         out += (root.fileName());
+//         out.concat(F(" - "));
+//         out += file.size();
+//         out.concat(F(" bytes "));
+//     }
     
-    time_t cr = file.getCreationTime();
-    time_t lw = file.getLastWrite();
-    file.close();
-    out.concat(F(" C:")); 
-    out += Time::toStr( cr);
-    out.concat(F(" M:"));
-    out += Time::toStr( lw);
-    out.concat(F("\r\n"));
-    Time::_free_buf();
-  }
-  if ( ! subDir ){
-    out.concat(F("FS uses "));
-    FSInfo info;
-    LittleFS.info(info);
-    out += info.usedBytes;
-    out += F(" bytes of ");
-    out += info.totalBytes;
-    out.concat(F("\r\n"));        
-    //nextLine(out);
-  }    
+//     time_t cr = file.getCreationTime();
+//     time_t lw = file.getLastWrite();
+//     file.close();
+//     out.concat(F(" C:")); 
+//     out += Time::toStr( cr);
+//     out.concat(F(" M:"));
+//     out += Time::toStr( lw);
+//     out.concat(F("\r\n"));
+//     Time::_free_buf();
+//   }
+//   if ( ! subDir ){
+//     out.concat(F("FS uses "));
+//     FSInfo info;
+//     LittleFS.info(info);
+//     out += info.usedBytes;
+//     out += F(" bytes of ");
+//     out += info.totalBytes;
+//     out.concat(F("\r\n"));        
+//     //nextLine(out);
+//   }    
   
-//  D_PRINT("Listdir result: ", out);  
-  return out;
-};
+// //  D_PRINT("Listdir result: ", out);  
+//   return out;
+// };
 
 
   class Settings : public Printable {
@@ -313,6 +315,9 @@ void configTz() const {
       else 
       // в конфиге MSK-3
         configTime( this->getTz(), NTP_SERVERS);
+
+      // sntp_stop();
+      // sntp_init();
     };
 
 Settings(const char * file = nullptr ){ //Settings::defaultName ){

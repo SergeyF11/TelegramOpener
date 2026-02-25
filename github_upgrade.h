@@ -12,6 +12,7 @@
 #include "myPairs.h"
 #include <CertStoreBearSSL.h>
 #include <TimeLib.h>
+#include "cachedClient.h"
 
 extern BotSettings::Settings settings;
 //extern CertStore * certStore;
@@ -19,6 +20,8 @@ extern FastBot2Client bot;
 extern App::Version version;
 extern MenuIds menuIds;
 extern WiFiClientSecure client;
+//extern CachedSessionClient client;
+
 
 namespace CertStoreFiles {
     static const char dataCerts[] PROGMEM = "data/certs.ar";
@@ -121,9 +124,9 @@ namespace GitHubUpgrade {
         //     _newCertStoreDate=0;
         // };
         time_t getNewCertStoreDate() const {
-            return  constructed[ Url::CertStore ] ? _newCertStoreDate : 0;
+            //return  constructed[ Url::CertStore ] ? _newCertStoreDate : 0;
             // if ( ! constructed[ Url::CertStore ] ) resetCertStoreDate();
-            // return _newCertStoreDate;
+            return _newCertStoreDate;
         };
 
         // bool  hasCertStore(){
@@ -141,18 +144,18 @@ namespace GitHubUpgrade {
             //}
         };
         void clean(){
-            debugPretty;
+            //debugPretty;
             debugPrintf("%s download=%s, info=%s\n", has ? "has" : "none", 
                 _downloadUrl == nullptr ? "nullptr" : _downloadUrl,
                 _infoUrl == nullptr ? "nullptr" : _infoUrl);
             has = false;
             _clean( &_downloadUrl);
             _clean( &_infoUrl );
-            _clean( &_newCertsStore );
+            //_clean( &_newCertsStore );
             //constructed = {false, false, false};
             constructed[0] = false;
             constructed[1] = false;
-            constructed[2] = false;
+            //constructed[2] = false;
         };
 
 
